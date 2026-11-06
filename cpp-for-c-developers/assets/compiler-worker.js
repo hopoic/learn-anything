@@ -8,13 +8,20 @@ const SOURCES = [
 ];
 
 let clangPromise = null;
+let currentId = 0;
+const reportProgress = ({ doneLength, totalLength }) =>
+  post({ id: currentId, type: "progress", done: doneLength, total: totalLength });
 
 async function loadClang() {
   const errors = [];
   for (const src of SOURCES) {
     try {
       const mod = await import(src);
-      if (typeof mod.runClang === "function") return { runClang: mod.runClang, Exit: mod.Exit, src };
+      if (typeof mod.runClang !== "function") continue;
+      // Prefetch the toolchain resources ourselves: runClang does not forward fetchProgress
+      // to its first internal step, so this is the only way to observe download progress.
+      if (typeof mod.runLLVM === "function") await mod.runLLVM(null, {}, { fetchProgress: reportProgress });
+      return { runClang: mod.runClang, Exit: mod.Exit, src };
     } catch (e) {
       errors.push(src + " → " + (e && e.message ? e.message : e));
     }
@@ -26,6 +33,7 @@ function post(msg, transfer) { self.postMessage(msg, transfer || []); }
 
 self.onmessage = async (ev) => {
   const { id, code, std, opt } = ev.data;
+  currentId = id;
   const dec = new TextDecoder();
   let diag = "";
   try {
@@ -37,7 +45,7 @@ self.onmessage = async (ev) => {
       decodeASCII: false,
       stdout: (bytes) => { if (bytes) diag += dec.decode(bytes, { stream: true }); },
       stderr: (bytes) => { if (bytes) diag += dec.decode(bytes, { stream: true }); },
-      fetchProgress: ({ doneLength, totalLength }) => post({ id, type: "progress", done: doneLength, total: totalLength })
+      fetchProgress: reportProgress
     }).catch((e) => {
       // runClang throws an Exit error on non-zero status; diagnostics were already collected.
       if ((Exit && e instanceof Exit) || (e && typeof e.code === "number")) return null;

@@ -7,7 +7,7 @@
  */
 (function () {
   "use strict";
-  const ONLINE_TIMEOUT_MS = 25000;
+  const ONLINE_TIMEOUT_MS = 45000;
   const LOCAL_RUN_TIMEOUT_MS = 10000;
   const GODBOLT_COMPILERS = ["g142", "g151", "g132"];
   const ENGINE_LABEL = { wandbox: "Wandbox · GCC", godbolt: "Compiler Explorer · GCC", local: "브라우저 내장 · Clang(WASM)" };
@@ -103,8 +103,11 @@
     compilerWorker.onmessage = (ev) => {
       const m = ev.data, p = pending.get(m.id);
       if (m.type === "progress") {
-        state.localStatus = "downloading"; state.localProgress = m.total ? m.done / m.total : 0; emitStatus();
-        if (p && p.onProgress) p.onProgress(state.localProgress);
+        state.localStatus = "downloading";
+        state.localProgress = m.total ? Math.min(1, m.done / m.total) : null;   // null: total size unknown
+        state.localBytes = m.done || 0;
+        emitStatus();
+        if (p && p.onProgress) p.onProgress(state.localProgress, state.localBytes);
         return;
       }
       if (!p) return;

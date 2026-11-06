@@ -99,7 +99,8 @@
   let lastEngine = "";
   function renderEngineStatus() {
     const st = window.CppRunner ? CppRunner.state : { localStatus: "idle" };
-    const local = { idle: "아직 받지 않음", loading: "불러오는 중…", downloading: "내려받는 중 " + Math.round((st.localProgress || 0) * 100) + "%", ready: "준비됨", error: "불러오기 실패" }[st.localStatus];
+    const dl = st.localProgress == null ? Math.round((st.localBytes || 0) / 1048576) + " MB" : Math.round(st.localProgress * 100) + "%";
+    const local = { idle: "아직 받지 않음", loading: "불러오는 중…", downloading: "내려받는 중 " + dl, ready: "준비됨", error: "불러오기 실패" }[st.localStatus];
     engineStatus.innerHTML = (lastEngine ? "마지막 실행: " + esc(lastEngine) + "<br>" : "") + "내장 컴파일러: " + local +
       (st.localStatus === "idle" ? ' · <a href="#" id="preload">미리 받기(~23MB)</a>' : "");
     const p = $("#preload", engineStatus);
@@ -181,7 +182,12 @@
         else if (p === "compile") setSt(o, "busy", "컴파일 중 · 브라우저 내장 Clang …");
         else if (p === "run") { setSt(o, "busy", "실행 중 …"); prog.hidden = true; }
       },
-      progress(f) { prog.hidden = false; bar.style.width = Math.round(f * 100) + "%"; setSt(o, "busy", "내장 컴파일러 내려받는 중 " + Math.round(f * 100) + "% (최초 1회)"); },
+      progress(f, bytes) {
+        prog.hidden = false;
+        const label = f == null ? Math.round(bytes / 1048576) + " MB" : Math.round(f * 100) + "%";
+        bar.style.width = (f == null ? Math.min(95, bytes / 1048576) : f * 100) + "%";
+        setSt(o, "busy", "내장 컴파일러 준비 중 " + label + " (최초 1회)");
+      },
       stream(kind, text) { $(kind === "stdout" ? ".o-out" : ".o-err", o).textContent = text; },
       note(t) { notes.push(t); $(".o-note", o).textContent = notes.join("\n"); }
     });
