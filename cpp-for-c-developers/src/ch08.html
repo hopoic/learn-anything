@@ -1,0 +1,166 @@
+<!-- ============ CH8 ============ -->
+<section class="chapter col" id="ch8">
+  <div class="eyebrow">Part III · 추상화 — 8장</div>
+  <h2>템플릿과 컨셉트</h2>
+  <p class="goal">이 장을 마치면: 매크로나 <code>void*</code>로 만들던 제네릭 코드를 함수·클래스 템플릿으로 바꿀 수 있고, 비타입 템플릿 매개변수로 크기가 고정된 컨테이너를 만들 수 있으며, C++20 컨셉트로 템플릿의 요구사항을 적고 <code>if constexpr</code>로 타입별 분기를 컴파일 타임에 할 수 있습니다.</p>
+  <p>7장의 가상 함수는 실행 중에 구현을 고릅니다. 템플릿은 같은 일을 <strong>컴파일할 때</strong> 합니다. 비용 없는 추상화라는 C++의 약속이 가장 잘 드러나는 기능입니다.</p>
+
+  <h3>void*와 매크로의 대안</h3>
+  <p>C에서 타입에 무관한 코드를 쓰는 방법은 두 가지였습니다. <code>qsort</code>처럼 <code>void*</code>와 함수 포인터를 쓰거나(타입 검사 없음, 간접 호출), 매크로로 코드를 찍어내거나(디버깅 어려움). 템플릿은 "타입을 매개변수로 받는 코드 틀"이고, 컴파일러가 쓰이는 타입마다 진짜 함수를 만들어 줍니다(<strong>인스턴스화</strong>).</p>
+<run file="sort.cpp">
+#include <algorithm>
+#include <cstdlib>
+#include <iostream>
+#include <string>
+#include <vector>
+
+// C style: comparator through void*, called indirectly for every comparison
+int cmp_int(const void* a, const void* b) {
+    int x = *static_cast<const int*>(a), y = *static_cast<const int*>(b);
+    return (x > y) - (x < y);
+}
+
+// A function template: T is deduced from the arguments
+template <typename T>
+T clamp_to(T v, T lo, T hi) { return v < lo ? lo : (hi < v ? hi : v); }
+
+int main() {
+    int raw[] = {42, 7, 19, 3, 88};
+    std::qsort(raw, 5, sizeof(int), cmp_int);
+
+    std::vector<int> v{42, 7, 19, 3, 88};
+    std::sort(v.begin(), v.end(), [](int a, int b) { return a > b; });  // comparator can be inlined
+
+    for (int x : raw) std::cout << x << ' ';
+    std::cout << "| ";
+    for (int x : v) std::cout << x << ' ';
+    std::cout << '\n';
+
+    std::cout << clamp_to(150, 0, 100) << ' '                       // T = int
+              << clamp_to(-0.5, 0.0, 1.0) << ' '                    // T = double
+              << clamp_to<std::string>("zebra", "apple", "mango")   // T = std::string (explicit)
+              << '\n';
+}
+</run>
+  <p><code>std::sort</code>는 비교 함수를 템플릿 인자로 받으므로 컴파일러가 비교 코드를 정렬 루프 안에 인라인할 수 있습니다. 그래서 대체로 <code>qsort</code>보다 빠릅니다. 추상화를 높였는데 성능도 좋아지는, 제로 오버헤드 원칙의 대표 사례입니다.</p>
+
+  <h3>클래스 템플릿: 타입과 크기를 매개변수로</h3>
+  <p>클래스도 템플릿이 될 수 있습니다. <code>std::vector&lt;T&gt;</code>가 그렇습니다. 템플릿 매개변수에는 타입뿐 아니라 <strong>컴파일 타임 상수</strong>도 올 수 있어서, 힙을 쓰지 않는 고정 용량 컨테이너처럼 임베디드에서 유용한 타입을 만들 수 있습니다.</p>
+<run file="static_vector.cpp">
+#include <array>
+#include <cstddef>
+#include <iostream>
+#include <string>
+
+template <typename T, std::size_t N>
+class StaticVector {                      // like std::vector, but storage lives inside the object
+public:
+    bool push_back(const T& v) {
+        if (size_ == N) return false;
+        data_[size_++] = v;
+        return true;
+    }
+    T& operator[](std::size_t i) { return data_[i]; }
+    std::size_t size() const { return size_; }
+    static constexpr std::size_t capacity() { return N; }
+    T* begin() { return data_.data(); }   // begin/end make range-for work
+    T* end() { return data_.data() + size_; }
+private:
+    std::array<T, N> data_{};
+    std::size_t size_ = 0;
+};
+
+int main() {
+    StaticVector<int, 4> samples;                       // no heap allocation at all
+    for (int i = 0; i < 6; ++i)
+        if (!samples.push_back(i * i)) std::cout << "full at " << i << '\n';
+    for (int s : samples) std::cout << s << ' ';
+    std::cout << "\ncapacity=" << decltype(samples)::capacity()
+              << " sizeof=" << sizeof(samples) << '\n';
+
+    StaticVector<std::string, 2> names;                 // same template, different T
+    names.push_back("left");
+    names.push_back("right");
+    std::cout << names[0] << '/' << names[1] << '\n';
+}
+</run>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p>템플릿은 쓰이는 곳에서 인스턴스화되므로, 그 지점에서 <strong>정의 전체가 보여야</strong> 합니다. 그래서 템플릿은 보통 헤더에 정의까지 둡니다. 선언만 헤더에 두고 정의를 .cpp에 두면 다른 파일에서 쓸 때 링크 오류가 납니다. 또 타입마다 코드가 생기므로, 거대한 템플릿을 많은 타입으로 인스턴스화하면 바이너리가 커질 수 있습니다.</p>
+  </div>
+
+  <h3>컨셉트로 요구사항을 적는다</h3>
+  <p>C++20 이전의 템플릿은 "일단 넣어 보고 안 되면 수백 줄짜리 오류"였습니다. <strong>컨셉트(concept)</strong>는 템플릿 인자가 만족해야 할 조건을 이름 붙여 적는 기능입니다. 조건을 어기면 컴파일러가 어떤 조건이 깨졌는지 짧게 알려 줍니다. 표준 라이브러리에 <code>std::integral</code>, <code>std::floating_point</code>, <code>std::totally_ordered</code> 같은 컨셉트가 준비되어 있고, 직접 만들 수도 있습니다.</p>
+<run file="concepts.cpp">
+#include <concepts>
+#include <iostream>
+#include <vector>
+
+template <typename T>
+concept Numeric = std::integral<T> || std::floating_point<T>;
+
+// A custom concept: anything with .size() returning something convertible to size_t
+template <typename C>
+concept Sized = requires(const C& c) {
+    { c.size() } -> std::convertible_to<std::size_t>;
+};
+
+template <Numeric T>
+double average(const std::vector<T>& v) {
+    if (v.empty()) return 0.0;
+    double sum = 0;
+    for (T x : v) sum += x;
+    return sum / v.size();
+}
+
+void describe(const Sized auto& c) {          // abbreviated template syntax
+    std::cout << "container with " << c.size() << " elements\n";
+}
+
+int main() {
+    std::cout << average(std::vector<int>{1, 2, 3, 4}) << '\n';
+    std::cout << average(std::vector<double>{0.5, 1.5}) << '\n';
+    describe(std::vector<char>(7));
+    // average(std::vector<const char*>{"a", "b"});   // uncomment: "constraints not satisfied"
+}
+</run>
+
+  <h3>if constexpr: 타입별 분기를 컴파일 타임에</h3>
+  <p><code>if constexpr</code>의 조건은 컴파일 타임에 평가되고, 선택되지 않은 가지는 아예 컴파일되지 않습니다. 매크로의 <code>#if</code>를 타입 정보까지 보면서 쓸 수 있게 된 것입니다. 아래 예제는 어떤 정수 타입이든 받아 바이트 순서를 바꾸고, 타입 크기에 맞는 경로를 컴파일 타임에 고릅니다.</p>
+<run file="if_constexpr.cpp">
+#include <bit>
+#include <concepts>
+#include <cstdint>
+#include <iostream>
+
+template <std::unsigned_integral T>
+constexpr T to_big_endian(T v) {
+    if constexpr (std::endian::native == std::endian::big) {
+        return v;                                   // compiled only on big-endian targets
+    } else if constexpr (sizeof(T) == 1) {
+        return v;                                   // nothing to swap
+    } else {
+        T out = 0;
+        for (std::size_t i = 0; i < sizeof(T); ++i) {
+            out = static_cast<T>((out << 8) | (v & 0xFF));
+            v = static_cast<T>(v >> 8);
+        }
+        return out;
+    }
+}
+
+int main() {
+    static_assert(to_big_endian<std::uint16_t>(0x1234) == 0x3412 || std::endian::native == std::endian::big);
+    std::cout << std::hex
+              << to_big_endian<std::uint16_t>(0x1234) << ' '
+              << to_big_endian<std::uint32_t>(0xA1B2C3D4u) << ' '
+              << +to_big_endian<std::uint8_t>(0x7F) << '\n';
+}
+</run>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <p>런타임에 구현을 바꿔야 하면 <code>virtual</code>(7장), 컴파일 타임에 타입이 정해지면 템플릿. 템플릿에는 컨셉트로 요구사항을 적어 두세요. 그 자체로 문서가 되고, 사용자는 짧은 오류 메시지를 받습니다.</p>
+  </div>
+  <p>표준 라이브러리의 컨테이너와 알고리즘은 모두 이 템플릿 위에 서 있습니다. 다음 장에서 그 사용법을 익힙니다.</p>
+
+  <div class="quiz" data-quiz="ch8"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch8" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

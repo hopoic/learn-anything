@@ -1,0 +1,169 @@
+<!-- ============ CH3 ============ -->
+<section class="chapter col" id="ch3">
+  <div class="eyebrow">Part I · C에서 C++로 — 3장</div>
+  <h2>클래스: 데이터와 함수를 묶다</h2>
+  <p class="goal">이 장을 마치면: C의 "구조체 + 함수 묶음" 모듈을 클래스로 옮길 수 있고, 생성자·소멸자·접근 제어·<code>const</code> 멤버 함수로 불변식(invariant)을 지키는 타입을 설계할 수 있으며, 연산자 오버로딩으로 값 타입을 자연스럽게 쓰게 만들 수 있습니다.</p>
+  <p>2장의 참조와 <code>const</code>는 이 장에서 바로 쓰입니다. 클래스의 멤버 함수는 결국 "<code>this</code>라는 숨은 포인터를 받는 함수"이기 때문입니다.</p>
+
+  <h3>모든 클래스는 C의 모듈 패턴에서 출발한다</h3>
+  <p>C로 링 버퍼를 만든다면 대개 이렇게 합니다. 구조체 하나, 그 구조체 포인터를 첫 인자로 받는 함수들, 그리고 "<code>ring_init</code>을 먼저 부르고 내부 필드는 직접 건드리지 마세요"라는 주석.</p>
+<c file="ring.c">
+typedef struct {
+    int    data[8];
+    size_t head, tail, count;
+} ring_t;
+
+void ring_init(ring_t *r)            { r->head = r->tail = r->count = 0; }
+int  ring_push(ring_t *r, int v)     { if (r->count == 8) return -1; r->data[r->tail] = v;
+                                       r->tail = (r->tail + 1) % 8; r->count++; return 0; }
+int  ring_pop(ring_t *r, int *out)   { if (r->count == 0) return -1; *out = r->data[r->head];
+                                       r->head = (r->head + 1) % 8; r->count--; return 0; }
+/* Rule by comment: "never touch head/tail/count directly; always call ring_init first" */
+</c>
+  <p>클래스는 이 관례를 <strong>컴파일러가 강제하는 규칙</strong>으로 바꿉니다. 함수를 구조체 안으로 옮기면 멤버 함수가 되고, 첫 인자 <code>r</code>은 암묵적인 <code>this</code>가 되고, "직접 건드리지 마세요"는 <code>private</code>이 되고, "<code>ring_init</code>을 먼저 부르세요"는 생성자가 됩니다.</p>
+<run file="ring.cpp">
+#include <array>
+#include <cstddef>
+#include <iostream>
+#include <optional>
+
+class RingBuffer {
+public:
+    RingBuffer() = default;                 // members below already have initial values
+
+    bool push(int v) {
+        if (full()) return false;
+        data_[tail_] = v;
+        tail_ = (tail_ + 1) % data_.size();
+        ++count_;
+        return true;
+    }
+    std::optional<int> pop() {              // "maybe a value" without an out-parameter
+        if (empty()) return std::nullopt;
+        int v = data_[head_];
+        head_ = (head_ + 1) % data_.size();
+        --count_;
+        return v;
+    }
+    bool empty() const { return count_ == 0; }          // const: does not modify *this
+    bool full() const { return count_ == data_.size(); }
+    std::size_t size() const { return count_; }
+
+private:                                    // the invariant lives here, out of reach
+    std::array<int, 8> data_{};
+    std::size_t head_ = 0, tail_ = 0, count_ = 0;
+};
+
+int main() {
+    RingBuffer rb;                          // constructed: no "forgot to init" bug possible
+    for (int i = 1; i <= 10; ++i)
+        if (!rb.push(i * 10)) std::cout << "full, dropped " << i * 10 << '\n';
+
+    while (auto v = rb.pop()) std::cout << *v << ' ';
+    std::cout << "\nsize=" << rb.size() << ", sizeof(RingBuffer)=" << sizeof(RingBuffer) << '\n';
+    // rb.count_ = 3;   // uncomment: error, 'count_' is private
+}
+</run>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p><code>rb.push(10)</code>은 기계어 수준에서 <code>RingBuffer::push(&amp;rb, 10)</code>과 같습니다. 멤버 함수는 객체 안에 저장되지 않으므로 <code>sizeof(RingBuffer)</code>는 데이터 멤버의 크기 합(+정렬)뿐입니다. 위 예제의 출력을 보면 C 구조체와 똑같은 56바이트(64비트 기준)입니다. 클래스는 메모리 배치에 비용을 더하지 않습니다. 비용이 생기는 것은 7장의 <code>virtual</code>을 쓸 때뿐입니다.</p>
+  </div>
+
+  <h3>생성자는 불변식을 세우고, 소멸자는 거둔다</h3>
+  <p><strong>불변식(invariant)</strong>은 객체가 살아 있는 동안 늘 참이어야 하는 조건입니다. 링 버퍼라면 "<code>count_ ≤ 8</code>이고 <code>head_</code>, <code>tail_</code>은 범위 안"입니다. 생성자는 객체가 태어나는 순간 불변식을 세우고, 모든 public 멤버 함수는 불변식을 유지하며, 소멸자는 객체가 사라질 때 정리합니다.</p>
+  <p>생성자에서는 <strong>멤버 초기화 리스트</strong>를 쓰세요. 본문 안에서 대입하면 "기본값으로 만든 뒤 다시 대입"이 되고, <code>const</code> 멤버나 참조 멤버는 아예 대입할 수 없습니다. 인자 하나짜리 생성자에는 <code>explicit</code>을 붙여 원치 않는 암묵 변환을 막습니다.</p>
+<run file="ctor.cpp">
+#include <iostream>
+#include <stdexcept>
+#include <string>
+
+class Uart {
+public:
+    explicit Uart(std::string dev, int baud = 115200)
+        : dev_(std::move(dev)), baud_(baud), id_(next_id_++)   // initializer list: in declaration order
+    {
+        if (baud_ <= 0) baud_ = 9600;                          // keep the invariant: baud > 0
+        std::cout << "open  #" << id_ << ' ' << dev_ << " @" << baud_ << '\n';
+    }
+    ~Uart() { std::cout << "close #" << id_ << ' ' << dev_ << '\n'; }
+
+    const std::string& device() const { return dev_; }
+    int baud() const { return baud_; }
+    static int opened() { return next_id_ - 1; }               // static: belongs to the class
+
+private:
+    const std::string dev_;      // const member: only settable in the initializer list
+    int baud_;
+    const int id_;
+    static inline int next_id_ = 1;                            // one counter shared by all Uarts
+};
+
+void log_to(const Uart& u) { std::cout << "using " << u.device() << '\n'; }
+
+int main() {
+    Uart a("/dev/ttyS0");
+    {
+        Uart b("/dev/ttyUSB1", -5);
+        log_to(b);
+    }                                // b's destructor runs here
+    log_to(a);
+    // log_to("/dev/ttyS9");         // blocked by 'explicit': no hidden Uart is created
+    std::cout << "total opened: " << Uart::opened() << '\n';
+}
+</run>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p>멤버는 <strong>초기화 리스트에 적은 순서가 아니라 클래스에 선언된 순서</strong>로 초기화됩니다. <code>: size_(n), buf_(new int[size_])</code>라고 써도 <code>buf_</code>가 먼저 선언되어 있으면 초기화되지 않은 <code>size_</code>를 읽습니다. <code>-Wall</code>이 <code>-Wreorder</code> 경고로 알려 주니 경고를 꺼 두지 마세요.</p>
+  </div>
+
+  <h3>struct와 class의 차이는 기본 접근 권한 하나뿐이다</h3>
+  <p>C++에서 <code>struct</code>와 <code>class</code>는 같은 것입니다. 차이는 기본 접근 권한(<code>struct</code>는 public, <code>class</code>는 private)과 기본 상속 방식뿐입니다. 관례적으로 <strong>불변식이 없는 단순 데이터 묶음</strong>은 <code>struct</code>로(모든 필드를 자유롭게 바꿔도 되는 <code>Point</code>나 설정값), <strong>지켜야 할 규칙이 있는 타입</strong>은 <code>class</code>로 씁니다. C 헤더와 공유하는 구조체는 계속 <code>struct</code>로 두면 됩니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>C의 관례</th><th>C++의 장치</th></tr></thead>
+    <tbody>
+      <tr><td><code>xxx_init(&amp;obj)</code>를 먼저 호출</td><td>생성자: 선언과 동시에 실행</td></tr>
+      <tr><td><code>xxx_destroy(&amp;obj)</code>를 잊지 말 것</td><td>소멸자: 스코프 끝에서 자동 실행</td></tr>
+      <tr><td>"내부 필드 직접 접근 금지" 주석</td><td><code>private</code></td></tr>
+      <tr><td><code>const xxx_t *</code>를 받는 조회 함수</td><td><code>const</code> 멤버 함수</td></tr>
+      <tr><td>파일 범위 <code>static</code> 카운터</td><td><code>static</code> 멤버</td></tr>
+      <tr><td><code>vec2_add(a, b)</code></td><td><code>a + b</code> (연산자 오버로딩)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>연산자 오버로딩으로 값 타입을 자연스럽게</h3>
+  <p>수학적 값(벡터, 고정소수점, 복소수, 시간 간격)을 표현하는 타입은 연산자를 오버로딩하면 내장 타입처럼 읽힙니다. 출력 연산자 <code>&lt;&lt;</code>를 정의하면 <code>std::cout</code>으로 바로 출력됩니다. C++20의 <code>operator&lt;=&gt;</code>(우주선 연산자)를 <code>= default</code>로 두면 비교 연산자 여섯 개가 한 번에 생깁니다.</p>
+<run file="vec2.cpp">
+#include <cmath>
+#include <compare>
+#include <iostream>
+
+struct Vec2 {
+    double x = 0, y = 0;
+
+    Vec2& operator+=(const Vec2& o) { x += o.x; y += o.y; return *this; }
+    double length() const { return std::hypot(x, y); }
+    auto operator<=>(const Vec2&) const = default;   // ==, !=, <, <=, >, >= for free
+};
+
+Vec2 operator+(Vec2 a, const Vec2& b) { return a += b; }
+Vec2 operator*(double k, const Vec2& v) { return {k * v.x, k * v.y}; }
+
+std::ostream& operator<<(std::ostream& os, const Vec2& v) {
+    return os << '(' << v.x << ", " << v.y << ')';
+}
+
+int main() {
+    Vec2 pos{1, 2}, vel{0.5, -1};
+    for (int t = 0; t < 3; ++t) pos += vel;
+    Vec2 target = pos + 2.0 * vel;
+    std::cout << "pos=" << pos << " target=" << target << " |target|=" << target.length() << '\n';
+    std::cout << std::boolalpha << "pos < target: " << (pos < target)
+              << ", pos == (2.5, -1): " << (pos == Vec2{2.5, -1}) << '\n';
+}
+</run>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <p>클래스 설계의 출발점은 "이 타입의 불변식은 무엇인가"입니다. 불변식이 있으면 데이터를 private으로 숨기고 생성자에서 세우세요. 읽기 전용 멤버 함수에는 <code>const</code>를 붙이세요. 그러면 <code>const</code> 참조로 넘겨받은 쪽에서도 쓸 수 있습니다.</p>
+  </div>
+  <p>Part I이 끝났습니다. 다음 Part에서는 C++이 C와 가장 크게 달라지는 지점, <strong>소멸자가 자원을 책임지는 방식(RAII)</strong>을 다룹니다.</p>
+
+  <div class="quiz" data-quiz="ch3"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch3" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

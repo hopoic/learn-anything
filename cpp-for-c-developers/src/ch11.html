@@ -1,0 +1,191 @@
+<!-- ============ CH11 ============ -->
+<section class="chapter col" id="ch11">
+  <div class="eyebrow">Part IV · 현대 C++ 실무 — 11장</div>
+  <h2>모던 C++ 도구 상자</h2>
+  <p class="goal">이 장을 마치면: <code>enum class</code>·<code>std::span</code>·<code>std::string_view</code>로 C 인터페이스의 흔한 버그를 타입으로 막을 수 있고, <code>constexpr</code>/<code>static_assert</code>로 테이블 생성과 구조체 배치를 컴파일 타임에 검증할 수 있으며, <code>std::format</code>과 표준 스레드 도구의 기본 사용법을 익힙니다.</p>
+  <p>10장까지가 C++의 큰 기둥이었다면, 이 장은 매일 쓰는 작은 도구들입니다. 하나하나는 작지만 C에서 흔했던 버그 부류를 통째로 없애 줍니다.</p>
+
+  <h3>enum class: 이름이 새지 않고, 정수와 섞이지 않는다</h3>
+  <p>C의 <code>enum</code>은 이름이 바깥 스코프로 퍼지고(<code>RED</code>가 전역 이름이 됨), 아무 정수와 섞입니다. <code>enum class</code>는 이름이 <code>Mode::Fast</code>처럼 한정되고, 정수로의 암묵 변환이 막히며, 기저 타입을 지정해 레지스터나 프로토콜 필드 크기에 맞출 수 있습니다.</p>
+<run file="enum_class.cpp">
+#include <cstdint>
+#include <iostream>
+#include <type_traits>
+
+enum class Mode : std::uint8_t { Sleep = 0, Normal = 1, Fast = 3 };   // fits a 2-bit register field
+
+enum class Irq : std::uint32_t { None = 0, RxReady = 1u << 0, TxEmpty = 1u << 1, Overrun = 1u << 7 };
+
+// Opt-in bit operations for a flags enum
+constexpr Irq operator|(Irq a, Irq b) {
+    using U = std::underlying_type_t<Irq>;
+    return static_cast<Irq>(static_cast<U>(a) | static_cast<U>(b));
+}
+constexpr bool has(Irq set, Irq bit) {
+    using U = std::underlying_type_t<Irq>;
+    return (static_cast<U>(set) & static_cast<U>(bit)) != 0;
+}
+
+const char* name(Mode m) {
+    switch (m) {                       // -Wall warns if a Mode is missing here
+        case Mode::Sleep:  return "sleep";
+        case Mode::Normal: return "normal";
+        case Mode::Fast:   return "fast";
+    }
+    return "?";
+}
+
+int main() {
+    Mode m = Mode::Fast;
+    // int x = m;                      // error: no implicit conversion
+    auto raw = static_cast<unsigned>(m);   // explicit when you really need the bits
+    std::cout << name(m) << " = " << raw << ", sizeof(Mode) = " << sizeof(Mode) << '\n';
+
+    Irq pending = Irq::RxReady | Irq::Overrun;
+    std::cout << std::boolalpha << "rx: " << has(pending, Irq::RxReady)
+              << ", tx: " << has(pending, Irq::TxEmpty)
+              << ", overrun: " << has(pending, Irq::Overrun) << '\n';
+}
+</run>
+
+  <h3>span과 string_view: 포인터 + 길이를 하나로</h3>
+  <p>C 함수는 배열을 <code>(const int *p, size_t n)</code> 두 인자로 받습니다. 길이를 잘못 넘기는 버그가 끊이지 않죠. <code>std::span&lt;T&gt;</code>(C++20)은 "포인터 + 길이"를 하나로 묶은 <strong>소유하지 않는 뷰</strong>입니다. C 배열, <code>std::array</code>, <code>std::vector</code> 무엇이든 받습니다. 문자열에는 같은 역할의 <code>std::string_view</code>(C++17)가 있습니다. 복사 없이 부분 문자열을 다룰 수 있어 파서에 특히 좋습니다.</p>
+<run file="span_view.cpp">
+#include <array>
+#include <cstdint>
+#include <iostream>
+#include <span>
+#include <string>
+#include <string_view>
+#include <vector>
+
+// One function for every contiguous byte sequence; the length travels with the pointer.
+int checksum(std::span<const std::uint8_t> bytes) {
+    int sum = 0;
+    for (auto b : bytes) sum = (sum + b) & 0xFF;
+    return sum;
+}
+
+// string_view: tokenize without allocating
+void print_fields(std::string_view line, char sep) {
+    while (true) {
+        auto pos = line.find(sep);
+        std::cout << '[' << line.substr(0, pos) << ']';
+        if (pos == std::string_view::npos) break;
+        line.remove_prefix(pos + 1);
+    }
+    std::cout << '\n';
+}
+
+int main() {
+    std::uint8_t raw[] = {0x10, 0x20, 0x30};
+    std::array<std::uint8_t, 4> arr{1, 2, 3, 4};
+    std::vector<std::uint8_t> vec(100, 0x05);
+
+    std::cout << checksum(raw) << ' ' << checksum(arr) << ' ' << checksum(vec) << '\n';
+    std::cout << checksum(std::span(vec).subspan(10, 5)) << " (a sub-range, no copy)\n";
+
+    print_fields("$GPGGA,123519,4807.038,N", ',');
+    std::string owned = "a;b;c";
+    print_fields(owned, ';');           // std::string converts to string_view implicitly
+}
+</run>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p><code>span</code>과 <code>string_view</code>는 <strong>빌린 것</strong>입니다. 원본보다 오래 살면 매달립니다. <code>std::string_view f() { std::string s = "temp"; return s; }</code>는 컴파일되지만 반환되는 순간 원본이 사라집니다. 매개변수로 받아 함수 안에서 쓰는 용도가 가장 안전하고, 멤버 변수나 반환값으로 쓸 때는 원본의 수명을 반드시 확인하세요.</p>
+  </div>
+
+  <h3>constexpr과 static_assert: 컴파일러에게 검증을 맡긴다</h3>
+  <p>C에서는 CRC 테이블을 스크립트로 생성해 소스에 붙여 넣거나, 시작 시 계산합니다. C++에서는 <code>constexpr</code> 함수로 <strong>컴파일 타임에</strong> 만들 수 있고, 결과는 읽기 전용 데이터로 바이너리에 들어갑니다. <code>static_assert</code>는 통신 패킷 구조체의 크기와 오프셋처럼 "깨지면 안 되는 가정"을 빌드 단계에서 검사합니다.</p>
+<run file="constexpr_table.cpp">
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <iostream>
+
+constexpr std::array<std::uint8_t, 256> make_crc8_table(std::uint8_t poly) {
+    std::array<std::uint8_t, 256> t{};
+    for (int i = 0; i < 256; ++i) {
+        std::uint8_t c = static_cast<std::uint8_t>(i);
+        for (int b = 0; b < 8; ++b)
+            c = static_cast<std::uint8_t>((c & 0x80) ? (c << 1) ^ poly : (c << 1));
+        t[i] = c;
+    }
+    return t;
+}
+
+constexpr auto CRC8 = make_crc8_table(0x07);       // computed by the compiler
+static_assert(CRC8[1] == 0x07 && CRC8[255] == 0xF3, "unexpected CRC-8 table");
+
+constexpr std::uint8_t crc8(const std::uint8_t* p, std::size_t n) {
+    std::uint8_t c = 0;
+    while (n--) c = CRC8[c ^ *p++];
+    return c;
+}
+
+struct [[gnu::packed]] Packet {                    // wire format shared with a C peer
+    std::uint8_t  type;
+    std::uint16_t length;
+    std::uint32_t timestamp;
+    std::uint8_t  crc;
+};
+static_assert(sizeof(Packet) == 8, "Packet layout changed - protocol break!");
+static_assert(offsetof(Packet, timestamp) == 3);
+
+int main() {
+    constexpr std::uint8_t msg[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
+    constexpr auto c = crc8(msg, sizeof msg);       // also at compile time
+    std::cout << std::hex << "crc8(\"123456789\") = 0x" << +c << '\n';
+}
+</run>
+
+  <h3>std::format, 구조적 바인딩, 그리고 동시성 맛보기</h3>
+  <p><code>std::format</code>(C++20)은 <code>printf</code>의 간결함과 <code>iostream</code>의 타입 안전성을 합쳤습니다. 형식이 맞지 않으면 컴파일 오류가 납니다. <strong>구조적 바인딩</strong>은 구조체·pair·tuple을 이름 있는 변수로 풀어 줍니다. 마지막으로, C++11부터 스레드·뮤텍스·원자 변수가 표준에 들어 있습니다. <code>pthread</code> 대신 이식 가능한 코드를 쓸 수 있고, RAII 원칙이 그대로 적용됩니다(<code>std::jthread</code>는 소멸자에서 <code>join</code>합니다).</p>
+<run file="format_threads.cpp">
+#include <algorithm>
+#include <atomic>
+#include <format>
+#include <iostream>
+#include <map>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <tuple>
+#include <vector>
+
+std::tuple<double, double, int> stats(const std::vector<double>& v) {
+    double lo = v.front(), hi = v.front();
+    for (double x : v) { lo = std::min(lo, x); hi = std::max(hi, x); }
+    return {lo, hi, static_cast<int>(v.size())};
+}
+
+int main() {
+    auto [lo, hi, n] = stats({3.5, -1.25, 9.0, 4.75});        // structured binding
+    std::cout << std::format("n={} min={:.2f} max={:>7.2f} hex={:#06x}\n", n, lo, hi, 255);
+
+    std::map<std::string, int> retries{{"uart", 2}, {"spi", 0}};
+    for (const auto& [bus, count] : retries) std::cout << std::format("{:<5}|{:3}\n", bus, count);
+
+    // Concurrency (needs an online engine: the in-browser engine has no threads)
+    std::atomic<int> hits{0};
+    std::mutex log_mutex;
+    std::vector<std::string> log;
+    {
+        std::vector<std::jthread> workers;
+        for (int id = 0; id < 4; ++id)
+            workers.emplace_back([&, id] {
+                for (int i = 0; i < 1000; ++i) ++hits;             // lock-free atomic increment
+                std::lock_guard lock(log_mutex);                   // RAII lock
+                log.push_back(std::format("worker {} done", id));
+            });
+    }                                                              // jthreads join here
+    std::cout << std::format("hits = {} ({} log lines)\n", hits.load(), log.size());
+}
+</run>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p><code>std::atomic</code>은 C11의 <code>_Atomic</code>/<code>stdatomic.h</code>와 같은 메모리 모델을 공유합니다. 기본 순서는 <code>seq_cst</code>이고, 필요하면 <code>memory_order_relaxed</code> 등을 명시할 수 있습니다. 공유 데이터에 <code>volatile</code>을 쓰는 습관은 C++에서도 동기화가 아닙니다. <code>volatile</code>은 MMIO 레지스터 접근에만 쓰세요.</p>
+  </div>
+  <p>도구 상자가 갖춰졌습니다. 마지막 장에서는 지금까지의 거의 모든 기능을 써서 작은 프로그램 하나를 완성합니다.</p>
+
+  <div class="quiz" data-quiz="ch11"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch11" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

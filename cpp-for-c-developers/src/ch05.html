@@ -1,0 +1,134 @@
+<!-- ============ CH5 ============ -->
+<section class="chapter col" id="ch5">
+  <div class="eyebrow">Part II · 자원과 수명 — 5장</div>
+  <h2>복사와 이동</h2>
+  <p class="goal">이 장을 마치면: 자원을 소유한 클래스에서 기본 복사가 왜 이중 해제를 일으키는지 설명할 수 있고, Rule of 3/5/0에 따라 복사·이동 연산을 설계할 수 있으며, 어떤 식이 복사·이동·생략 중 무엇을 일으키는지 판정할 수 있습니다.</p>
+  <p>4장의 <code>File</code> 래퍼에서 복사를 <code>= delete</code>로 막았습니다. 이 장은 그 이유와, 복사 대신 "소유권을 넘기는" 이동 의미론을 다룹니다.</p>
+
+  <h3>얕은 복사는 이중 해제를 부른다</h3>
+  <p>컴파일러는 클래스에 복사 생성자를 따로 정의하지 않으면 <strong>멤버별 복사</strong>를 만들어 줍니다. C 구조체 대입과 같습니다. 멤버가 포인터면 포인터 값만 복사되므로, 두 객체가 같은 버퍼를 가리키고, 둘 다 소멸자에서 그 버퍼를 해제합니다.</p>
+<cpp file="shallow.cpp">
+class Buffer {
+public:
+    explicit Buffer(std::size_t n) : size_(n), data_(new int[n]{}) {}
+    ~Buffer() { delete[] data_; }
+private:
+    std::size_t size_;
+    int* data_;
+};
+
+void oops() {
+    Buffer a(1024);
+    Buffer b = a;     // compiler-generated copy: b.data_ == a.data_
+}                     // ~b deletes the buffer, then ~a deletes it AGAIN -> double free
+</cpp>
+  <p>이 문제는 C에서도 똑같이 있습니다. 포인터를 가진 구조체를 <code>=</code>로 대입하면 같은 일이 벌어지니까요. C++이 다른 점은 <strong>복사가 일어나는 순간에 실행될 코드를 직접 정의할 수 있다</strong>는 것입니다.</p>
+
+  <h3>Rule of 3/5: 복사·이동·소멸은 한 세트다</h3>
+  <p>소멸자를 직접 써야 하는 클래스라면, 거의 틀림없이 복사 생성자와 복사 대입도 직접 써야 합니다(<strong>Rule of 3</strong>). C++11부터는 여기에 <strong>이동 생성자</strong>와 <strong>이동 대입</strong>이 더해져 다섯 개가 됩니다(<strong>Rule of 5</strong>). 이동은 "곧 사라질 객체에게서 자원을 훔쳐 오는" 복사입니다. 버퍼를 새로 할당해 내용을 복사하는 대신 포인터만 가져오고, 원본은 비워 둡니다.</p>
+<run file="rule5.cpp">
+#include <algorithm>
+#include <cstddef>
+#include <iostream>
+#include <utility>
+#include <vector>
+
+class Buffer {
+public:
+    explicit Buffer(std::size_t n) : size_(n), data_(new int[n]{}) { log("ctor"); }
+    ~Buffer() { delete[] data_; }
+
+    Buffer(const Buffer& o) : size_(o.size_), data_(new int[o.size_]) {        // deep copy
+        std::copy(o.data_, o.data_ + size_, data_);
+        log("COPY ctor");
+    }
+    Buffer(Buffer&& o) noexcept : size_(o.size_), data_(o.data_) {            // steal
+        o.size_ = 0; o.data_ = nullptr;                                       // leave source empty
+        log("move ctor");
+    }
+    Buffer& operator=(Buffer o) noexcept {     // copy-and-swap: handles copy AND move assignment
+        std::swap(size_, o.size_);
+        std::swap(data_, o.data_);
+        log("assign");
+        return *this;
+    }                                          // o (holding our old buffer) is destroyed here
+
+    std::size_t size() const { return size_; }
+private:
+    void log(const char* what) const { std::cout << "  " << what << " (size " << size_ << ")\n"; }
+    std::size_t size_;
+    int* data_;
+};
+
+Buffer make(std::size_t n) { return Buffer(n); }   // guaranteed elision since C++17
+
+int main() {
+    std::cout << "1) Buffer a(4)\n";             Buffer a(4);
+    std::cout << "2) Buffer b = a\n";            Buffer b = a;
+    std::cout << "3) Buffer c = std::move(a)\n"; Buffer c = std::move(a);
+    std::cout << "   a.size() is now " << a.size() << '\n';
+    std::cout << "4) Buffer d = make(8)\n";      Buffer d = make(8);
+    std::cout << "5) b = d\n";                   b = d;
+    std::cout << "6) vector growth\n";
+    std::vector<Buffer> v;
+    v.reserve(1);
+    v.emplace_back(2);
+    v.emplace_back(3);   // reallocation: moves old elements because the move ctor is noexcept
+}
+</run>
+  <p>출력을 주의 깊게 보세요. 4번(<code>make(8)</code>)에서는 복사도 이동도 일어나지 않습니다. 함수가 값으로 반환한 객체가 처음부터 <code>d</code> 자리에 만들어집니다(보장된 복사 생략). 6번에서 벡터가 커질 때 기존 원소를 <strong>이동</strong>하는 것도 확인하세요. 이동 생성자에서 <code>noexcept</code>를 지우고 다시 실행하면 벡터가 안전을 위해 <strong>복사</strong>로 바꿉니다. 재할당 도중 예외가 나면 원래 상태로 되돌릴 수 있어야 하기 때문입니다.</p>
+
+  <h3>lvalue와 rvalue, 그리고 std::move의 정체</h3>
+  <p>어떤 생성자가 선택될지는 인자의 <strong>값 범주</strong>가 정합니다. 대략적으로, 이름이 있어 나중에 다시 쓸 수 있는 것은 <strong>lvalue</strong>(복사해야 안전), 이름이 없는 임시값은 <strong>rvalue</strong>(곧 사라지니 훔쳐도 됨)입니다. <code>T&amp;&amp;</code>는 rvalue에만 묶이는 참조이고, 이동 생성자가 이것을 받습니다.</p>
+  <p><code>std::move(x)</code>는 이름과 달리 아무것도 옮기지 않습니다. "<code>x</code>는 이제 안 쓸 테니 rvalue로 취급해도 된다"는 <strong>캐스팅</strong>일 뿐이고, 실제로 옮기는 일은 그 결과를 받은 이동 생성자가 합니다. 옮겨진 객체는 "유효하지만 값은 지정되지 않은" 상태이므로, 새 값을 대입하거나 소멸시키는 것 외에는 기대하지 마세요.</p>
+
+  <div class="bench" id="b-move">
+    <header><b>실습 벤치 5-A · 복사인가, 이동인가, 생략인가?</b><span>CLASSIFY · 8 ITEMS</span></header>
+    <div class="body">
+      <p class="tokc">공통 선언: <code>std::string s = "hello";</code> · <code>std::vector&lt;std::string&gt; v;</code> · <code>std::string make_name();</code></p>
+      <div id="moveList"></div>
+      <div class="row"><button type="button" class="btn" id="moveListReset">다시 하기</button></div>
+      <div class="status" id="moveScore"></div>
+    </div>
+  </div>
+
+  <h3>최선은 Rule of 0</h3>
+  <p>지금까지의 코드를 실무에서 직접 쓸 일은 드뭅니다. 자원 관리를 이미 올바르게 하는 타입(<code>std::vector</code>, <code>std::string</code>, <code>std::unique_ptr</code>)을 멤버로 쓰면, 컴파일러가 만들어 주는 복사·이동·소멸이 멤버별로 올바르게 동작합니다. 다섯 개 중 아무것도 쓰지 않는 것, 이것이 <strong>Rule of 0</strong>입니다. 자원을 직접 소유하는 클래스는 <code>File</code>이나 <code>Buffer</code> 같은 작은 래퍼 한 곳에만 두세요.</p>
+<run file="rule0.cpp">
+#include <iostream>
+#include <string>
+#include <utility>
+#include <vector>
+
+struct Frame {                        // Rule of 0: no destructor, no copy/move code
+    std::string source;
+    std::vector<unsigned char> payload;
+};
+
+int main() {
+    Frame a{"camera0", std::vector<unsigned char>(1'000'000, 0x7f)};
+    const unsigned char* before = a.payload.data();
+
+    Frame b = a;                      // deep copy: new 1 MB buffer
+    Frame c = std::move(a);           // move: steals the buffer, O(1)
+
+    std::cout << std::boolalpha;
+    std::cout << "b has its own buffer:  " << (b.payload.data() != before) << '\n';
+    std::cout << "c took a's buffer:     " << (c.payload.data() == before) << '\n';
+    std::cout << "a.payload.size() now:  " << a.payload.size() << '\n';
+    std::cout << "c.source = " << c.source << ", c.payload.size() = " << c.payload.size() << '\n';
+}
+</run>
+  <div class="ladder">
+    <div><b>Rule 0</b><span>기본값. 멤버가 스스로 자원을 관리하게 하고 특수 멤버 함수를 쓰지 않는다.</span></div>
+    <div><b>= delete</b><span>복사가 의미 없는 소유자(파일, 락, 장치 핸들)는 복사를 금지하고, 필요하면 이동만 허용한다.</span></div>
+    <div><b>Rule 5</b><span>자원을 직접 소유하는 저수준 래퍼에서만. 다섯 개를 함께 정의하고 이동에는 <code>noexcept</code>.</span></div>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p><code>return std::move(local);</code>은 쓰지 마세요. 반환식이 이름 없는 지역 객체라면 컴파일러는 복사 생략(NRVO)을 하거나, 못 하더라도 자동으로 이동합니다. <code>std::move</code>를 붙이면 오히려 생략이 막힙니다. GCC의 <code>-Wpessimizing-move</code>가 이것을 경고합니다.</p>
+  </div>
+  <p>다음 장에서는 이 이동 의미론 위에 만들어진 표준 소유자, 스마트 포인터를 봅니다.</p>
+
+  <div class="quiz" data-quiz="ch5"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch5" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

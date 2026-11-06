@@ -1,0 +1,336 @@
+<!-- ============ CH12 ============ -->
+<section class="chapter col" id="ch12">
+  <div class="eyebrow">Part IV · 현대 C++ 실무 — 12장</div>
+  <h2>실전: 미니 KV 저장소 만들기</h2>
+  <p class="goal">이 장을 마치면: 클래스·RAII·스마트 포인터·가상 함수·STL·람다·<code>string_view</code>·<code>expected</code>를 한 프로그램 안에서 각자 맞는 자리에 쓸 수 있고, C로 짰다면 어떤 코드가 필요했을지 비교해 설명할 수 있으며, 확장 과제를 스스로 설계해 붙일 수 있습니다.</p>
+  <p>11개 장에서 배운 도구를 하나로 엮을 차례입니다. 만들 것은 Redis를 아주 작게 줄인 <strong>인메모리 키-값 셸 <code>kvsh</code></strong>입니다. 표준 입력에서 명령을 한 줄씩 읽어 실행합니다. 표준 입력으로 동작하므로 이 페이지의 실행기에서 그대로 돌아가고, 예외를 쓰지 않으므로 브라우저 내장 엔진에서도 실행됩니다.</p>
+
+  <h3>사양: 일곱 개의 명령과 한 가지 규칙</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>명령</th><th>동작</th><th>예</th></tr></thead>
+    <tbody>
+      <tr><td><code>SET k v</code></td><td>키 k에 값 v 저장</td><td><code>SET temp 23</code> → <code>OK</code></td></tr>
+      <tr><td><code>GET k</code></td><td>값 조회, 없으면 오류</td><td><code>GET temp</code> → <code>23</code></td></tr>
+      <tr><td><code>DEL k</code></td><td>키 삭제</td><td><code>DEL temp</code> → <code>1</code></td></tr>
+      <tr><td><code>INCR k</code></td><td>정수 값 1 증가(없으면 0에서 시작), 정수가 아니면 오류</td><td><code>INCR visits</code> → <code>1</code></td></tr>
+      <tr><td><code>KEYS p</code></td><td>접두사 p로 시작하는 키를 정렬해 나열(<code>*</code>는 전체)</td><td><code>KEYS sensor.</code></td></tr>
+      <tr><td><code>COUNT</code></td><td>키 개수</td><td><code>COUNT</code> → <code>5</code></td></tr>
+      <tr><td><code>UNDO</code></td><td>마지막 변경(SET/DEL/INCR)을 되돌림</td><td><code>UNDO</code> → <code>OK</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>규칙은 하나입니다. <strong>잘못된 입력은 프로그램을 멈추지 않는다.</strong> 모든 오류는 <code>(error) 이유 [line N]</code>으로 보고하고 다음 줄로 넘어갑니다.</p>
+
+  <h3>1단계: 가장 단순하게 동작시키기</h3>
+  <p>먼저 <code>if</code>/<code>else</code>로 명령을 분기하는 최소 버전입니다. C로 짰다면 해시 테이블 구현과 문자열 메모리 관리에만 수백 줄이 들었을 부분이 <code>std::unordered_map&lt;std::string, std::string&gt;</code> 한 줄로 끝납니다.</p>
+<run file="kvsh_v1.cpp" stdin="SET temp 23\nGET temp\nDEL temp\nGET temp\nCOUNT">
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+
+int main() {
+    std::unordered_map<std::string, std::string> db;   // hash table + string memory: done
+    std::string line;
+    while (std::getline(std::cin, line)) {
+        std::istringstream in(line);
+        std::string cmd, key, value;
+        in >> cmd >> key >> value;
+        if (cmd == "SET") { db[key] = value; std::cout << "OK\n"; }
+        else if (cmd == "GET") {
+            auto it = db.find(key);
+            std::cout << (it != db.end() ? it->second : "(nil)") << '\n';
+        }
+        else if (cmd == "DEL") std::cout << db.erase(key) << '\n';
+        else if (cmd == "COUNT") std::cout << db.size() << '\n';
+        else std::cout << "(error) unknown command\n";
+    }
+}
+</run>
+  <p>동작은 하지만 명령이 늘어날수록 <code>if</code> 사슬이 길어지고, 인자 개수 검사가 없고, 오류의 종류를 구분하지 못하고, <code>UNDO</code>를 넣을 자리가 없습니다. 2단계에서 구조를 바꿉니다.</p>
+
+  <h3>2단계: 각 도구를 제자리에</h3>
+  <p>완성본의 설계를 먼저 표로 보세요. 왼쪽 열은 이 책의 장, 오른쪽 열은 C라면 대신 무엇을 했어야 하는지입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>구성 요소</th><th>C++ 도구 (장)</th><th>C였다면</th></tr></thead>
+    <tbody>
+      <tr><td><code>Store</code>: 데이터와 되돌리기 기록</td><td>클래스와 캡슐화(3), <code>unordered_map</code>(9)</td><td>구조체 + 함수 묶음, 직접 만든 해시</td></tr>
+      <tr><td>되돌리기 기록</td><td>상태를 캡처한 람다를 <code>std::function</code> 벡터에 저장(9)</td><td>연산 종류 enum + union + switch</td></tr>
+      <tr><td>명령 처리기</td><td>인터페이스 <code>Command</code> + 가상 함수(7)</td><td>함수 포인터 테이블</td></tr>
+      <tr><td>명령 등록표</td><td><code>map&lt;string, unique_ptr&lt;Command&gt;&gt;</code>(6·9)</td><td>정적 배열 + 선형 검색, 수동 free</td></tr>
+      <tr><td>토큰 분리</td><td><code>string_view</code>로 복사 없이(11)</td><td><code>strtok</code>(원본 파괴, 재진입 불가)</td></tr>
+      <tr><td>오류 전달</td><td><code>expected&lt;string, Error&gt;</code> + <code>enum class</code>(10·11)</td><td>-1 반환 + 전역 <code>errno</code></td></tr>
+      <tr><td>숫자 변환</td><td><code>std::from_chars</code>(10)</td><td><code>strtol</code> + <code>errno</code> + 끝 포인터 검사</td></tr>
+      <tr><td>자원 정리</td><td>전부 RAII, <code>delete</code> 0개(4·6)</td><td>종료 경로마다 해제 코드</td></tr>
+    </tbody>
+  </table></div>
+  <p>완성본입니다. 먼저 그대로 실행해 출력과 사양을 대조하고, stdin의 명령을 바꿔 가며 오류 경로를 시험해 보세요.</p>
+<run file="kvsh.cpp" std="c++23" stdin="SET temp 23\nGET temp\nINCR visits\nINCR visits\nSET sensor.a 1\nSET sensor.b 2\nKEYS sensor.\nINCR temp\nSET name kim\nINCR name\nDEL temp\nGET temp\nUNDO\nGET temp\nKEYS *\nCOUNT\nFOO bar\nGET">
+// kvsh: a tiny in-memory key-value shell.
+// Reads commands from stdin, one per line. Built with C++23 (std::expected).
+#include <algorithm>
+#include <cctype>
+#include <charconv>
+#include <expected>
+#include <functional>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
+// ---------- errors as values ----------
+enum class Errc { UnknownCommand, BadArity, NotFound, NotInteger, NothingToUndo };
+
+struct Error {
+    Errc code;
+    std::string detail;
+};
+
+std::string_view to_string(Errc e) {
+    switch (e) {
+        case Errc::UnknownCommand: return "unknown command";
+        case Errc::BadArity:       return "wrong number of arguments";
+        case Errc::NotFound:       return "no such key";
+        case Errc::NotInteger:     return "value is not an integer";
+        case Errc::NothingToUndo:  return "nothing to undo";
+    }
+    return "?";
+}
+
+using Result = std::expected<std::string, Error>;
+using Args = std::vector<std::string_view>;
+
+// ---------- the store: encapsulation + an undo log of lambdas ----------
+class Store {
+public:
+    std::optional<std::string> get(std::string_view key) const {
+        auto it = data_.find(std::string(key));
+        if (it == data_.end()) return std::nullopt;
+        return it->second;
+    }
+
+    void set(std::string_view key, std::string value) {
+        remember(std::string(key));
+        data_[std::string(key)] = std::move(value);
+    }
+
+    bool erase(std::string_view key) {
+        if (!data_.contains(std::string(key))) return false;
+        remember(std::string(key));
+        data_.erase(std::string(key));
+        return true;
+    }
+
+    bool undo() {
+        if (undo_.empty()) return false;
+        undo_.back()();          // run the stored inverse operation
+        undo_.pop_back();
+        return true;
+    }
+
+    std::vector<std::string> keys(std::string_view prefix) const {
+        std::vector<std::string> out;
+        for (const auto& [k, v] : data_)
+            if (k.starts_with(prefix)) out.push_back(k);
+        std::ranges::sort(out);
+        return out;
+    }
+
+    std::size_t size() const { return data_.size(); }
+
+private:
+    // Capture the old state of 'key' in a lambda that can restore it later.
+    void remember(std::string key) {
+        auto old = get(key);
+        undo_.push_back([this, key = std::move(key), old = std::move(old)] {
+            if (old) data_[key] = *old;
+            else data_.erase(key);
+        });
+    }
+
+    std::unordered_map<std::string, std::string> data_;
+    std::vector<std::function<void()>> undo_;
+};
+
+// ---------- commands: an interface + one class per command ----------
+class Command {
+public:
+    virtual ~Command() = default;
+    virtual std::size_t arity() const = 0;                 // number of arguments expected
+    virtual Result run(Store& db, const Args& args) = 0;
+};
+
+class Set : public Command {
+public:
+    std::size_t arity() const override { return 2; }
+    Result run(Store& db, const Args& a) override { db.set(a[0], std::string(a[1])); return "OK"; }
+};
+
+class Get : public Command {
+public:
+    std::size_t arity() const override { return 1; }
+    Result run(Store& db, const Args& a) override {
+        if (auto v = db.get(a[0])) return *v;
+        return std::unexpected(Error{Errc::NotFound, std::string(a[0])});
+    }
+};
+
+class Del : public Command {
+public:
+    std::size_t arity() const override { return 1; }
+    Result run(Store& db, const Args& a) override {
+        if (db.erase(a[0])) return "1";
+        return std::unexpected(Error{Errc::NotFound, std::string(a[0])});
+    }
+};
+
+class Incr : public Command {
+public:
+    std::size_t arity() const override { return 1; }
+    Result run(Store& db, const Args& a) override {
+        long long n = 0;
+        if (auto v = db.get(a[0])) {
+            auto [ptr, ec] = std::from_chars(v->data(), v->data() + v->size(), n);
+            if (ec != std::errc{} || ptr != v->data() + v->size())
+                return std::unexpected(Error{Errc::NotInteger, *v});
+        }
+        db.set(a[0], std::to_string(++n));
+        return std::to_string(n);
+    }
+};
+
+class Keys : public Command {
+public:
+    std::size_t arity() const override { return 1; }
+    Result run(Store& db, const Args& a) override {
+        std::string out;
+        for (const auto& k : db.keys(a[0] == "*" ? "" : a[0])) out += (out.empty() ? "" : " ") + k;
+        return out.empty() ? "(empty)" : out;
+    }
+};
+
+class Count : public Command {
+public:
+    std::size_t arity() const override { return 0; }
+    Result run(Store& db, const Args&) override { return std::to_string(db.size()); }
+};
+
+class Undo : public Command {
+public:
+    std::size_t arity() const override { return 0; }
+    Result run(Store& db, const Args&) override {
+        if (db.undo()) return "OK";
+        return std::unexpected(Error{Errc::NothingToUndo, ""});
+    }
+};
+
+// ---------- parsing: string_view tokens, no copies ----------
+Args split(std::string_view line) {
+    Args out;
+    while (!line.empty()) {
+        auto start = line.find_first_not_of(' ');
+        if (start == std::string_view::npos) break;
+        line.remove_prefix(start);
+        auto end = line.find(' ');
+        out.push_back(line.substr(0, end));
+        line.remove_prefix(end == std::string_view::npos ? line.size() : end);
+    }
+    return out;
+}
+
+std::string upper(std::string_view s) {
+    std::string r(s);
+    std::ranges::transform(r, r.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+    return r;
+}
+
+// ---------- the shell ----------
+class Shell {
+public:
+    Shell() {
+        commands_["SET"]   = std::make_unique<Set>();
+        commands_["GET"]   = std::make_unique<Get>();
+        commands_["DEL"]   = std::make_unique<Del>();
+        commands_["INCR"]  = std::make_unique<Incr>();
+        commands_["KEYS"]  = std::make_unique<Keys>();
+        commands_["COUNT"] = std::make_unique<Count>();
+        commands_["UNDO"]  = std::make_unique<Undo>();
+    }
+
+    Result execute(std::string_view line) {
+        Args words = split(line);
+        if (words.empty()) return "";
+        auto it = commands_.find(upper(words[0]));
+        if (it == commands_.end())
+            return std::unexpected(Error{Errc::UnknownCommand, std::string(words[0])});
+        Args args(words.begin() + 1, words.end());
+        if (args.size() != it->second->arity())
+            return std::unexpected(Error{Errc::BadArity, std::string(words[0])});
+        return it->second->run(db_, args);
+    }
+
+private:
+    Store db_;
+    std::map<std::string, std::unique_ptr<Command>> commands_;
+};
+
+int main() {
+    Shell sh;
+    std::string line;
+    int lineno = 0;
+    while (std::getline(std::cin, line)) {
+        ++lineno;
+        if (line.empty() || line.starts_with('#')) continue;
+        std::cout << "> " << line << '\n';
+        if (auto r = sh.execute(line))
+            std::cout << *r << '\n';
+        else
+            std::cout << "(error) " << to_string(r.error().code)
+                      << (r.error().detail.empty() ? "" : ": " + r.error().detail)
+                      << "  [line " << lineno << "]\n";
+    }
+}
+</run>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>이 프로그램에는 <code>new</code>, <code>delete</code>, <code>malloc</code>, <code>free</code>, 고정 크기 버퍼가 하나도 없습니다. 그런데도 모든 메모리가 정확히 한 번 해제됩니다. 명령 객체는 <code>unique_ptr</code>가, 문자열과 테이블은 컨테이너가, 되돌리기 람다는 <code>std::function</code>이 소유하고, 이들은 모두 <code>Shell</code> 객체의 수명에 묶여 있기 때문입니다. <code>Undo</code> 람다가 <code>this</code>를 캡처하는 부분은 의도적인 주의 지점입니다. 람다를 <code>Store</code>가 직접 소유하므로 <code>Store</code>보다 오래 살 수 없어 안전합니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">코드를 읽을 때 볼 곳</span>
+    <ul>
+      <li><code>Store::remember</code>: 이전 값을 <code>std::optional</code>로 캡처해 "없던 키였는지"까지 되돌립니다.</li>
+      <li><code>Shell::execute</code>: 인자 개수 검사를 각 명령이 아니라 한 곳에서 합니다. 각 명령은 <code>arity()</code>로 요구사항만 선언합니다.</li>
+      <li><code>split</code>: 반환된 <code>string_view</code>들은 <code>line</code>을 빌려 씁니다. <code>execute</code>가 끝나기 전에만 쓰이므로 안전합니다. 이것을 멤버 변수에 저장하면 11장의 함정에 빠집니다.</li>
+    </ul>
+  </div>
+
+  <h3>확장 과제</h3>
+  <p>아래 과제는 뒤로 갈수록 어렵습니다. 위 실행 블록에서 <b>편집</b>을 눌러 바로 작업할 수 있고, 내용은 페이지를 떠나면 사라지니 긴 작업은 부록 C의 <b>코드 놀이터</b>(자동 저장)에 붙여 넣고 하세요.</p>
+  <div class="ladder">
+    <div><b>과제 1</b><span><code>APPEND k v</code>: 기존 값 뒤에 문자열을 붙인다. <code>Command</code>를 하나 더 만들고 등록표에 한 줄 추가하면 끝나는지 확인한다(개방-폐쇄 원칙).</span></div>
+    <div><b>과제 2</b><span><code>HELP</code>: 등록된 모든 명령과 인자 수를 출력한다. <code>Command</code>에 <code>virtual std::string_view help() const</code>를 추가한다.</span></div>
+    <div><b>과제 3</b><span><code>MSET k1 v1 k2 v2 ...</code>: 가변 인자. <code>arity()</code>를 "최소 개수 + 짝수 조건"으로 일반화하려면 인터페이스를 어떻게 바꿔야 할까?</span></div>
+    <div><b>과제 4</b><span><code>BEGIN</code> / <code>COMMIT</code> / <code>ROLLBACK</code>: 되돌리기 기록에 표식을 넣어 트랜잭션 단위로 되돌린다. 강한 예외 안전성(10장)과 같은 생각이다.</span></div>
+    <div><b>과제 5</b><span><code>SAVE file</code> / <code>LOAD file</code>: <code>std::ofstream</code>/<code>std::ifstream</code>으로 저장·복원. 브라우저 내장 엔진에도 메모리 파일 시스템이 있어 같은 실행 안에서는 동작한다.</span></div>
+    <div><b>과제 6</b><span>값 타입 확장: <code>std::variant&lt;std::string, long long&gt;</code>로 값을 저장해 <code>INCR</code>이 매번 문자열을 파싱하지 않게 한다(7장의 variant).</span></div>
+  </div>
+
+  <h3>최종 체크리스트</h3>
+  <p>여러분의 확장 버전이 아래를 모두 만족하면 이 책의 목표를 달성한 것입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>항목</th><th>확인 방법</th></tr></thead>
+    <tbody>
+      <tr><td>소유하는 원시 포인터와 <code>new</code>/<code>delete</code>가 없다</td><td>소스에서 검색</td></tr>
+      <tr><td>복사가 의미 없는 타입은 복사가 막혀 있다</td><td><code>Shell a; Shell b = a;</code>가 컴파일 오류인가?</td></tr>
+      <tr><td>읽기 전용 멤버 함수에 <code>const</code>, 재정의에 <code>override</code></td><td><code>-Wall -Wextra</code> 경고 0개</td></tr>
+      <tr><td>오류 입력에도 프로그램이 계속 돈다</td><td>빈 줄, 공백만 있는 줄, 인자 과다, 숫자 아닌 값으로 시험</td></tr>
+      <tr><td>새 명령 추가가 기존 코드 수정 없이 가능하다</td><td>과제 1을 한 클래스 + 한 줄로 끝냈는가?</td></tr>
+      <tr><td>세 엔진에서 같은 출력</td><td>실행 엔진을 바꿔 가며 비교</td></tr>
+    </tbody>
+  </table></div>
+  <p>여기까지 오셨다면 C 개발자로서 C++의 핵심을 손에 쥔 것입니다. 다음 걸음으로는 부록 B의 C++ 핵심 가이드라인을 옆에 두고 실제 프로젝트의 작은 모듈 하나를 C++로 옮겨 보길 권합니다.</p>
+
+  <div class="quiz" data-quiz="ch12"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch12" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

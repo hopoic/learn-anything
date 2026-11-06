@@ -1,0 +1,167 @@
+<!-- ============ CH4 ============ -->
+<section class="chapter col" id="ch4">
+  <div class="eyebrow">Part II · 자원과 수명 — 4장</div>
+  <h2>RAII와 객체 수명</h2>
+  <p class="goal">이 장을 마치면: 지역·전역·임시 객체가 언제 생성되고 소멸되는지 순서대로 추적할 수 있고, 파일·락·인터럽트 같은 자원을 소멸자로 정리하는 RAII 래퍼를 직접 만들 수 있으며, C의 <code>goto cleanup</code> 패턴을 C++ 방식으로 바꿀 수 있습니다.</p>
+  <p>3장에서 소멸자를 "객체가 사라질 때 정리하는 함수"라고만 소개했습니다. 이 장에서는 그 단순한 규칙이 왜 C++ 전체를 떠받치는 기둥인지 봅니다.</p>
+
+  <h3>C의 goto cleanup을 떠올려 보자</h3>
+  <p>자원을 세 개 잡는 C 함수는 대개 이런 모양입니다. 정리 순서를 맞추느라 레이블이 늘고, 중간에 새 자원이나 새 <code>return</code>을 추가할 때마다 누수 버그가 생길 여지가 생깁니다.</p>
+<c file="load.c">
+int load_calibration(const char *path, struct calib *out) {
+    int ret = -1;
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+    char *buf = malloc(4096);
+    if (!buf) goto close_file;
+    if (pthread_mutex_lock(&calib_lock) != 0) goto free_buf;
+
+    if (fread(buf, 1, 4096, f) < sizeof *out) goto unlock;   /* early exit #1 */
+    if (!checksum_ok(buf)) goto unlock;                       /* early exit #2 */
+    memcpy(out, buf, sizeof *out);
+    ret = 0;
+
+unlock:     pthread_mutex_unlock(&calib_lock);
+free_buf:   free(buf);
+close_file: fclose(f);
+    return ret;
+}
+</c>
+  <p>이 코드가 하는 일은 사실 "자원을 얻은 역순으로, 어떤 경로로 나가든 반드시 놓는다"입니다. C++은 바로 이 규칙을 언어에 넣었습니다. <strong>객체가 스코프를 벗어나는 모든 경로</strong>(정상 종료, <code>return</code>, <code>break</code>, 예외)에서 소멸자가 <strong>생성의 역순으로</strong> 실행됩니다. 그래서 자원을 객체 안에 넣기만 하면 정리는 자동이 됩니다. 이것을 <strong>RAII(Resource Acquisition Is Initialization)</strong>라고 부릅니다. 이름은 어색하지만 뜻은 "자원의 수명을 객체의 수명에 묶는다"입니다.</p>
+
+  <h3>소멸자는 모든 출구에서, 역순으로 실행된다</h3>
+  <p>아래 벤치에서 한 단계씩 진행하며 객체가 언제 태어나고 사라지는지 따라가 보세요. 그다음 같은 코드를 실제로 실행해 출력을 비교합니다.</p>
+  <div class="bench" id="b-life">
+    <header><b>실습 벤치 4-A · 생성과 소멸 따라가기</b><span>STEPPER · 10 STEPS</span></header>
+    <div class="body">
+      <div class="split">
+        <div class="srcview" id="lifeSrc"></div>
+        <div>
+          <div class="panelbox"><h5>살아 있는 객체 (위가 최근)</h5><div class="objs" id="lifeObjs"></div></div>
+          <div class="conout" id="lifeOut" aria-live="polite"></div>
+        </div>
+      </div>
+      <p class="explain" id="lifeEx"></p>
+      <div class="row"><button type="button" class="btn" id="lifePrev">◀ 이전</button><button type="button" class="btn pri" id="lifeNext">다음 ▶</button><button type="button" class="btn" id="lifeReset">처음으로</button><span class="tokc" id="lifeStep"></span></div>
+    </div>
+  </div>
+<run file="lifetime.cpp">
+#include <iostream>
+#include <string>
+
+struct Tracer {
+    std::string name;
+    Tracer(std::string n) : name(n) { std::cout << "+" << name << "\n"; }
+    ~Tracer() { std::cout << "-" << name << "\n"; }
+};
+
+Tracer g("global");
+void f() { Tracer a("f.a"); }
+
+int main() {
+    Tracer x("x");
+    {
+        Tracer y("y");
+        f();
+    }
+    Tracer z("z");
+    // Try: add an early 'return 0;' before z, or a loop that creates Tracers.
+}
+</run>
+  <p>임시 객체도 규칙을 따릅니다. <code>std::string("a") + "b"</code> 같은 식이 만드는 임시 객체는 <strong>그 식(full-expression)이 끝날 때</strong> 소멸합니다. 단, <code>const T&amp;</code>에 바로 묶으면 참조의 수명만큼 연장됩니다. 이 규칙을 모르면 11장의 <code>string_view</code>에서 매달린 참조를 만들게 됩니다.</p>
+
+  <h3>자원마다 작은 소유자 클래스를 하나씩</h3>
+  <p>RAII 래퍼는 짧습니다. 생성자에서 자원을 얻고(실패하면 알리고), 소멸자에서 놓고, 복사를 막습니다. 복사를 막는 이유는 다음 장의 주제입니다. 우선 <code>= delete</code>로 "이 객체는 복사할 수 없다"고 선언한다는 것만 기억하세요.</p>
+<run file="raii_file.cpp">
+#include <cstdio>
+#include <iostream>
+#include <string>
+
+class File {
+public:
+    File(const char* path, const char* mode) : f_(std::fopen(path, mode)) {
+        std::cout << "  [open " << path << (f_ ? "]" : " FAILED]") << '\n';
+    }
+    ~File() {
+        if (f_) { std::fclose(f_); std::cout << "  [close]\n"; }
+    }
+    File(const File&) = delete;              // no copies: exactly one owner of the FILE*
+    File& operator=(const File&) = delete;
+
+    explicit operator bool() const { return f_ != nullptr; }
+    void write(const std::string& s) { std::fputs(s.c_str(), f_); }
+    std::string read_line() {
+        char buf[128];
+        return std::fgets(buf, sizeof buf, f_) ? std::string(buf) : std::string();
+    }
+private:
+    std::FILE* f_;
+};
+
+int count_lines(const char* path, int limit) {
+    File f(path, "r");
+    if (!f) return -1;                       // early exit #1: nothing to clean up by hand
+    int n = 0;
+    while (!f.read_line().empty()) {
+        if (++n == limit) return n;          // early exit #2: destructor still closes the file
+    }
+    return n;                                // normal exit
+}
+
+int main() {
+    {
+        File out("data.txt", "w");
+        out.write("alpha\nbeta\ngamma\ndelta\n");
+    }                                        // closed (and flushed) here
+    int a = count_lines("data.txt", 2);
+    std::cout << "lines (limit 2): " << a << '\n';
+    int b = count_lines("data.txt", 100);
+    std::cout << "lines (no limit): " << b << '\n';
+    int c = count_lines("nope.txt", 100);
+    std::cout << "missing file: " << c << '\n';
+}
+</run>
+  <p>실무에서는 래퍼를 매번 새로 짜지 않습니다. 표준 라이브러리가 대부분의 자원에 대해 이미 RAII 타입을 제공하고, C API 핸들은 6장의 <code>std::unique_ptr</code>에 사용자 정의 삭제자를 붙여 한 줄로 감쌉니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>자원</th><th>C에서</th><th>C++ RAII 타입</th></tr></thead>
+    <tbody>
+      <tr><td>힙 메모리</td><td><code>malloc</code> / <code>free</code></td><td><code>std::vector</code>, <code>std::string</code>, <code>std::unique_ptr</code></td></tr>
+      <tr><td>파일</td><td><code>fopen</code> / <code>fclose</code></td><td><code>std::ifstream</code>, <code>std::ofstream</code></td></tr>
+      <tr><td>뮤텍스</td><td><code>pthread_mutex_lock</code> / <code>unlock</code></td><td><code>std::lock_guard</code>, <code>std::scoped_lock</code></td></tr>
+      <tr><td>스레드</td><td><code>pthread_create</code> / <code>join</code></td><td><code>std::jthread</code>(소멸자에서 join)</td></tr>
+      <tr><td>소켓·디바이스 fd</td><td><code>open</code> / <code>close</code></td><td>직접 만든 래퍼 또는 <code>unique_ptr</code> + 삭제자</td></tr>
+      <tr><td>인터럽트 금지 구간</td><td><code>irq_disable()</code> / <code>irq_restore(flags)</code></td><td>직접 만든 가드 객체(아래)</td></tr>
+    </tbody>
+  </table></div>
+<cpp file="irq_guard.hpp">
+// A scope guard for a critical section on a microcontroller (illustrative API).
+class IrqGuard {
+public:
+    IrqGuard() : saved_(arch_irq_save()) {}        // disable interrupts, remember the old state
+    ~IrqGuard() { arch_irq_restore(saved_); }      // restore on every exit path
+    IrqGuard(const IrqGuard&) = delete;
+    IrqGuard& operator=(const IrqGuard&) = delete;
+private:
+    unsigned long saved_;
+};
+
+void push_sample(Fifo& q, int s) {
+    IrqGuard guard;            // critical section starts here
+    if (q.full()) return;      // early return: interrupts are still restored
+    q.push(s);
+}                              // ...and ends here
+</cpp>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>RAII는 리눅스 커널의 <code>guard(mutex)(&amp;lock)</code>이나 GCC의 <code>__attribute__((cleanup))</code>이 흉내 내려는 바로 그 기능입니다. 차이는 C++에서는 이것이 언어의 기본 동작이라, 표준 라이브러리 전체와 여러분이 만드는 모든 타입이 같은 규칙으로 맞물린다는 점입니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><b>이름 없는 가드</b>: <code>std::lock_guard&lt;std::mutex&gt;(m);</code>처럼 변수 이름을 빠뜨리면 임시 객체가 그 줄에서 바로 소멸해 잠금이 즉시 풀립니다. 반드시 <code>std::lock_guard lk(m);</code>처럼 이름을 붙이세요.</li>
+      <li><b>소멸자에서 예외 던지기 금지</b>: 소멸자는 기본적으로 <code>noexcept</code>입니다. 정리 중 실패는 기록만 하고 삼키세요.</li>
+      <li><b>복사 가능한 소유자</b>: 위 <code>File</code>에서 <code>= delete</code>를 지우면 컴파일은 되지만 같은 <code>FILE*</code>을 두 번 닫게 됩니다. 다음 장에서 이유를 봅니다.</li>
+    </ul>
+  </div>
+
+  <div class="quiz" data-quiz="ch4"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch4" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

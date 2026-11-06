@@ -1,0 +1,169 @@
+<!-- ============ CH2 ============ -->
+<section class="chapter col" id="ch2">
+  <div class="eyebrow">Part I · C에서 C++로 — 2장</div>
+  <h2>더 나은 C: 참조·const·오버로딩</h2>
+  <p class="goal">이 장을 마치면: 포인터 대신 참조를 써야 할 때를 구분하고, 매크로를 <code>constexpr</code>·인라인 함수·템플릿으로 바꿀 수 있으며, 오버로딩·기본 인자·<code>auto</code>·중괄호 초기화를 C 코드 개선에 바로 쓸 수 있습니다.</p>
+  <p>1장에서 C++이 C 위에 쌓은 언어라고 했습니다. 이 장의 기능들은 클래스가 없어도 쓸 수 있어서, 기존 C 코드를 C++로 옮길 때 가장 먼저 효과를 봅니다.</p>
+
+  <h3>참조는 '널이 될 수 없는 별명'이다</h3>
+  <p>C에서 함수가 인자를 수정하려면 포인터를 넘깁니다. 그러면 함수는 늘 "이 포인터가 NULL이면?"을 걱정해야 하고, 호출하는 쪽은 <code>&amp;</code>를 잊지 말아야 합니다. C++의 <strong>참조(reference)</strong>는 이미 존재하는 객체에 붙인 또 하나의 이름입니다. 선언할 때 반드시 초기화해야 하고, 다른 객체를 가리키도록 바꿀 수 없고, 널 참조라는 것이 (정상적인 코드에서는) 없습니다.</p>
+  <div class="tabs" data-tabs>
+    <div role="tablist"><button type="button" role="tab" aria-selected="true">C: 포인터</button><button type="button" role="tab" aria-selected="false">C++: 참조</button></div>
+    <div class="panel">
+<c file="swap.c">
+void swap(int *a, int *b) {
+    if (!a || !b) return;      /* defensive NULL checks everywhere */
+    int t = *a; *a = *b; *b = t;
+}
+/* call site: swap(&x, &y); */
+</c>
+    </div>
+    <div class="panel" hidden>
+<cpp file="swap.cpp">
+void swap(int& a, int& b) {   // a and b ARE the caller's variables
+    int t = a; a = b; b = t;
+}
+// call site: swap(x, y);
+</cpp>
+    </div>
+  </div>
+  <p>참조의 진짜 쓸모는 <strong>큰 객체를 복사 없이 읽기 전용으로 넘기는 것</strong>입니다. C에서 <code>const struct config *cfg</code>로 넘기던 것을 C++에서는 <code>const Config&amp; cfg</code>로 넘깁니다. 기계어는 사실상 같고(대개 주소가 넘어갑니다), 호출부는 값처럼 깔끔합니다.</p>
+<run file="refs.cpp">
+#include <iostream>
+#include <string>
+#include <vector>
+
+struct Config {
+    std::string device = "/dev/ttyUSB0";
+    int baud = 115200;
+    std::vector<int> channels{1, 2, 3, 4};
+};
+
+// Read-only, no copy: const reference
+void print(const Config& c) {
+    std::cout << c.device << " @ " << c.baud << " baud, " << c.channels.size() << " channels\n";
+}
+
+// Output parameter: non-const reference
+void enable_fast_mode(Config& c) {
+    c.baud = 921600;
+    c.channels.push_back(5);
+}
+
+int main() {
+    Config cfg;
+    print(cfg);
+    enable_fast_mode(cfg);   // no &cfg needed
+    print(cfg);
+
+    int x = 10;
+    int& alias = x;          // alias is just another name for x
+    alias += 5;
+    std::cout << "x = " << x << ", &x == &alias: " << std::boolalpha << (&x == &alias) << '\n';
+}
+</run>
+  <div class="call key"><span class="lab">매개변수 전달 규칙(기본값)</span>
+    <ul>
+      <li>작은 값(<code>int</code>, <code>double</code>, 포인터, 작은 구조체) → <b>값</b>으로: <code>f(int n)</code></li>
+      <li>큰 객체를 읽기만 → <b>const 참조</b>: <code>f(const std::string&amp; s)</code></li>
+      <li>호출자의 객체를 수정 → <b>참조</b>: <code>f(Config&amp; c)</code></li>
+      <li>"없을 수도 있음"이 의미가 있으면 → <b>포인터</b> 또는 <code>std::optional</code>(10장)</li>
+    </ul>
+  </div>
+
+  <h3>매크로를 은퇴시키는 세 가지 도구</h3>
+  <p>C 코드베이스의 매크로는 대개 세 종류입니다. 상수, 짧은 함수, 타입에 무관한 코드. C++은 셋 모두에 타입과 스코프가 있는 대안을 줍니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>C 매크로</th><th>C++ 대안</th><th>얻는 것</th></tr></thead>
+    <tbody>
+      <tr><td><code>#define BUF_SIZE 256</code></td><td><code>constexpr std::size_t BUF_SIZE = 256;</code></td><td>타입, 스코프, 디버거에서 보임</td></tr>
+      <tr><td><code>#define SQUARE(x) ((x)*(x))</code></td><td><code>constexpr int square(int x) { return x*x; }</code></td><td>인자가 한 번만 평가됨, 타입 검사</td></tr>
+      <tr><td><code>#define MAX(a,b) ((a)&gt;(b)?(a):(b))</code></td><td><code>template&lt;class T&gt; T max(T a, T b)</code> 또는 <code>std::max</code></td><td>모든 타입에 대해, 부작용 없이</td></tr>
+    </tbody>
+  </table></div>
+  <p>매크로의 고전적인 버그를 직접 보세요. <code>MAX(i++, j)</code>는 <code>i</code>를 두 번 증가시킬 수 있습니다. 그리고 <code>constexpr</code> 함수는 <strong>컴파일 타임에 계산</strong>될 수 있어서, 배열 크기나 <code>static_assert</code>에 쓸 수 있습니다.</p>
+<run file="macros.cpp">
+#include <algorithm>
+#include <array>
+#include <iostream>
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+constexpr int square(int x) { return x * x; }
+
+constexpr unsigned crc_table_size(unsigned bits) { return 1u << bits; }
+
+int main() {
+    int i = 5, j = 3;
+    int m = MAX(i++, j);             // i++ is evaluated twice!
+    std::cout << "macro:  m=" << m << " i=" << i << '\n';
+
+    i = 5;
+    int n = std::max(i++, j);        // evaluated exactly once
+    std::cout << "std::max: n=" << n << " i=" << i << '\n';
+
+    // Computed by the compiler: usable as an array size and in static_assert
+    std::array<unsigned, crc_table_size(8)> table{};
+    static_assert(square(12) == 144, "math is broken");
+    std::cout << "table size = " << table.size() << '\n';
+}
+</run>
+
+  <h3>같은 이름, 다른 매개변수: 오버로딩과 기본 인자</h3>
+  <p>C에서는 <code>print_int</code>, <code>print_double</code>, <code>print_str</code>처럼 타입마다 이름을 지어야 했습니다. C++에서는 이름 하나에 매개변수 타입만 다르게 여러 함수를 둘 수 있고, 컴파일러가 인자 타입을 보고 고릅니다(그림 1-1의 맹글링이 이것을 가능하게 합니다). <strong>기본 인자</strong>는 자주 쓰는 값을 생략하게 해 줍니다.</p>
+<run file="overload.cpp">
+#include <cstdint>
+#include <iostream>
+#include <string>
+
+namespace hw {                       // namespaces replace prefixes like hw_...
+    void write(std::uint32_t addr, std::uint32_t value, bool verbose = false) {
+        if (verbose) std::cout << "[write32] ";
+        std::cout << std::hex << "0x" << addr << " <- 0x" << value << std::dec << '\n';
+    }
+    void write(std::uint32_t addr, const std::string& text) {
+        std::cout << "0x" << std::hex << addr << std::dec << " <- \"" << text << "\"\n";
+    }
+}
+
+int main() {
+    hw::write(0x40021000, 0x1);              // default verbose = false
+    hw::write(0x40021000, 0x3, true);
+    hw::write(0x20000000, std::string("boot"));
+
+    using hw::write;                        // bring one name into scope
+    write(0x40000000, 0xFF);
+}
+</run>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p>오버로딩은 정확한 일치, 승격, 변환 순으로 후보를 고릅니다. <code>f(long)</code>과 <code>f(double)</code>만 있을 때 <code>f(1)</code>은 둘 다 '변환'이라 모호하다는 오류가 납니다. 또 <code>f(int*)</code>와 <code>f(int)</code>가 있을 때 <code>f(NULL)</code>은 <code>f(int)</code>를 부를 수 있습니다. 그래서 C++11부터는 널 포인터에 <code>nullptr</code>를 씁니다.</p>
+  </div>
+
+  <h3>auto, 범위 for, 중괄호 초기화</h3>
+  <p><code>auto</code>는 초기화 식에서 타입을 추론합니다. 동적 타입이 아니라, 컴파일러가 타입을 대신 적어 주는 것입니다. 범위 for는 배열과 컨테이너를 인덱스 없이 순회합니다. 중괄호 초기화 <code>{}</code>는 어디서나 같은 문법으로 초기화하면서, 정보가 사라지는 <strong>축소 변환(narrowing)</strong>을 막아 줍니다. 상수라면 컴파일 오류, 변수라면 GCC는 경고(<code>-Wnarrowing</code>)·Clang은 오류를 냅니다. 아래 예제는 일부러 컴파일되지 않습니다. 오류 메시지를 읽고 고쳐서 실행해 보세요(<b>편집</b>).</p>
+<run file="init.cpp" expect="error">
+#include <iostream>
+#include <map>
+#include <string>
+
+int main() {
+    double ratio = 3.7;
+    int a = ratio;          // C-style: silently truncates to 3
+    int b{3.7};             // brace init: compile ERROR (narrowing) - fix me!
+
+    std::map<std::string, int> ports{{"uart", 1}, {"spi", 2}, {"i2c", 3}};
+    for (const auto& [name, id] : ports)     // auto + structured binding
+        std::cout << name << " -> " << id << '\n';
+
+    int* p = nullptr;       // not NULL, not 0
+    std::cout << a << ' ' << b << ' ' << (p == nullptr) << '\n';
+}
+</run>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p><code>auto</code>를 "타입을 숨기는 것"으로 느낄 수 있습니다. 기준은 간단합니다. 타입이 오른쪽에 이미 보이거나(<code>auto p = std::make_unique&lt;Dev&gt;()</code>) 타입 이름이 길고 의미가 없을 때(<code>std::map&lt;std::string, int&gt;::const_iterator</code>) 쓰고, 숫자 타입처럼 정확한 크기가 중요할 때는 명시하세요. <code>auto x = 0;</code>은 <code>int</code>이지 <code>uint32_t</code>가 아닙니다.</p>
+  </div>
+  <p>여기까지가 "클래스 없는 C++"입니다. 다음 장에서는 C에서 구조체와 함수 묶음으로 만들던 모듈을 클래스로 옮깁니다.</p>
+
+  <div class="quiz" data-quiz="ch2"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch2" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

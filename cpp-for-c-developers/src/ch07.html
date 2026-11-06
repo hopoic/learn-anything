@@ -1,0 +1,180 @@
+<!-- ============ CH7 ============ -->
+<section class="chapter col" id="ch7">
+  <div class="eyebrow">Part III · 추상화 — 7장</div>
+  <h2>상속과 다형성</h2>
+  <p class="goal">이 장을 마치면: C의 함수 포인터 테이블과 가상 함수의 대응 관계를 그림으로 설명할 수 있고, 인터페이스(추상 클래스)를 설계해 <code>unique_ptr</code>로 다형적 객체를 관리할 수 있으며, 가상 소멸자·<code>override</code>·슬라이싱 같은 함정을 피할 수 있습니다.</p>
+  <p>Part II에서 객체의 수명과 소유를 다뤘습니다. 이제 "같은 인터페이스, 다른 구현"이라는 추상화로 넘어갑니다. C 개발자에게는 이미 익숙한 패턴입니다.</p>
+
+  <h3>C의 ops 테이블이 virtual이 되었다</h3>
+  <p>리눅스 커널의 <code>struct file_operations</code>처럼, C에서 다형성은 함수 포인터 구조체로 구현합니다. 각 드라이버가 자기 함수로 테이블을 채우고, 객체는 그 테이블을 가리키는 포인터를 들고 다닙니다.</p>
+<c file="sensor_ops.c">
+struct sensor;
+struct sensor_ops {
+    int  (*read)(struct sensor *s);
+    const char *(*name)(const struct sensor *s);
+};
+struct sensor {
+    const struct sensor_ops *ops;   /* "vptr": every object points at its type's table */
+    int bus_addr;
+};
+/* call site: value = s->ops->read(s); */
+</c>
+  <p>C++의 가상 함수는 컴파일러가 이 구조를 대신 만들어 주는 것입니다. 클래스에 <code>virtual</code> 함수가 하나라도 있으면 컴파일러는 클래스마다 <strong>vtable</strong>(함수 포인터 표)을 하나 만들고, 각 객체에 그 표를 가리키는 숨은 포인터 <strong>vptr</strong>을 넣습니다. <code>s-&gt;read()</code> 호출은 <code>s-&gt;vptr-&gt;read(s)</code>로 번역됩니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 210" role="img" aria-label="객체의 vptr이 클래스별 vtable을 가리키고, vtable 항목이 실제 함수를 가리키는 구조">
+      <rect class="sv-r1" x="10" y="30" width="150" height="120" rx="6"/>
+      <text class="sv-m" x="20" y="22">Tmp36 객체 (힙)</text>
+      <rect class="sv-core" x="20" y="42" width="130" height="30" rx="4"/><text class="sv-core-t" x="85" y="62" text-anchor="middle">vptr</text>
+      <text class="sv-t" x="30" y="96">bus_addr_ = 0x48</text>
+      <text class="sv-t" x="30" y="120">offset_ = -2</text>
+      <path class="sv-ac" d="M150 57 C 200 57, 200 57, 240 57"/><path class="sv-ac" d="M233 52 l7 5 -7 5"/>
+      <rect class="sv-r2" x="240" y="30" width="170" height="120" rx="6"/>
+      <text class="sv-m" x="250" y="22">vtable for Tmp36 (읽기 전용 데이터)</text>
+      <text class="sv-t" x="252" y="62">[0] ~Tmp36()</text>
+      <text class="sv-t" x="252" y="90">[1] read → Tmp36::read</text>
+      <text class="sv-t" x="252" y="118">[2] name → Tmp36::name</text>
+      <path class="sv-ln" d="M410 86 H470"/><path class="sv-ln" d="M463 81 l7 5 -7 5"/>
+      <rect class="sv-r0" x="470" y="66" width="160" height="40" rx="6"/><text class="sv-t" x="550" y="91" text-anchor="middle">Tmp36::read() 코드</text>
+      <text class="sv-m" x="320" y="185" text-anchor="middle">Sensor* s = ...;  s-&gt;read();   ⇒   (*s-&gt;vptr[1])(s)   — 간접 호출 1회</text>
+    </svg>
+    <figcaption>그림 7-1. 가상 함수 호출의 실제 모습. 객체당 포인터 하나, 클래스당 표 하나가 비용의 전부다.</figcaption>
+  </figure>
+<run file="sensors.cpp">
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
+class Sensor {                                   // an interface: pure virtual functions only
+public:
+    virtual ~Sensor() = default;                 // virtual destructor: required for polymorphic delete
+    virtual int read() = 0;                      // "= 0": pure virtual, derived classes must implement
+    virtual std::string name() const = 0;
+};
+
+class Tmp36 : public Sensor {
+public:
+    explicit Tmp36(int offset) : offset_(offset) {}
+    int read() override { return 25 + offset_; }
+    std::string name() const override { return "TMP36"; }
+private:
+    int offset_;
+};
+
+class FakeAccel : public Sensor {
+public:
+    int read() override { return ++tick_ * 100; }
+    std::string name() const override { return "fake-accel"; }
+private:
+    int tick_ = 0;
+};
+
+void poll(std::vector<std::unique_ptr<Sensor>>& sensors) {
+    for (auto& s : sensors)                      // same call, different behavior
+        std::cout << s->name() << " = " << s->read() << '\n';
+}
+
+int main() {
+    std::vector<std::unique_ptr<Sensor>> sensors;
+    sensors.push_back(std::make_unique<Tmp36>(-2));
+    sensors.push_back(std::make_unique<FakeAccel>());
+    poll(sensors);
+    poll(sensors);
+    std::cout << "sizeof(Tmp36) = " << sizeof(Tmp36) << " (int + vptr + padding)\n";
+}
+</run>
+
+  <h3>무엇이 불릴지는 '어떻게 접근하느냐'가 정한다</h3>
+  <p>가상 디스패치는 <strong>포인터나 참조를 통해 호출할 때만</strong> 일어납니다. 객체를 기반 클래스 타입의 <em>값</em>으로 복사하면 파생 클래스 부분이 잘려 나갑니다(슬라이싱). 비가상 함수는 늘 컴파일 타임의 정적 타입으로 결정됩니다. 아래 클래스를 기준으로 조합을 바꿔 보세요.</p>
+<cpp file="animal.hpp">
+struct Animal {
+    virtual ~Animal() = default;
+    virtual std::string speak() const { return "..."; }   // virtual
+    std::string name() const { return "animal"; }          // NOT virtual
+};
+struct Dog : Animal {
+    std::string speak() const override { return "Woof"; }
+    std::string name() const { return "dog"; }             // hides Animal::name, does not override
+};
+</cpp>
+  <div class="bench" id="dispBench">
+    <header><b>실습 벤치 7-A · 가상 디스패치 실험실</b><span>EXPLORE · 12 COMBINATIONS</span></header>
+    <div class="body">
+      <div class="row" style="margin-bottom:8px"><span class="lbl">실제 객체</span><div class="seg" data-k="dyn"><button type="button" data-v="Animal">Animal</button><button type="button" data-v="Dog">Dog</button></div></div>
+      <div class="row" style="margin-bottom:8px"><span class="lbl">접근 방식</span><div class="seg" data-k="via"><button type="button" data-v="val">값 복사 Animal x</button><button type="button" data-v="ptr">포인터 Animal*</button><button type="button" data-v="ref">참조 Animal&amp;</button></div></div>
+      <div class="row" style="margin-bottom:12px"><span class="lbl">호출 함수</span><div class="seg" data-k="fn"><button type="button" data-v="speak">speak() · virtual</button><button type="button" data-v="name">name() · 비가상</button></div></div>
+      <div class="srcview"><pre id="dispCode" style="padding:0 12px;margin:0"></pre></div>
+      <div class="callres" id="dispRes" aria-live="polite"></div>
+      <p class="explain" id="dispEx"></p>
+      <div class="vt">
+        <div class="tbx" id="vtA"><b>vtable for Animal</b><div data-f="dtor">[0] ~Animal()</div><div data-f="speak">[1] Animal::speak</div></div>
+        <div class="tbx" id="vtD"><b>vtable for Dog</b><div data-f="dtor">[0] ~Dog()</div><div data-f="speak">[1] Dog::speak</div></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>virtual 소멸자, override, final</h3>
+  <p>기반 클래스 포인터로 파생 객체를 <code>delete</code>하려면(즉 <code>unique_ptr&lt;Base&gt;</code>로 소유하려면) 기반 클래스의 소멸자가 <strong>반드시</strong> <code>virtual</code>이어야 합니다. 그렇지 않으면 기반 부분의 소멸자만 불리고, 파생 클래스가 가진 자원은 새거나 더 나쁜 일이 벌어집니다(정의되지 않은 동작).</p>
+  <p><code>override</code>는 "기반 클래스의 가상 함수를 재정의하려는 것"이라는 선언입니다. 시그니처가 조금만 달라도(<code>const</code> 누락, 매개변수 타입 차이) 재정의가 아니라 <strong>새 함수</strong>가 되어 조용히 다형성이 깨지는데, <code>override</code>를 붙이면 그 실수가 컴파일 오류가 됩니다. 아래 코드는 일부러 틀렸습니다. 오류를 읽고 고쳐 보세요.</p>
+<run file="override.cpp" expect="error">
+#include <iostream>
+#include <memory>
+
+struct Motor {
+    virtual ~Motor() = default;
+    virtual void set_speed(int rpm) { std::cout << "Motor " << rpm << '\n'; }
+    virtual int speed() const { return 0; }
+};
+
+struct StepperMotor final : Motor {             // final: nobody can derive from StepperMotor
+    void set_speed(long rpm) override {         // BUG: long vs int -> not an override
+        rpm_ = static_cast<int>(rpm);
+    }
+    int speed() override { return rpm_; }       // BUG: missing const -> not an override
+private:
+    int rpm_ = 0;
+};
+
+int main() {
+    std::unique_ptr<Motor> m = std::make_unique<StepperMotor>();
+    m->set_speed(1200);
+    std::cout << "speed = " << m->speed() << '\n';
+}
+</run>
+
+  <h3>상속보다 합성, 열린 집합에는 virtual, 닫힌 집합에는 variant</h3>
+  <p>상속은 강한 결합입니다. "B는 A의 일종이다(is-a)"이고 A의 인터페이스로 B를 다뤄야 할 때만 쓰세요. 단지 A의 기능을 재사용하고 싶다면 A를 멤버로 두는 <strong>합성(has-a)</strong>이 낫습니다. 또 다형성이 필요해도 종류가 고정되어 있고(예: 프로토콜 메시지 5종) 나중에 늘어날 일이 적다면 <code>std::variant</code>가 더 단순합니다. 힙 할당도 vtable도 없고, 처리하지 않은 종류가 있으면 컴파일러가 알려 줍니다.</p>
+<run file="variant.cpp">
+#include <iostream>
+#include <string>
+#include <variant>
+#include <vector>
+
+struct Ping  { int seq; };
+struct Data  { std::string payload; };
+struct Reset { };
+
+using Message = std::variant<Ping, Data, Reset>;     // a closed set of types, stored by value
+
+template <class... Fs> struct overloaded : Fs... { using Fs::operator()...; };
+
+int main() {
+    std::vector<Message> inbox{Ping{1}, Data{"temp=23"}, Reset{}, Ping{2}};
+    for (const auto& m : inbox) {
+        std::visit(overloaded{
+            [](const Ping& p)  { std::cout << "PING #" << p.seq << '\n'; },
+            [](const Data& d)  { std::cout << "DATA " << d.payload << '\n'; },
+            [](const Reset&)   { std::cout << "RESET\n"; },
+        }, m);   // remove one lambda and the compiler rejects the program
+    }
+    std::cout << "sizeof(Message) = " << sizeof(Message) << '\n';
+}
+</run>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>가상 함수의 비용은 객체당 포인터 하나와 호출당 간접 분기 하나, 그리고 인라인화가 막힌다는 점입니다. 대부분의 코드에서는 무시할 만하지만, 초당 수백만 번 도는 ISR 경로나 작은 MCU에서는 의식할 만합니다. 그럴 때는 8장의 템플릿(정적 다형성)이나 위의 <code>variant</code>를 고려하세요. <code>std::variant</code>는 C의 "태그 + union"을 타입 안전하게 만든 것입니다.</p>
+  </div>
+  <p>다음 장에서는 런타임 대신 컴파일 타임에 "같은 코드, 다른 타입"을 만드는 템플릿을 봅니다.</p>
+
+  <div class="quiz" data-quiz="ch7"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch7" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

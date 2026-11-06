@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>C 개발자를 위한 C++ 교본</title>
+<meta name="description" content="C를 아는 개발자를 위한 인터랙티브 C++ 교본. 브라우저에서 바로 컴파일하고 실행해 볼 수 있습니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/book.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%230A6E8C'/%3E%3Ctext x='32' y='42' font-size='26' text-anchor='middle' fill='white' font-family='monospace'%3EC++%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<div class="shell">
+<aside class="toc" aria-label="목차">
+  <details id="tocd" open>
+    <summary>목차 <span class="meter" id="meter">0 / {{N_CH}} 완료</span></summary>
+    <ol id="tocl">
+      <li class="part">Part I · C에서 C++로</li>
+      <li><a href="#ch1"><span class="n">01</span>C 개발자를 위한 C++ 지도<span class="chk" data-c="ch1"></span></a></li>
+      <li><a href="#ch2"><span class="n">02</span>더 나은 C: 참조·const·오버로딩<span class="chk" data-c="ch2"></span></a></li>
+      <li><a href="#ch3"><span class="n">03</span>클래스: 데이터와 함수를 묶다<span class="chk" data-c="ch3"></span></a></li>
+      <li class="part">Part II · 자원과 수명</li>
+      <li><a href="#ch4"><span class="n">04</span>RAII와 객체 수명<span class="chk" data-c="ch4"></span></a></li>
+      <li><a href="#ch5"><span class="n">05</span>복사와 이동<span class="chk" data-c="ch5"></span></a></li>
+      <li><a href="#ch6"><span class="n">06</span>동적 메모리와 스마트 포인터<span class="chk" data-c="ch6"></span></a></li>
+      <li class="part">Part III · 추상화</li>
+      <li><a href="#ch7"><span class="n">07</span>상속과 다형성<span class="chk" data-c="ch7"></span></a></li>
+      <li><a href="#ch8"><span class="n">08</span>템플릿과 컨셉트<span class="chk" data-c="ch8"></span></a></li>
+      <li><a href="#ch9"><span class="n">09</span>STL과 람다<span class="chk" data-c="ch9"></span></a></li>
+      <li class="part">Part IV · 현대 C++ 실무</li>
+      <li><a href="#ch10"><span class="n">10</span>오류 처리: 예외·optional·expected<span class="chk" data-c="ch10"></span></a></li>
+      <li><a href="#ch11"><span class="n">11</span>모던 C++ 도구 상자<span class="chk" data-c="ch11"></span></a></li>
+      <li><a href="#ch12"><span class="n">12</span>실전: 미니 KV 저장소<span class="chk" data-c="ch12"></span></a></li>
+      <li class="part">부록</li>
+      <li><a href="#glossary"><span class="n">A</span>용어집 · C↔C++ 대응표</a></li>
+      <li><a href="#refs"><span class="n">B</span>참고 자료</a></li>
+      <li><a href="#playground"><span class="n">C</span>코드 놀이터</a></li>
+    </ol>
+  </details>
+  <div class="engine">
+    <label for="engineSel">실행 엔진</label>
+    <select id="engineSel">
+      <option value="auto">자동 (온라인 GCC → 브라우저 내장)</option>
+      <option value="wandbox">Wandbox · GCC (온라인)</option>
+      <option value="godbolt">Compiler Explorer · GCC (온라인)</option>
+      <option value="local">브라우저 내장 Clang (오프라인)</option>
+    </select>
+    <div class="row"><select id="stdSel" aria-label="C++ 표준"><option>c++17</option><option selected>c++20</option><option>c++23</option></select><select id="optSel" aria-label="최적화"><option value="0">-O0</option><option value="1">-O1</option><option value="2" selected>-O2</option></select></div>
+    <div class="es" id="engineStatus"></div>
+  </div>
+  <button class="theme-btn" id="themeBtn" type="button">테마 전환 (시스템 / 라이트 / 다크)</button>
+</aside>
+
+<main>
+<header class="cover col">
+  <div class="kicker">Field Manual · C → C++ · 2026 Edition</div>
+  <h1>C 개발자를 위한 C++ 교본</h1>
+  <div class="formula" aria-label="C++ equals C plus RAII plus Types plus Templates">
+    <span class="term">C++</span><span class="op">=</span><span class="term">C</span><span class="op">+</span><span class="term h">RAII</span><span class="op">+</span><span class="term">타입</span><span class="op">+</span><span class="term">템플릿</span>
+  </div>
+  <p class="lede">C를 이미 아는 사람에게 C++은 새 언어라기보다 “C로 늘 손으로 하던 일을 컴파일러가 대신 지켜 주는 언어”입니다. 이 책은 그 차이를 하나씩, 직접 컴파일하고 실행해 보며 익히도록 만들었습니다. 모든 <code>▶ 실행</code> 버튼은 진짜 컴파일러를 돌립니다.</p>
+  <div class="stats"><span><b>{{N_CH}}</b>개 장</span><span><b>{{N_RUN}}</b>개 실행 예제</span><span><b>{{N_BENCH}}</b>개 실습 벤치</span><span><b>{{N_QUIZ}}</b>개 확인 문제</span><span><b>1</b>개 완성 프로젝트</span></div>
+</header>
+
+<section class="col" id="howto" style="padding-block:8px 8px">
+  <div class="call key"><span class="lab">이 책 사용법</span>
+    <ul>
+      <li><b>▶ 실행</b>: 예제를 컴파일하고 실행합니다. <b>편집</b>을 누르면 코드를 고칠 수 있고, 편집 중에는 <code>Ctrl/⌘ + Enter</code>로 바로 실행됩니다. 표준 입력이 필요한 예제는 출력 창의 <b>stdin</b>에 값을 넣으세요.</li>
+      <li><b>실행 엔진</b>(왼쪽 목차 아래): 기본값 <b>자동</b>은 온라인 GCC(Wandbox → Compiler Explorer)를 먼저 쓰고, 네트워크가 막히면 브라우저 안에서 도는 Clang(WebAssembly)으로 넘어갑니다.</li>
+      <li><b>브라우저 내장 엔진</b>은 처음 한 번 약 23MB(압축 전송)를 받은 뒤 캐시하며, 코드가 외부 서버로 나가지 않습니다. 대신 <b>예외(throw/try)와 스레드는 지원하지 않습니다.</b> 10장 예외 예제는 온라인 엔진에서 실행하세요.</li>
+    </ul>
+  </div>
+</section>
+
+{{CHAPTERS}}
+
+<footer class="foot col">
+  C 개발자를 위한 C++ 교본 · 코드와 주석은 영어, 설명은 한국어로 썼습니다. 실행 엔진: <a href="https://wandbox.org" rel="noopener">Wandbox</a>, <a href="https://godbolt.org" rel="noopener">Compiler Explorer</a>, <a href="https://yowasp.org" rel="noopener">YoWASP Clang</a> + <a href="https://github.com/bjorn3/browser_wasi_shim" rel="noopener">browser_wasi_shim</a>.
+</footer>
+</main>
+</div>
+<script src="assets/runner.js"></script>
+<script src="assets/book.js"></script>
+</body>
+</html>

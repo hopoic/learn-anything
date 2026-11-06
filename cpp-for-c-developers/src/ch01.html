@@ -1,0 +1,135 @@
+<!-- ============ CH1 ============ -->
+<section class="chapter col" id="ch1">
+  <div class="eyebrow">Part I · C에서 C++로 — 1장</div>
+  <h2>C 개발자를 위한 C++ 지도</h2>
+  <p class="goal">이 장을 마치면: C++이 C와 어떤 관계인지 설명할 수 있고, 첫 C++ 프로그램을 컴파일·실행할 수 있으며, C 코드를 C++로 옮길 때 깨지는 지점과 <code>extern "C"</code>가 필요한 이유를 말할 수 있습니다.</p>
+
+  <h3>C++은 C 위에 쌓아 올린 언어다</h3>
+  <p>C++은 Bjarne Stroustrup이 1979년 벨 연구소에서 "C with Classes"라는 이름으로 시작해 1983년에 지금 이름을 얻었습니다. 출발점은 단순했습니다. <strong>C의 효율과 하드웨어 접근성은 그대로 두고, 큰 프로그램을 짤 때 필요한 추상화 도구를 더한다.</strong> 그래서 C++의 거의 모든 기능은 "C로 손으로 하던 패턴"을 언어가 직접 지원하도록 만든 것입니다. 구조체와 그 구조체를 다루는 함수 묶음은 클래스가 되었고, <code>init</code>/<code>cleanup</code> 짝은 생성자/소멸자가 되었고, 함수 포인터 테이블은 가상 함수가 되었고, 매크로로 흉내 내던 제네릭 코드는 템플릿이 되었습니다.</p>
+  <p>표준은 크게 두 시대로 나뉩니다. C++98/03이 "클래식 C++"이라면, <strong>C++11부터를 모던 C++</strong>이라고 부릅니다. 이동 의미론, 스마트 포인터, 람다, <code>auto</code>가 이때 들어오면서 C++ 코드의 모습이 크게 바뀌었습니다. 이 책은 C++20을 기본으로 쓰고, 필요한 곳에서 C++23 기능을 표시해 둡니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>표준</th><th>대표 기능</th><th>이 책에서</th></tr></thead>
+    <tbody>
+      <tr><td>C++98/03</td><td>클래스, 상속, 템플릿, 예외, STL</td><td>3·7·8·9·10장</td></tr>
+      <tr><td>C++11</td><td>이동 의미론, <code>unique_ptr</code>/<code>shared_ptr</code>, 람다, <code>auto</code>, <code>constexpr</code>, <code>nullptr</code>, 범위 for</td><td>2·5·6·9장</td></tr>
+      <tr><td>C++14/17</td><td><code>make_unique</code>, 구조적 바인딩, <code>optional</code>, <code>string_view</code>, 보장된 복사 생략</td><td>5·10·11장</td></tr>
+      <tr><td>C++20</td><td>컨셉트, 레인지, <code>span</code>, <code>std::format</code>, 모듈, 코루틴</td><td>8·9·11장</td></tr>
+      <tr><td>C++23</td><td><code>std::expected</code>, <code>std::print</code></td><td>10·12장</td></tr>
+      <tr><td>C++26</td><td>정적 리플렉션, 계약(contracts), <code>std::execution</code></td><td>표준 위원회가 2026년 3월 기술 작업을 마쳤고, ISO 발행 절차가 진행 중</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>첫 프로그램: printf에서 std::cout으로</h3>
+  <p>아래 예제를 <b>▶ 실행</b>해 보세요. C의 <code>printf</code>도 그대로 쓸 수 있다는 점, 그리고 C++의 출력은 <code>&lt;&lt;</code> 연산자로 값을 "흘려보내는" 방식이라는 점을 보면 됩니다.</p>
+<run file="hello.cpp">
+#include <cstdio>     // C headers keep working: <stdio.h> becomes <cstdio>
+#include <iostream>   // C++ streams
+#include <string>
+
+int main() {
+    std::printf("printf still works: %d\n", 42);
+
+    std::string name = "C++";            // a real string type, no buffer sizes
+    int year = 1983;
+    std::cout << "Hello from " << name << ", named in " << year << '\n';
+
+    name += " is " + std::to_string(2026 - year) + " years old";
+    std::cout << name << " (length " << name.size() << ")\n";
+    return 0;
+}
+</run>
+  <p>몇 가지가 눈에 띕니다. <code>std::</code>는 <strong>네임스페이스</strong>입니다. 표준 라이브러리의 이름은 모두 <code>std</code> 안에 있어서, 여러분의 <code>string</code>이나 <code>count</code>와 충돌하지 않습니다. <code>std::cout &lt;&lt; x</code>는 형식 지정자 없이 타입을 보고 알맞은 출력 함수를 고릅니다. <code>%d</code>에 <code>double</code>을 넘기는 실수가 원천적으로 사라집니다. 그리고 <code>std::string</code>은 길이를 알고, 스스로 메모리를 늘리고, 스코프를 벗어나면 스스로 해제합니다. 이 마지막 성질이 4장의 주제입니다.</p>
+  <p>입력도 같은 방식입니다. 이 예제는 표준 입력이 미리 채워져 있습니다. 출력 창의 <b>stdin</b>을 바꿔 다시 실행해 보세요.</p>
+<run file="sum.cpp" stdin="3 10 20 30\nKim">
+#include <iostream>
+#include <string>
+#include <vector>
+
+int main() {
+    int n = 0;
+    std::cin >> n;                       // no &n, no format string
+
+    std::vector<int> values(n);          // dynamic array sized at run time
+    for (int& v : values) std::cin >> v; // range-for with a reference
+
+    long sum = 0;
+    for (int v : values) sum += v;
+
+    std::string who;
+    std::cin >> who;
+    std::cout << who << ", sum of " << n << " values = " << sum << '\n';
+}
+</run>
+
+  <h3>컴파일 모델은 그대로다 — 이름만 바뀐다</h3>
+  <p>C++도 C와 똑같이 <strong>전처리 → 컴파일 → 링크</strong>를 거칩니다. 헤더와 소스를 나누고, 헤더 가드를 쓰고, 오브젝트 파일을 링커가 묶습니다. Makefile이나 CMake 지식도 그대로 씁니다. 결정적으로 다른 점은 하나, <strong>이름 맹글링(name mangling)</strong>입니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 190" role="img" aria-label="C++ 빌드 파이프라인과 이름 맹글링">
+      <rect class="sv-r0" x="4" y="40" width="110" height="56" rx="6"/><text class="sv-t" x="59" y="64" text-anchor="middle">main.cpp</text><text class="sv-m" x="59" y="82" text-anchor="middle">+ headers</text>
+      <path class="sv-ln" d="M114 68 H150"/><path class="sv-ln" d="M144 63 l6 5 -6 5"/>
+      <rect class="sv-r1" x="150" y="40" width="110" height="56" rx="6"/><text class="sv-t" x="205" y="64" text-anchor="middle">전처리</text><text class="sv-m" x="205" y="82" text-anchor="middle">cpp (#include)</text>
+      <path class="sv-ln" d="M260 68 H296"/><path class="sv-ln" d="M290 63 l6 5 -6 5"/>
+      <rect class="sv-r2" x="296" y="40" width="130" height="56" rx="6"/><text class="sv-t" x="361" y="64" text-anchor="middle">컴파일</text><text class="sv-m" x="361" y="82" text-anchor="middle">cc1plus → main.o</text>
+      <path class="sv-ln" d="M426 68 H462"/><path class="sv-ln" d="M456 63 l6 5 -6 5"/>
+      <rect class="sv-core" x="462" y="40" width="170" height="56" rx="6"/><text class="sv-core-t" x="547" y="73" text-anchor="middle">링크 → a.out</text>
+      <text class="sv-t" x="361" y="128" text-anchor="middle">int add(int, int)  →  심벌 _Z3addii</text>
+      <text class="sv-t" x="361" y="150" text-anchor="middle">double add(double, double)  →  _Z3adddd</text>
+      <text class="sv-m" x="361" y="176" text-anchor="middle">C에서는 둘 다 그냥 "add" — 그래서 C에는 오버로딩이 없다</text>
+      <path class="sv-ac" d="M361 96 V112"/>
+    </svg>
+    <figcaption>그림 1-1. 빌드 단계는 C와 같다. 다만 C++ 컴파일러는 함수 이름에 매개변수 타입을 섞어 심벌을 만든다.</figcaption>
+  </figure>
+  <p>C++은 같은 이름의 함수를 매개변수 타입만 다르게 여러 개 둘 수 있습니다(2장의 오버로딩). 링커는 타입을 모르므로, 컴파일러가 타입 정보를 심벌 이름에 넣어 구분합니다. 문제는 C로 컴파일된 라이브러리입니다. 그 안의 심벌은 그냥 <code>add</code>인데, C++ 쪽은 <code>_Z3addii</code>를 찾으니 링크가 실패합니다. 해결책이 <code>extern "C"</code>이고, C/C++ 양쪽에서 쓰는 헤더는 보통 이렇게 생겼습니다.</p>
+<c file="sensor.h">
+#ifndef SENSOR_H
+#define SENSOR_H
+
+#ifdef __cplusplus
+extern "C" {          /* C++ compilers: use C linkage (no mangling) */
+#endif
+
+int  sensor_open(const char *dev);
+int  sensor_read(int fd, short *out, int count);
+void sensor_close(int fd);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* SENSOR_H */
+</c>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>C++의 설계 원칙은 <strong>제로 오버헤드</strong>입니다. Stroustrup의 표현을 빌리면 "쓰지 않는 것에는 비용을 내지 않고, 쓰는 것은 손으로 짜도 더 낫게 만들 수 없다"입니다. 가상 함수를 쓰지 않는 클래스는 C 구조체와 크기가 같고, 템플릿은 컴파일 타임에 펼쳐지며, <code>std::array</code>는 C 배열과 메모리 배치가 같습니다. 펌웨어나 커널 가까운 코드에서도 C++을 쓸 수 있는 이유입니다. 다만 예외, RTTI, 동적 할당처럼 비용이 있는 기능은 프로젝트마다 끄거나 제한합니다(<code>-fno-exceptions</code>, <code>-fno-rtti</code>).</p>
+  </div>
+
+  <h3>C++은 C의 상위 집합이 아니다</h3>
+  <p>"C 코드는 C++ 컴파일러로도 컴파일된다"는 말은 대체로 맞지만 완전히 맞지는 않습니다. C++은 타입 검사가 더 엄격하고, 키워드가 더 많고, 몇몇 규칙이 다릅니다. 아래 벤치에서 직접 판정해 보세요. 확신이 없으면 아래 실행 예제에 코드를 붙여 넣고 컴파일러에게 물어보면 됩니다.</p>
+
+  <div class="bench" id="b-compat">
+    <header><b>실습 벤치 1-A · 이 C 코드, C++에서도 될까?</b><span>CLASSIFY · 8 ITEMS</span></header>
+    <div class="body">
+      <div id="compatList"></div>
+      <div class="row"><button type="button" class="btn" id="compatListReset">다시 하기</button></div>
+      <div class="status" id="compatScore"></div>
+    </div>
+  </div>
+<run file="compat.cpp" expect="error">
+#include <cstdio>
+#include <cstdlib>
+
+int main() {
+    // Try each line from the bench. This one fails in C++:
+    int *p = malloc(sizeof *p);          // error: invalid conversion from void* to int*
+    // Fix: int *p = static_cast<int*>(std::malloc(sizeof *p));
+    std::printf("sizeof('a') = %zu\n", sizeof('a'));
+    std::free(p);
+}
+</run>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p>C 프로젝트에 C++ 파일을 섞을 때 <code>main</code>은 C++ 쪽에 두는 편이 안전합니다. 전역 객체의 생성자 실행과 예외 처리 런타임 초기화를 C++ 런타임이 맡기 때문입니다. 링크도 <code>gcc</code>가 아니라 <code>g++</code>로 해야 <code>libstdc++</code>이 따라옵니다.</p>
+  </div>
+  <p>다음 장에서는 클래스 없이도 바로 쓸 수 있는 "더 나은 C" 기능들, 즉 참조, <code>const</code>/<code>constexpr</code>, 오버로딩을 봅니다.</p>
+
+  <div class="quiz" data-quiz="ch1"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch1" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

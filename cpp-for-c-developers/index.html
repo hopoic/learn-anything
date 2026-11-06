@@ -1,0 +1,2214 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>C 개발자를 위한 C++ 교본</title>
+<meta name="description" content="C를 아는 개발자를 위한 인터랙티브 C++ 교본. 브라우저에서 바로 컴파일하고 실행해 볼 수 있습니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/book.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%230A6E8C'/%3E%3Ctext x='32' y='42' font-size='26' text-anchor='middle' fill='white' font-family='monospace'%3EC++%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<div class="shell">
+<aside class="toc" aria-label="목차">
+  <details id="tocd" open>
+    <summary>목차 <span class="meter" id="meter">0 / 12 완료</span></summary>
+    <ol id="tocl">
+      <li class="part">Part I · C에서 C++로</li>
+      <li><a href="#ch1"><span class="n">01</span>C 개발자를 위한 C++ 지도<span class="chk" data-c="ch1"></span></a></li>
+      <li><a href="#ch2"><span class="n">02</span>더 나은 C: 참조·const·오버로딩<span class="chk" data-c="ch2"></span></a></li>
+      <li><a href="#ch3"><span class="n">03</span>클래스: 데이터와 함수를 묶다<span class="chk" data-c="ch3"></span></a></li>
+      <li class="part">Part II · 자원과 수명</li>
+      <li><a href="#ch4"><span class="n">04</span>RAII와 객체 수명<span class="chk" data-c="ch4"></span></a></li>
+      <li><a href="#ch5"><span class="n">05</span>복사와 이동<span class="chk" data-c="ch5"></span></a></li>
+      <li><a href="#ch6"><span class="n">06</span>동적 메모리와 스마트 포인터<span class="chk" data-c="ch6"></span></a></li>
+      <li class="part">Part III · 추상화</li>
+      <li><a href="#ch7"><span class="n">07</span>상속과 다형성<span class="chk" data-c="ch7"></span></a></li>
+      <li><a href="#ch8"><span class="n">08</span>템플릿과 컨셉트<span class="chk" data-c="ch8"></span></a></li>
+      <li><a href="#ch9"><span class="n">09</span>STL과 람다<span class="chk" data-c="ch9"></span></a></li>
+      <li class="part">Part IV · 현대 C++ 실무</li>
+      <li><a href="#ch10"><span class="n">10</span>오류 처리: 예외·optional·expected<span class="chk" data-c="ch10"></span></a></li>
+      <li><a href="#ch11"><span class="n">11</span>모던 C++ 도구 상자<span class="chk" data-c="ch11"></span></a></li>
+      <li><a href="#ch12"><span class="n">12</span>실전: 미니 KV 저장소<span class="chk" data-c="ch12"></span></a></li>
+      <li class="part">부록</li>
+      <li><a href="#glossary"><span class="n">A</span>용어집 · C↔C++ 대응표</a></li>
+      <li><a href="#refs"><span class="n">B</span>참고 자료</a></li>
+      <li><a href="#playground"><span class="n">C</span>코드 놀이터</a></li>
+    </ol>
+  </details>
+  <div class="engine">
+    <label for="engineSel">실행 엔진</label>
+    <select id="engineSel">
+      <option value="auto">자동 (온라인 GCC → 브라우저 내장)</option>
+      <option value="wandbox">Wandbox · GCC (온라인)</option>
+      <option value="godbolt">Compiler Explorer · GCC (온라인)</option>
+      <option value="local">브라우저 내장 Clang (오프라인)</option>
+    </select>
+    <div class="row"><select id="stdSel" aria-label="C++ 표준"><option>c++17</option><option selected>c++20</option><option>c++23</option></select><select id="optSel" aria-label="최적화"><option value="0">-O0</option><option value="1">-O1</option><option value="2" selected>-O2</option></select></div>
+    <div class="es" id="engineStatus"></div>
+  </div>
+  <button class="theme-btn" id="themeBtn" type="button">테마 전환 (시스템 / 라이트 / 다크)</button>
+</aside>
+
+<main>
+<header class="cover col">
+  <div class="kicker">Field Manual · C → C++ · 2026 Edition</div>
+  <h1>C 개발자를 위한 C++ 교본</h1>
+  <div class="formula" aria-label="C++ equals C plus RAII plus Types plus Templates">
+    <span class="term">C++</span><span class="op">=</span><span class="term">C</span><span class="op">+</span><span class="term h">RAII</span><span class="op">+</span><span class="term">타입</span><span class="op">+</span><span class="term">템플릿</span>
+  </div>
+  <p class="lede">C를 이미 아는 사람에게 C++은 새 언어라기보다 “C로 늘 손으로 하던 일을 컴파일러가 대신 지켜 주는 언어”입니다. 이 책은 그 차이를 하나씩, 직접 컴파일하고 실행해 보며 익히도록 만들었습니다. 모든 <code>▶ 실행</code> 버튼은 진짜 컴파일러를 돌립니다.</p>
+  <div class="stats"><span><b>12</b>개 장</span><span><b>35</b>개 실행 예제</span><span><b>7</b>개 실습 벤치</span><span><b>24</b>개 확인 문제</span><span><b>1</b>개 완성 프로젝트</span></div>
+</header>
+
+<section class="col" id="howto" style="padding-block:8px 8px">
+  <div class="call key"><span class="lab">이 책 사용법</span>
+    <ul>
+      <li><b>▶ 실행</b>: 예제를 컴파일하고 실행합니다. <b>편집</b>을 누르면 코드를 고칠 수 있고, 편집 중에는 <code>Ctrl/⌘ + Enter</code>로 바로 실행됩니다. 표준 입력이 필요한 예제는 출력 창의 <b>stdin</b>에 값을 넣으세요.</li>
+      <li><b>실행 엔진</b>(왼쪽 목차 아래): 기본값 <b>자동</b>은 온라인 GCC(Wandbox → Compiler Explorer)를 먼저 쓰고, 네트워크가 막히면 브라우저 안에서 도는 Clang(WebAssembly)으로 넘어갑니다.</li>
+      <li><b>브라우저 내장 엔진</b>은 처음 한 번 약 23MB(압축 전송)를 받은 뒤 캐시하며, 코드가 외부 서버로 나가지 않습니다. 대신 <b>예외(throw/try)와 스레드는 지원하지 않습니다.</b> 10장 예외 예제는 온라인 엔진에서 실행하세요.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ CH1 ============ -->
+<section class="chapter col" id="ch1">
+  <div class="eyebrow">Part I · C에서 C++로 — 1장</div>
+  <h2>C 개발자를 위한 C++ 지도</h2>
+  <p class="goal">이 장을 마치면: C++이 C와 어떤 관계인지 설명할 수 있고, 첫 C++ 프로그램을 컴파일·실행할 수 있으며, C 코드를 C++로 옮길 때 깨지는 지점과 <code>extern "C"</code>가 필요한 이유를 말할 수 있습니다.</p>
+
+  <h3>C++은 C 위에 쌓아 올린 언어다</h3>
+  <p>C++은 Bjarne Stroustrup이 1979년 벨 연구소에서 "C with Classes"라는 이름으로 시작해 1983년에 지금 이름을 얻었습니다. 출발점은 단순했습니다. <strong>C의 효율과 하드웨어 접근성은 그대로 두고, 큰 프로그램을 짤 때 필요한 추상화 도구를 더한다.</strong> 그래서 C++의 거의 모든 기능은 "C로 손으로 하던 패턴"을 언어가 직접 지원하도록 만든 것입니다. 구조체와 그 구조체를 다루는 함수 묶음은 클래스가 되었고, <code>init</code>/<code>cleanup</code> 짝은 생성자/소멸자가 되었고, 함수 포인터 테이블은 가상 함수가 되었고, 매크로로 흉내 내던 제네릭 코드는 템플릿이 되었습니다.</p>
+  <p>표준은 크게 두 시대로 나뉩니다. C++98/03이 "클래식 C++"이라면, <strong>C++11부터를 모던 C++</strong>이라고 부릅니다. 이동 의미론, 스마트 포인터, 람다, <code>auto</code>가 이때 들어오면서 C++ 코드의 모습이 크게 바뀌었습니다. 이 책은 C++20을 기본으로 쓰고, 필요한 곳에서 C++23 기능을 표시해 둡니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>표준</th><th>대표 기능</th><th>이 책에서</th></tr></thead>
+    <tbody>
+      <tr><td>C++98/03</td><td>클래스, 상속, 템플릿, 예외, STL</td><td>3·7·8·9·10장</td></tr>
+      <tr><td>C++11</td><td>이동 의미론, <code>unique_ptr</code>/<code>shared_ptr</code>, 람다, <code>auto</code>, <code>constexpr</code>, <code>nullptr</code>, 범위 for</td><td>2·5·6·9장</td></tr>
+      <tr><td>C++14/17</td><td><code>make_unique</code>, 구조적 바인딩, <code>optional</code>, <code>string_view</code>, 보장된 복사 생략</td><td>5·10·11장</td></tr>
+      <tr><td>C++20</td><td>컨셉트, 레인지, <code>span</code>, <code>std::format</code>, 모듈, 코루틴</td><td>8·9·11장</td></tr>
+      <tr><td>C++23</td><td><code>std::expected</code>, <code>std::print</code></td><td>10·12장</td></tr>
+      <tr><td>C++26</td><td>정적 리플렉션, 계약(contracts), <code>std::execution</code></td><td>표준 위원회가 2026년 3월 기술 작업을 마쳤고, ISO 발행 절차가 진행 중</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>첫 프로그램: printf에서 std::cout으로</h3>
+  <p>아래 예제를 <b>▶ 실행</b>해 보세요. C의 <code>printf</code>도 그대로 쓸 수 있다는 점, 그리고 C++의 출력은 <code>&lt;&lt;</code> 연산자로 값을 "흘려보내는" 방식이라는 점을 보면 됩니다.</p>
+<div class="code run"><div class="bar"><span class="fn">hello.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;cstdio&gt;     // C headers keep working: &lt;stdio.h&gt; becomes &lt;cstdio&gt;
+#include &lt;iostream&gt;   // C++ streams
+#include &lt;string&gt;
+
+int main() {
+    std::printf("printf still works: %d\n", 42);
+
+    std::string name = "C++";            // a real string type, no buffer sizes
+    int year = 1983;
+    std::cout &lt;&lt; "Hello from " &lt;&lt; name &lt;&lt; ", named in " &lt;&lt; year &lt;&lt; '\n';
+
+    name += " is " + std::to_string(2026 - year) + " years old";
+    std::cout &lt;&lt; name &lt;&lt; " (length " &lt;&lt; name.size() &lt;&lt; ")\n";
+    return 0;
+}
+</code></pre></div>
+  <p>몇 가지가 눈에 띕니다. <code>std::</code>는 <strong>네임스페이스</strong>입니다. 표준 라이브러리의 이름은 모두 <code>std</code> 안에 있어서, 여러분의 <code>string</code>이나 <code>count</code>와 충돌하지 않습니다. <code>std::cout &lt;&lt; x</code>는 형식 지정자 없이 타입을 보고 알맞은 출력 함수를 고릅니다. <code>%d</code>에 <code>double</code>을 넘기는 실수가 원천적으로 사라집니다. 그리고 <code>std::string</code>은 길이를 알고, 스스로 메모리를 늘리고, 스코프를 벗어나면 스스로 해제합니다. 이 마지막 성질이 4장의 주제입니다.</p>
+  <p>입력도 같은 방식입니다. 이 예제는 표준 입력이 미리 채워져 있습니다. 출력 창의 <b>stdin</b>을 바꿔 다시 실행해 보세요.</p>
+<div class="code run" data-stdin="3 10 20 30&#10;Kim"><div class="bar"><span class="fn">sum.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+int main() {
+    int n = 0;
+    std::cin &gt;&gt; n;                       // no &amp;n, no format string
+
+    std::vector&lt;int&gt; values(n);          // dynamic array sized at run time
+    for (int&amp; v : values) std::cin &gt;&gt; v; // range-for with a reference
+
+    long sum = 0;
+    for (int v : values) sum += v;
+
+    std::string who;
+    std::cin &gt;&gt; who;
+    std::cout &lt;&lt; who &lt;&lt; ", sum of " &lt;&lt; n &lt;&lt; " values = " &lt;&lt; sum &lt;&lt; '\n';
+}
+</code></pre></div>
+
+  <h3>컴파일 모델은 그대로다 — 이름만 바뀐다</h3>
+  <p>C++도 C와 똑같이 <strong>전처리 → 컴파일 → 링크</strong>를 거칩니다. 헤더와 소스를 나누고, 헤더 가드를 쓰고, 오브젝트 파일을 링커가 묶습니다. Makefile이나 CMake 지식도 그대로 씁니다. 결정적으로 다른 점은 하나, <strong>이름 맹글링(name mangling)</strong>입니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 190" role="img" aria-label="C++ 빌드 파이프라인과 이름 맹글링">
+      <rect class="sv-r0" x="4" y="40" width="110" height="56" rx="6"/><text class="sv-t" x="59" y="64" text-anchor="middle">main.cpp</text><text class="sv-m" x="59" y="82" text-anchor="middle">+ headers</text>
+      <path class="sv-ln" d="M114 68 H150"/><path class="sv-ln" d="M144 63 l6 5 -6 5"/>
+      <rect class="sv-r1" x="150" y="40" width="110" height="56" rx="6"/><text class="sv-t" x="205" y="64" text-anchor="middle">전처리</text><text class="sv-m" x="205" y="82" text-anchor="middle">cpp (#include)</text>
+      <path class="sv-ln" d="M260 68 H296"/><path class="sv-ln" d="M290 63 l6 5 -6 5"/>
+      <rect class="sv-r2" x="296" y="40" width="130" height="56" rx="6"/><text class="sv-t" x="361" y="64" text-anchor="middle">컴파일</text><text class="sv-m" x="361" y="82" text-anchor="middle">cc1plus → main.o</text>
+      <path class="sv-ln" d="M426 68 H462"/><path class="sv-ln" d="M456 63 l6 5 -6 5"/>
+      <rect class="sv-core" x="462" y="40" width="170" height="56" rx="6"/><text class="sv-core-t" x="547" y="73" text-anchor="middle">링크 → a.out</text>
+      <text class="sv-t" x="361" y="128" text-anchor="middle">int add(int, int)  →  심벌 _Z3addii</text>
+      <text class="sv-t" x="361" y="150" text-anchor="middle">double add(double, double)  →  _Z3adddd</text>
+      <text class="sv-m" x="361" y="176" text-anchor="middle">C에서는 둘 다 그냥 "add" — 그래서 C에는 오버로딩이 없다</text>
+      <path class="sv-ac" d="M361 96 V112"/>
+    </svg>
+    <figcaption>그림 1-1. 빌드 단계는 C와 같다. 다만 C++ 컴파일러는 함수 이름에 매개변수 타입을 섞어 심벌을 만든다.</figcaption>
+  </figure>
+  <p>C++은 같은 이름의 함수를 매개변수 타입만 다르게 여러 개 둘 수 있습니다(2장의 오버로딩). 링커는 타입을 모르므로, 컴파일러가 타입 정보를 심벌 이름에 넣어 구분합니다. 문제는 C로 컴파일된 라이브러리입니다. 그 안의 심벌은 그냥 <code>add</code>인데, C++ 쪽은 <code>_Z3addii</code>를 찾으니 링크가 실패합니다. 해결책이 <code>extern "C"</code>이고, C/C++ 양쪽에서 쓰는 헤더는 보통 이렇게 생겼습니다.</p>
+<div class="code"><div class="bar"><span class="fn">sensor.h</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="c">#ifndef SENSOR_H
+#define SENSOR_H
+
+#ifdef __cplusplus
+extern "C" {          /* C++ compilers: use C linkage (no mangling) */
+#endif
+
+int  sensor_open(const char *dev);
+int  sensor_read(int fd, short *out, int count);
+void sensor_close(int fd);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* SENSOR_H */
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>C++의 설계 원칙은 <strong>제로 오버헤드</strong>입니다. Stroustrup의 표현을 빌리면 "쓰지 않는 것에는 비용을 내지 않고, 쓰는 것은 손으로 짜도 더 낫게 만들 수 없다"입니다. 가상 함수를 쓰지 않는 클래스는 C 구조체와 크기가 같고, 템플릿은 컴파일 타임에 펼쳐지며, <code>std::array</code>는 C 배열과 메모리 배치가 같습니다. 펌웨어나 커널 가까운 코드에서도 C++을 쓸 수 있는 이유입니다. 다만 예외, RTTI, 동적 할당처럼 비용이 있는 기능은 프로젝트마다 끄거나 제한합니다(<code>-fno-exceptions</code>, <code>-fno-rtti</code>).</p>
+  </div>
+
+  <h3>C++은 C의 상위 집합이 아니다</h3>
+  <p>"C 코드는 C++ 컴파일러로도 컴파일된다"는 말은 대체로 맞지만 완전히 맞지는 않습니다. C++은 타입 검사가 더 엄격하고, 키워드가 더 많고, 몇몇 규칙이 다릅니다. 아래 벤치에서 직접 판정해 보세요. 확신이 없으면 아래 실행 예제에 코드를 붙여 넣고 컴파일러에게 물어보면 됩니다.</p>
+
+  <div class="bench" id="b-compat">
+    <header><b>실습 벤치 1-A · 이 C 코드, C++에서도 될까?</b><span>CLASSIFY · 8 ITEMS</span></header>
+    <div class="body">
+      <div id="compatList"></div>
+      <div class="row"><button type="button" class="btn" id="compatListReset">다시 하기</button></div>
+      <div class="status" id="compatScore"></div>
+    </div>
+  </div>
+<div class="code run"><div class="bar"><span class="fn">compat.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;cstdio&gt;
+#include &lt;cstdlib&gt;
+
+int main() {
+    // Try each line from the bench. This one fails in C++:
+    int *p = malloc(sizeof *p);          // error: invalid conversion from void* to int*
+    // Fix: int *p = static_cast&lt;int*&gt;(std::malloc(sizeof *p));
+    std::printf("sizeof('a') = %zu\n", sizeof('a'));
+    std::free(p);
+}
+</code></pre></div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p>C 프로젝트에 C++ 파일을 섞을 때 <code>main</code>은 C++ 쪽에 두는 편이 안전합니다. 전역 객체의 생성자 실행과 예외 처리 런타임 초기화를 C++ 런타임이 맡기 때문입니다. 링크도 <code>gcc</code>가 아니라 <code>g++</code>로 해야 <code>libstdc++</code>이 따라옵니다.</p>
+  </div>
+  <p>다음 장에서는 클래스 없이도 바로 쓸 수 있는 "더 나은 C" 기능들, 즉 참조, <code>const</code>/<code>constexpr</code>, 오버로딩을 봅니다.</p>
+
+  <div class="quiz" data-quiz="ch1"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch1" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH2 ============ -->
+<section class="chapter col" id="ch2">
+  <div class="eyebrow">Part I · C에서 C++로 — 2장</div>
+  <h2>더 나은 C: 참조·const·오버로딩</h2>
+  <p class="goal">이 장을 마치면: 포인터 대신 참조를 써야 할 때를 구분하고, 매크로를 <code>constexpr</code>·인라인 함수·템플릿으로 바꿀 수 있으며, 오버로딩·기본 인자·<code>auto</code>·중괄호 초기화를 C 코드 개선에 바로 쓸 수 있습니다.</p>
+  <p>1장에서 C++이 C 위에 쌓은 언어라고 했습니다. 이 장의 기능들은 클래스가 없어도 쓸 수 있어서, 기존 C 코드를 C++로 옮길 때 가장 먼저 효과를 봅니다.</p>
+
+  <h3>참조는 '널이 될 수 없는 별명'이다</h3>
+  <p>C에서 함수가 인자를 수정하려면 포인터를 넘깁니다. 그러면 함수는 늘 "이 포인터가 NULL이면?"을 걱정해야 하고, 호출하는 쪽은 <code>&amp;</code>를 잊지 말아야 합니다. C++의 <strong>참조(reference)</strong>는 이미 존재하는 객체에 붙인 또 하나의 이름입니다. 선언할 때 반드시 초기화해야 하고, 다른 객체를 가리키도록 바꿀 수 없고, 널 참조라는 것이 (정상적인 코드에서는) 없습니다.</p>
+  <div class="tabs" data-tabs>
+    <div role="tablist"><button type="button" role="tab" aria-selected="true">C: 포인터</button><button type="button" role="tab" aria-selected="false">C++: 참조</button></div>
+    <div class="panel">
+<div class="code"><div class="bar"><span class="fn">swap.c</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="c">void swap(int *a, int *b) {
+    if (!a || !b) return;      /* defensive NULL checks everywhere */
+    int t = *a; *a = *b; *b = t;
+}
+/* call site: swap(&amp;x, &amp;y); */
+</code></pre></div>
+    </div>
+    <div class="panel" hidden>
+<div class="code"><div class="bar"><span class="fn">swap.cpp</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="cpp">void swap(int&amp; a, int&amp; b) {   // a and b ARE the caller's variables
+    int t = a; a = b; b = t;
+}
+// call site: swap(x, y);
+</code></pre></div>
+    </div>
+  </div>
+  <p>참조의 진짜 쓸모는 <strong>큰 객체를 복사 없이 읽기 전용으로 넘기는 것</strong>입니다. C에서 <code>const struct config *cfg</code>로 넘기던 것을 C++에서는 <code>const Config&amp; cfg</code>로 넘깁니다. 기계어는 사실상 같고(대개 주소가 넘어갑니다), 호출부는 값처럼 깔끔합니다.</p>
+<div class="code run"><div class="bar"><span class="fn">refs.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+struct Config {
+    std::string device = "/dev/ttyUSB0";
+    int baud = 115200;
+    std::vector&lt;int&gt; channels{1, 2, 3, 4};
+};
+
+// Read-only, no copy: const reference
+void print(const Config&amp; c) {
+    std::cout &lt;&lt; c.device &lt;&lt; " @ " &lt;&lt; c.baud &lt;&lt; " baud, " &lt;&lt; c.channels.size() &lt;&lt; " channels\n";
+}
+
+// Output parameter: non-const reference
+void enable_fast_mode(Config&amp; c) {
+    c.baud = 921600;
+    c.channels.push_back(5);
+}
+
+int main() {
+    Config cfg;
+    print(cfg);
+    enable_fast_mode(cfg);   // no &amp;cfg needed
+    print(cfg);
+
+    int x = 10;
+    int&amp; alias = x;          // alias is just another name for x
+    alias += 5;
+    std::cout &lt;&lt; "x = " &lt;&lt; x &lt;&lt; ", &amp;x == &amp;alias: " &lt;&lt; std::boolalpha &lt;&lt; (&amp;x == &amp;alias) &lt;&lt; '\n';
+}
+</code></pre></div>
+  <div class="call key"><span class="lab">매개변수 전달 규칙(기본값)</span>
+    <ul>
+      <li>작은 값(<code>int</code>, <code>double</code>, 포인터, 작은 구조체) → <b>값</b>으로: <code>f(int n)</code></li>
+      <li>큰 객체를 읽기만 → <b>const 참조</b>: <code>f(const std::string&amp; s)</code></li>
+      <li>호출자의 객체를 수정 → <b>참조</b>: <code>f(Config&amp; c)</code></li>
+      <li>"없을 수도 있음"이 의미가 있으면 → <b>포인터</b> 또는 <code>std::optional</code>(10장)</li>
+    </ul>
+  </div>
+
+  <h3>매크로를 은퇴시키는 세 가지 도구</h3>
+  <p>C 코드베이스의 매크로는 대개 세 종류입니다. 상수, 짧은 함수, 타입에 무관한 코드. C++은 셋 모두에 타입과 스코프가 있는 대안을 줍니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>C 매크로</th><th>C++ 대안</th><th>얻는 것</th></tr></thead>
+    <tbody>
+      <tr><td><code>#define BUF_SIZE 256</code></td><td><code>constexpr std::size_t BUF_SIZE = 256;</code></td><td>타입, 스코프, 디버거에서 보임</td></tr>
+      <tr><td><code>#define SQUARE(x) ((x)*(x))</code></td><td><code>constexpr int square(int x) { return x*x; }</code></td><td>인자가 한 번만 평가됨, 타입 검사</td></tr>
+      <tr><td><code>#define MAX(a,b) ((a)&gt;(b)?(a):(b))</code></td><td><code>template&lt;class T&gt; T max(T a, T b)</code> 또는 <code>std::max</code></td><td>모든 타입에 대해, 부작용 없이</td></tr>
+    </tbody>
+  </table></div>
+  <p>매크로의 고전적인 버그를 직접 보세요. <code>MAX(i++, j)</code>는 <code>i</code>를 두 번 증가시킬 수 있습니다. 그리고 <code>constexpr</code> 함수는 <strong>컴파일 타임에 계산</strong>될 수 있어서, 배열 크기나 <code>static_assert</code>에 쓸 수 있습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">macros.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;algorithm&gt;
+#include &lt;array&gt;
+#include &lt;iostream&gt;
+
+#define MAX(a, b) ((a) &gt; (b) ? (a) : (b))
+
+constexpr int square(int x) { return x * x; }
+
+constexpr unsigned crc_table_size(unsigned bits) { return 1u &lt;&lt; bits; }
+
+int main() {
+    int i = 5, j = 3;
+    int m = MAX(i++, j);             // i++ is evaluated twice!
+    std::cout &lt;&lt; "macro:  m=" &lt;&lt; m &lt;&lt; " i=" &lt;&lt; i &lt;&lt; '\n';
+
+    i = 5;
+    int n = std::max(i++, j);        // evaluated exactly once
+    std::cout &lt;&lt; "std::max: n=" &lt;&lt; n &lt;&lt; " i=" &lt;&lt; i &lt;&lt; '\n';
+
+    // Computed by the compiler: usable as an array size and in static_assert
+    std::array&lt;unsigned, crc_table_size(8)&gt; table{};
+    static_assert(square(12) == 144, "math is broken");
+    std::cout &lt;&lt; "table size = " &lt;&lt; table.size() &lt;&lt; '\n';
+}
+</code></pre></div>
+
+  <h3>같은 이름, 다른 매개변수: 오버로딩과 기본 인자</h3>
+  <p>C에서는 <code>print_int</code>, <code>print_double</code>, <code>print_str</code>처럼 타입마다 이름을 지어야 했습니다. C++에서는 이름 하나에 매개변수 타입만 다르게 여러 함수를 둘 수 있고, 컴파일러가 인자 타입을 보고 고릅니다(그림 1-1의 맹글링이 이것을 가능하게 합니다). <strong>기본 인자</strong>는 자주 쓰는 값을 생략하게 해 줍니다.</p>
+<div class="code run"><div class="bar"><span class="fn">overload.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;cstdint&gt;
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+
+namespace hw {                       // namespaces replace prefixes like hw_...
+    void write(std::uint32_t addr, std::uint32_t value, bool verbose = false) {
+        if (verbose) std::cout &lt;&lt; "[write32] ";
+        std::cout &lt;&lt; std::hex &lt;&lt; "0x" &lt;&lt; addr &lt;&lt; " &lt;- 0x" &lt;&lt; value &lt;&lt; std::dec &lt;&lt; '\n';
+    }
+    void write(std::uint32_t addr, const std::string&amp; text) {
+        std::cout &lt;&lt; "0x" &lt;&lt; std::hex &lt;&lt; addr &lt;&lt; std::dec &lt;&lt; " &lt;- \"" &lt;&lt; text &lt;&lt; "\"\n";
+    }
+}
+
+int main() {
+    hw::write(0x40021000, 0x1);              // default verbose = false
+    hw::write(0x40021000, 0x3, true);
+    hw::write(0x20000000, std::string("boot"));
+
+    using hw::write;                        // bring one name into scope
+    write(0x40000000, 0xFF);
+}
+</code></pre></div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p>오버로딩은 정확한 일치, 승격, 변환 순으로 후보를 고릅니다. <code>f(long)</code>과 <code>f(double)</code>만 있을 때 <code>f(1)</code>은 둘 다 '변환'이라 모호하다는 오류가 납니다. 또 <code>f(int*)</code>와 <code>f(int)</code>가 있을 때 <code>f(NULL)</code>은 <code>f(int)</code>를 부를 수 있습니다. 그래서 C++11부터는 널 포인터에 <code>nullptr</code>를 씁니다.</p>
+  </div>
+
+  <h3>auto, 범위 for, 중괄호 초기화</h3>
+  <p><code>auto</code>는 초기화 식에서 타입을 추론합니다. 동적 타입이 아니라, 컴파일러가 타입을 대신 적어 주는 것입니다. 범위 for는 배열과 컨테이너를 인덱스 없이 순회합니다. 중괄호 초기화 <code>{}</code>는 어디서나 같은 문법으로 초기화하면서, 정보가 사라지는 <strong>축소 변환(narrowing)</strong>을 막아 줍니다. 상수라면 컴파일 오류, 변수라면 GCC는 경고(<code>-Wnarrowing</code>)·Clang은 오류를 냅니다. 아래 예제는 일부러 컴파일되지 않습니다. 오류 메시지를 읽고 고쳐서 실행해 보세요(<b>편집</b>).</p>
+<div class="code run"><div class="bar"><span class="fn">init.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;map&gt;
+#include &lt;string&gt;
+
+int main() {
+    double ratio = 3.7;
+    int a = ratio;          // C-style: silently truncates to 3
+    int b{3.7};             // brace init: compile ERROR (narrowing) - fix me!
+
+    std::map&lt;std::string, int&gt; ports{{"uart", 1}, {"spi", 2}, {"i2c", 3}};
+    for (const auto&amp; [name, id] : ports)     // auto + structured binding
+        std::cout &lt;&lt; name &lt;&lt; " -&gt; " &lt;&lt; id &lt;&lt; '\n';
+
+    int* p = nullptr;       // not NULL, not 0
+    std::cout &lt;&lt; a &lt;&lt; ' ' &lt;&lt; b &lt;&lt; ' ' &lt;&lt; (p == nullptr) &lt;&lt; '\n';
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p><code>auto</code>를 "타입을 숨기는 것"으로 느낄 수 있습니다. 기준은 간단합니다. 타입이 오른쪽에 이미 보이거나(<code>auto p = std::make_unique&lt;Dev&gt;()</code>) 타입 이름이 길고 의미가 없을 때(<code>std::map&lt;std::string, int&gt;::const_iterator</code>) 쓰고, 숫자 타입처럼 정확한 크기가 중요할 때는 명시하세요. <code>auto x = 0;</code>은 <code>int</code>이지 <code>uint32_t</code>가 아닙니다.</p>
+  </div>
+  <p>여기까지가 "클래스 없는 C++"입니다. 다음 장에서는 C에서 구조체와 함수 묶음으로 만들던 모듈을 클래스로 옮깁니다.</p>
+
+  <div class="quiz" data-quiz="ch2"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch2" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH3 ============ -->
+<section class="chapter col" id="ch3">
+  <div class="eyebrow">Part I · C에서 C++로 — 3장</div>
+  <h2>클래스: 데이터와 함수를 묶다</h2>
+  <p class="goal">이 장을 마치면: C의 "구조체 + 함수 묶음" 모듈을 클래스로 옮길 수 있고, 생성자·소멸자·접근 제어·<code>const</code> 멤버 함수로 불변식(invariant)을 지키는 타입을 설계할 수 있으며, 연산자 오버로딩으로 값 타입을 자연스럽게 쓰게 만들 수 있습니다.</p>
+  <p>2장의 참조와 <code>const</code>는 이 장에서 바로 쓰입니다. 클래스의 멤버 함수는 결국 "<code>this</code>라는 숨은 포인터를 받는 함수"이기 때문입니다.</p>
+
+  <h3>모든 클래스는 C의 모듈 패턴에서 출발한다</h3>
+  <p>C로 링 버퍼를 만든다면 대개 이렇게 합니다. 구조체 하나, 그 구조체 포인터를 첫 인자로 받는 함수들, 그리고 "<code>ring_init</code>을 먼저 부르고 내부 필드는 직접 건드리지 마세요"라는 주석.</p>
+<div class="code"><div class="bar"><span class="fn">ring.c</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="c">typedef struct {
+    int    data[8];
+    size_t head, tail, count;
+} ring_t;
+
+void ring_init(ring_t *r)            { r-&gt;head = r-&gt;tail = r-&gt;count = 0; }
+int  ring_push(ring_t *r, int v)     { if (r-&gt;count == 8) return -1; r-&gt;data[r-&gt;tail] = v;
+                                       r-&gt;tail = (r-&gt;tail + 1) % 8; r-&gt;count++; return 0; }
+int  ring_pop(ring_t *r, int *out)   { if (r-&gt;count == 0) return -1; *out = r-&gt;data[r-&gt;head];
+                                       r-&gt;head = (r-&gt;head + 1) % 8; r-&gt;count--; return 0; }
+/* Rule by comment: "never touch head/tail/count directly; always call ring_init first" */
+</code></pre></div>
+  <p>클래스는 이 관례를 <strong>컴파일러가 강제하는 규칙</strong>으로 바꿉니다. 함수를 구조체 안으로 옮기면 멤버 함수가 되고, 첫 인자 <code>r</code>은 암묵적인 <code>this</code>가 되고, "직접 건드리지 마세요"는 <code>private</code>이 되고, "<code>ring_init</code>을 먼저 부르세요"는 생성자가 됩니다.</p>
+<div class="code run"><div class="bar"><span class="fn">ring.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;array&gt;
+#include &lt;cstddef&gt;
+#include &lt;iostream&gt;
+#include &lt;optional&gt;
+
+class RingBuffer {
+public:
+    RingBuffer() = default;                 // members below already have initial values
+
+    bool push(int v) {
+        if (full()) return false;
+        data_[tail_] = v;
+        tail_ = (tail_ + 1) % data_.size();
+        ++count_;
+        return true;
+    }
+    std::optional&lt;int&gt; pop() {              // "maybe a value" without an out-parameter
+        if (empty()) return std::nullopt;
+        int v = data_[head_];
+        head_ = (head_ + 1) % data_.size();
+        --count_;
+        return v;
+    }
+    bool empty() const { return count_ == 0; }          // const: does not modify *this
+    bool full() const { return count_ == data_.size(); }
+    std::size_t size() const { return count_; }
+
+private:                                    // the invariant lives here, out of reach
+    std::array&lt;int, 8&gt; data_{};
+    std::size_t head_ = 0, tail_ = 0, count_ = 0;
+};
+
+int main() {
+    RingBuffer rb;                          // constructed: no "forgot to init" bug possible
+    for (int i = 1; i &lt;= 10; ++i)
+        if (!rb.push(i * 10)) std::cout &lt;&lt; "full, dropped " &lt;&lt; i * 10 &lt;&lt; '\n';
+
+    while (auto v = rb.pop()) std::cout &lt;&lt; *v &lt;&lt; ' ';
+    std::cout &lt;&lt; "\nsize=" &lt;&lt; rb.size() &lt;&lt; ", sizeof(RingBuffer)=" &lt;&lt; sizeof(RingBuffer) &lt;&lt; '\n';
+    // rb.count_ = 3;   // uncomment: error, 'count_' is private
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p><code>rb.push(10)</code>은 기계어 수준에서 <code>RingBuffer::push(&amp;rb, 10)</code>과 같습니다. 멤버 함수는 객체 안에 저장되지 않으므로 <code>sizeof(RingBuffer)</code>는 데이터 멤버의 크기 합(+정렬)뿐입니다. 위 예제의 출력을 보면 C 구조체와 똑같은 56바이트(64비트 기준)입니다. 클래스는 메모리 배치에 비용을 더하지 않습니다. 비용이 생기는 것은 7장의 <code>virtual</code>을 쓸 때뿐입니다.</p>
+  </div>
+
+  <h3>생성자는 불변식을 세우고, 소멸자는 거둔다</h3>
+  <p><strong>불변식(invariant)</strong>은 객체가 살아 있는 동안 늘 참이어야 하는 조건입니다. 링 버퍼라면 "<code>count_ ≤ 8</code>이고 <code>head_</code>, <code>tail_</code>은 범위 안"입니다. 생성자는 객체가 태어나는 순간 불변식을 세우고, 모든 public 멤버 함수는 불변식을 유지하며, 소멸자는 객체가 사라질 때 정리합니다.</p>
+  <p>생성자에서는 <strong>멤버 초기화 리스트</strong>를 쓰세요. 본문 안에서 대입하면 "기본값으로 만든 뒤 다시 대입"이 되고, <code>const</code> 멤버나 참조 멤버는 아예 대입할 수 없습니다. 인자 하나짜리 생성자에는 <code>explicit</code>을 붙여 원치 않는 암묵 변환을 막습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">ctor.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;stdexcept&gt;
+#include &lt;string&gt;
+
+class Uart {
+public:
+    explicit Uart(std::string dev, int baud = 115200)
+        : dev_(std::move(dev)), baud_(baud), id_(next_id_++)   // initializer list: in declaration order
+    {
+        if (baud_ &lt;= 0) baud_ = 9600;                          // keep the invariant: baud &gt; 0
+        std::cout &lt;&lt; "open  #" &lt;&lt; id_ &lt;&lt; ' ' &lt;&lt; dev_ &lt;&lt; " @" &lt;&lt; baud_ &lt;&lt; '\n';
+    }
+    ~Uart() { std::cout &lt;&lt; "close #" &lt;&lt; id_ &lt;&lt; ' ' &lt;&lt; dev_ &lt;&lt; '\n'; }
+
+    const std::string&amp; device() const { return dev_; }
+    int baud() const { return baud_; }
+    static int opened() { return next_id_ - 1; }               // static: belongs to the class
+
+private:
+    const std::string dev_;      // const member: only settable in the initializer list
+    int baud_;
+    const int id_;
+    static inline int next_id_ = 1;                            // one counter shared by all Uarts
+};
+
+void log_to(const Uart&amp; u) { std::cout &lt;&lt; "using " &lt;&lt; u.device() &lt;&lt; '\n'; }
+
+int main() {
+    Uart a("/dev/ttyS0");
+    {
+        Uart b("/dev/ttyUSB1", -5);
+        log_to(b);
+    }                                // b's destructor runs here
+    log_to(a);
+    // log_to("/dev/ttyS9");         // blocked by 'explicit': no hidden Uart is created
+    std::cout &lt;&lt; "total opened: " &lt;&lt; Uart::opened() &lt;&lt; '\n';
+}
+</code></pre></div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p>멤버는 <strong>초기화 리스트에 적은 순서가 아니라 클래스에 선언된 순서</strong>로 초기화됩니다. <code>: size_(n), buf_(new int[size_])</code>라고 써도 <code>buf_</code>가 먼저 선언되어 있으면 초기화되지 않은 <code>size_</code>를 읽습니다. <code>-Wall</code>이 <code>-Wreorder</code> 경고로 알려 주니 경고를 꺼 두지 마세요.</p>
+  </div>
+
+  <h3>struct와 class의 차이는 기본 접근 권한 하나뿐이다</h3>
+  <p>C++에서 <code>struct</code>와 <code>class</code>는 같은 것입니다. 차이는 기본 접근 권한(<code>struct</code>는 public, <code>class</code>는 private)과 기본 상속 방식뿐입니다. 관례적으로 <strong>불변식이 없는 단순 데이터 묶음</strong>은 <code>struct</code>로(모든 필드를 자유롭게 바꿔도 되는 <code>Point</code>나 설정값), <strong>지켜야 할 규칙이 있는 타입</strong>은 <code>class</code>로 씁니다. C 헤더와 공유하는 구조체는 계속 <code>struct</code>로 두면 됩니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>C의 관례</th><th>C++의 장치</th></tr></thead>
+    <tbody>
+      <tr><td><code>xxx_init(&amp;obj)</code>를 먼저 호출</td><td>생성자: 선언과 동시에 실행</td></tr>
+      <tr><td><code>xxx_destroy(&amp;obj)</code>를 잊지 말 것</td><td>소멸자: 스코프 끝에서 자동 실행</td></tr>
+      <tr><td>"내부 필드 직접 접근 금지" 주석</td><td><code>private</code></td></tr>
+      <tr><td><code>const xxx_t *</code>를 받는 조회 함수</td><td><code>const</code> 멤버 함수</td></tr>
+      <tr><td>파일 범위 <code>static</code> 카운터</td><td><code>static</code> 멤버</td></tr>
+      <tr><td><code>vec2_add(a, b)</code></td><td><code>a + b</code> (연산자 오버로딩)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>연산자 오버로딩으로 값 타입을 자연스럽게</h3>
+  <p>수학적 값(벡터, 고정소수점, 복소수, 시간 간격)을 표현하는 타입은 연산자를 오버로딩하면 내장 타입처럼 읽힙니다. 출력 연산자 <code>&lt;&lt;</code>를 정의하면 <code>std::cout</code>으로 바로 출력됩니다. C++20의 <code>operator&lt;=&gt;</code>(우주선 연산자)를 <code>= default</code>로 두면 비교 연산자 여섯 개가 한 번에 생깁니다.</p>
+<div class="code run"><div class="bar"><span class="fn">vec2.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;cmath&gt;
+#include &lt;compare&gt;
+#include &lt;iostream&gt;
+
+struct Vec2 {
+    double x = 0, y = 0;
+
+    Vec2&amp; operator+=(const Vec2&amp; o) { x += o.x; y += o.y; return *this; }
+    double length() const { return std::hypot(x, y); }
+    auto operator&lt;=&gt;(const Vec2&amp;) const = default;   // ==, !=, &lt;, &lt;=, &gt;, &gt;= for free
+};
+
+Vec2 operator+(Vec2 a, const Vec2&amp; b) { return a += b; }
+Vec2 operator*(double k, const Vec2&amp; v) { return {k * v.x, k * v.y}; }
+
+std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const Vec2&amp; v) {
+    return os &lt;&lt; '(' &lt;&lt; v.x &lt;&lt; ", " &lt;&lt; v.y &lt;&lt; ')';
+}
+
+int main() {
+    Vec2 pos{1, 2}, vel{0.5, -1};
+    for (int t = 0; t &lt; 3; ++t) pos += vel;
+    Vec2 target = pos + 2.0 * vel;
+    std::cout &lt;&lt; "pos=" &lt;&lt; pos &lt;&lt; " target=" &lt;&lt; target &lt;&lt; " |target|=" &lt;&lt; target.length() &lt;&lt; '\n';
+    std::cout &lt;&lt; std::boolalpha &lt;&lt; "pos &lt; target: " &lt;&lt; (pos &lt; target)
+              &lt;&lt; ", pos == (2.5, -1): " &lt;&lt; (pos == Vec2{2.5, -1}) &lt;&lt; '\n';
+}
+</code></pre></div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <p>클래스 설계의 출발점은 "이 타입의 불변식은 무엇인가"입니다. 불변식이 있으면 데이터를 private으로 숨기고 생성자에서 세우세요. 읽기 전용 멤버 함수에는 <code>const</code>를 붙이세요. 그러면 <code>const</code> 참조로 넘겨받은 쪽에서도 쓸 수 있습니다.</p>
+  </div>
+  <p>Part I이 끝났습니다. 다음 Part에서는 C++이 C와 가장 크게 달라지는 지점, <strong>소멸자가 자원을 책임지는 방식(RAII)</strong>을 다룹니다.</p>
+
+  <div class="quiz" data-quiz="ch3"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch3" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH4 ============ -->
+<section class="chapter col" id="ch4">
+  <div class="eyebrow">Part II · 자원과 수명 — 4장</div>
+  <h2>RAII와 객체 수명</h2>
+  <p class="goal">이 장을 마치면: 지역·전역·임시 객체가 언제 생성되고 소멸되는지 순서대로 추적할 수 있고, 파일·락·인터럽트 같은 자원을 소멸자로 정리하는 RAII 래퍼를 직접 만들 수 있으며, C의 <code>goto cleanup</code> 패턴을 C++ 방식으로 바꿀 수 있습니다.</p>
+  <p>3장에서 소멸자를 "객체가 사라질 때 정리하는 함수"라고만 소개했습니다. 이 장에서는 그 단순한 규칙이 왜 C++ 전체를 떠받치는 기둥인지 봅니다.</p>
+
+  <h3>C의 goto cleanup을 떠올려 보자</h3>
+  <p>자원을 세 개 잡는 C 함수는 대개 이런 모양입니다. 정리 순서를 맞추느라 레이블이 늘고, 중간에 새 자원이나 새 <code>return</code>을 추가할 때마다 누수 버그가 생길 여지가 생깁니다.</p>
+<div class="code"><div class="bar"><span class="fn">load.c</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="c">int load_calibration(const char *path, struct calib *out) {
+    int ret = -1;
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+    char *buf = malloc(4096);
+    if (!buf) goto close_file;
+    if (pthread_mutex_lock(&amp;calib_lock) != 0) goto free_buf;
+
+    if (fread(buf, 1, 4096, f) &lt; sizeof *out) goto unlock;   /* early exit #1 */
+    if (!checksum_ok(buf)) goto unlock;                       /* early exit #2 */
+    memcpy(out, buf, sizeof *out);
+    ret = 0;
+
+unlock:     pthread_mutex_unlock(&amp;calib_lock);
+free_buf:   free(buf);
+close_file: fclose(f);
+    return ret;
+}
+</code></pre></div>
+  <p>이 코드가 하는 일은 사실 "자원을 얻은 역순으로, 어떤 경로로 나가든 반드시 놓는다"입니다. C++은 바로 이 규칙을 언어에 넣었습니다. <strong>객체가 스코프를 벗어나는 모든 경로</strong>(정상 종료, <code>return</code>, <code>break</code>, 예외)에서 소멸자가 <strong>생성의 역순으로</strong> 실행됩니다. 그래서 자원을 객체 안에 넣기만 하면 정리는 자동이 됩니다. 이것을 <strong>RAII(Resource Acquisition Is Initialization)</strong>라고 부릅니다. 이름은 어색하지만 뜻은 "자원의 수명을 객체의 수명에 묶는다"입니다.</p>
+
+  <h3>소멸자는 모든 출구에서, 역순으로 실행된다</h3>
+  <p>아래 벤치에서 한 단계씩 진행하며 객체가 언제 태어나고 사라지는지 따라가 보세요. 그다음 같은 코드를 실제로 실행해 출력을 비교합니다.</p>
+  <div class="bench" id="b-life">
+    <header><b>실습 벤치 4-A · 생성과 소멸 따라가기</b><span>STEPPER · 10 STEPS</span></header>
+    <div class="body">
+      <div class="split">
+        <div class="srcview" id="lifeSrc"></div>
+        <div>
+          <div class="panelbox"><h5>살아 있는 객체 (위가 최근)</h5><div class="objs" id="lifeObjs"></div></div>
+          <div class="conout" id="lifeOut" aria-live="polite"></div>
+        </div>
+      </div>
+      <p class="explain" id="lifeEx"></p>
+      <div class="row"><button type="button" class="btn" id="lifePrev">◀ 이전</button><button type="button" class="btn pri" id="lifeNext">다음 ▶</button><button type="button" class="btn" id="lifeReset">처음으로</button><span class="tokc" id="lifeStep"></span></div>
+    </div>
+  </div>
+<div class="code run"><div class="bar"><span class="fn">lifetime.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;string&gt;
+
+struct Tracer {
+    std::string name;
+    Tracer(std::string n) : name(n) { std::cout &lt;&lt; "+" &lt;&lt; name &lt;&lt; "\n"; }
+    ~Tracer() { std::cout &lt;&lt; "-" &lt;&lt; name &lt;&lt; "\n"; }
+};
+
+Tracer g("global");
+void f() { Tracer a("f.a"); }
+
+int main() {
+    Tracer x("x");
+    {
+        Tracer y("y");
+        f();
+    }
+    Tracer z("z");
+    // Try: add an early 'return 0;' before z, or a loop that creates Tracers.
+}
+</code></pre></div>
+  <p>임시 객체도 규칙을 따릅니다. <code>std::string("a") + "b"</code> 같은 식이 만드는 임시 객체는 <strong>그 식(full-expression)이 끝날 때</strong> 소멸합니다. 단, <code>const T&amp;</code>에 바로 묶으면 참조의 수명만큼 연장됩니다. 이 규칙을 모르면 11장의 <code>string_view</code>에서 매달린 참조를 만들게 됩니다.</p>
+
+  <h3>자원마다 작은 소유자 클래스를 하나씩</h3>
+  <p>RAII 래퍼는 짧습니다. 생성자에서 자원을 얻고(실패하면 알리고), 소멸자에서 놓고, 복사를 막습니다. 복사를 막는 이유는 다음 장의 주제입니다. 우선 <code>= delete</code>로 "이 객체는 복사할 수 없다"고 선언한다는 것만 기억하세요.</p>
+<div class="code run"><div class="bar"><span class="fn">raii_file.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;cstdio&gt;
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+
+class File {
+public:
+    File(const char* path, const char* mode) : f_(std::fopen(path, mode)) {
+        std::cout &lt;&lt; "  [open " &lt;&lt; path &lt;&lt; (f_ ? "]" : " FAILED]") &lt;&lt; '\n';
+    }
+    ~File() {
+        if (f_) { std::fclose(f_); std::cout &lt;&lt; "  [close]\n"; }
+    }
+    File(const File&amp;) = delete;              // no copies: exactly one owner of the FILE*
+    File&amp; operator=(const File&amp;) = delete;
+
+    explicit operator bool() const { return f_ != nullptr; }
+    void write(const std::string&amp; s) { std::fputs(s.c_str(), f_); }
+    std::string read_line() {
+        char buf[128];
+        return std::fgets(buf, sizeof buf, f_) ? std::string(buf) : std::string();
+    }
+private:
+    std::FILE* f_;
+};
+
+int count_lines(const char* path, int limit) {
+    File f(path, "r");
+    if (!f) return -1;                       // early exit #1: nothing to clean up by hand
+    int n = 0;
+    while (!f.read_line().empty()) {
+        if (++n == limit) return n;          // early exit #2: destructor still closes the file
+    }
+    return n;                                // normal exit
+}
+
+int main() {
+    {
+        File out("data.txt", "w");
+        out.write("alpha\nbeta\ngamma\ndelta\n");
+    }                                        // closed (and flushed) here
+    int a = count_lines("data.txt", 2);
+    std::cout &lt;&lt; "lines (limit 2): " &lt;&lt; a &lt;&lt; '\n';
+    int b = count_lines("data.txt", 100);
+    std::cout &lt;&lt; "lines (no limit): " &lt;&lt; b &lt;&lt; '\n';
+    int c = count_lines("nope.txt", 100);
+    std::cout &lt;&lt; "missing file: " &lt;&lt; c &lt;&lt; '\n';
+}
+</code></pre></div>
+  <p>실무에서는 래퍼를 매번 새로 짜지 않습니다. 표준 라이브러리가 대부분의 자원에 대해 이미 RAII 타입을 제공하고, C API 핸들은 6장의 <code>std::unique_ptr</code>에 사용자 정의 삭제자를 붙여 한 줄로 감쌉니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>자원</th><th>C에서</th><th>C++ RAII 타입</th></tr></thead>
+    <tbody>
+      <tr><td>힙 메모리</td><td><code>malloc</code> / <code>free</code></td><td><code>std::vector</code>, <code>std::string</code>, <code>std::unique_ptr</code></td></tr>
+      <tr><td>파일</td><td><code>fopen</code> / <code>fclose</code></td><td><code>std::ifstream</code>, <code>std::ofstream</code></td></tr>
+      <tr><td>뮤텍스</td><td><code>pthread_mutex_lock</code> / <code>unlock</code></td><td><code>std::lock_guard</code>, <code>std::scoped_lock</code></td></tr>
+      <tr><td>스레드</td><td><code>pthread_create</code> / <code>join</code></td><td><code>std::jthread</code>(소멸자에서 join)</td></tr>
+      <tr><td>소켓·디바이스 fd</td><td><code>open</code> / <code>close</code></td><td>직접 만든 래퍼 또는 <code>unique_ptr</code> + 삭제자</td></tr>
+      <tr><td>인터럽트 금지 구간</td><td><code>irq_disable()</code> / <code>irq_restore(flags)</code></td><td>직접 만든 가드 객체(아래)</td></tr>
+    </tbody>
+  </table></div>
+<div class="code"><div class="bar"><span class="fn">irq_guard.hpp</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="cpp">// A scope guard for a critical section on a microcontroller (illustrative API).
+class IrqGuard {
+public:
+    IrqGuard() : saved_(arch_irq_save()) {}        // disable interrupts, remember the old state
+    ~IrqGuard() { arch_irq_restore(saved_); }      // restore on every exit path
+    IrqGuard(const IrqGuard&amp;) = delete;
+    IrqGuard&amp; operator=(const IrqGuard&amp;) = delete;
+private:
+    unsigned long saved_;
+};
+
+void push_sample(Fifo&amp; q, int s) {
+    IrqGuard guard;            // critical section starts here
+    if (q.full()) return;      // early return: interrupts are still restored
+    q.push(s);
+}                              // ...and ends here
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>RAII는 리눅스 커널의 <code>guard(mutex)(&amp;lock)</code>이나 GCC의 <code>__attribute__((cleanup))</code>이 흉내 내려는 바로 그 기능입니다. 차이는 C++에서는 이것이 언어의 기본 동작이라, 표준 라이브러리 전체와 여러분이 만드는 모든 타입이 같은 규칙으로 맞물린다는 점입니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><b>이름 없는 가드</b>: <code>std::lock_guard&lt;std::mutex&gt;(m);</code>처럼 변수 이름을 빠뜨리면 임시 객체가 그 줄에서 바로 소멸해 잠금이 즉시 풀립니다. 반드시 <code>std::lock_guard lk(m);</code>처럼 이름을 붙이세요.</li>
+      <li><b>소멸자에서 예외 던지기 금지</b>: 소멸자는 기본적으로 <code>noexcept</code>입니다. 정리 중 실패는 기록만 하고 삼키세요.</li>
+      <li><b>복사 가능한 소유자</b>: 위 <code>File</code>에서 <code>= delete</code>를 지우면 컴파일은 되지만 같은 <code>FILE*</code>을 두 번 닫게 됩니다. 다음 장에서 이유를 봅니다.</li>
+    </ul>
+  </div>
+
+  <div class="quiz" data-quiz="ch4"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch4" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH5 ============ -->
+<section class="chapter col" id="ch5">
+  <div class="eyebrow">Part II · 자원과 수명 — 5장</div>
+  <h2>복사와 이동</h2>
+  <p class="goal">이 장을 마치면: 자원을 소유한 클래스에서 기본 복사가 왜 이중 해제를 일으키는지 설명할 수 있고, Rule of 3/5/0에 따라 복사·이동 연산을 설계할 수 있으며, 어떤 식이 복사·이동·생략 중 무엇을 일으키는지 판정할 수 있습니다.</p>
+  <p>4장의 <code>File</code> 래퍼에서 복사를 <code>= delete</code>로 막았습니다. 이 장은 그 이유와, 복사 대신 "소유권을 넘기는" 이동 의미론을 다룹니다.</p>
+
+  <h3>얕은 복사는 이중 해제를 부른다</h3>
+  <p>컴파일러는 클래스에 복사 생성자를 따로 정의하지 않으면 <strong>멤버별 복사</strong>를 만들어 줍니다. C 구조체 대입과 같습니다. 멤버가 포인터면 포인터 값만 복사되므로, 두 객체가 같은 버퍼를 가리키고, 둘 다 소멸자에서 그 버퍼를 해제합니다.</p>
+<div class="code"><div class="bar"><span class="fn">shallow.cpp</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="cpp">class Buffer {
+public:
+    explicit Buffer(std::size_t n) : size_(n), data_(new int[n]{}) {}
+    ~Buffer() { delete[] data_; }
+private:
+    std::size_t size_;
+    int* data_;
+};
+
+void oops() {
+    Buffer a(1024);
+    Buffer b = a;     // compiler-generated copy: b.data_ == a.data_
+}                     // ~b deletes the buffer, then ~a deletes it AGAIN -&gt; double free
+</code></pre></div>
+  <p>이 문제는 C에서도 똑같이 있습니다. 포인터를 가진 구조체를 <code>=</code>로 대입하면 같은 일이 벌어지니까요. C++이 다른 점은 <strong>복사가 일어나는 순간에 실행될 코드를 직접 정의할 수 있다</strong>는 것입니다.</p>
+
+  <h3>Rule of 3/5: 복사·이동·소멸은 한 세트다</h3>
+  <p>소멸자를 직접 써야 하는 클래스라면, 거의 틀림없이 복사 생성자와 복사 대입도 직접 써야 합니다(<strong>Rule of 3</strong>). C++11부터는 여기에 <strong>이동 생성자</strong>와 <strong>이동 대입</strong>이 더해져 다섯 개가 됩니다(<strong>Rule of 5</strong>). 이동은 "곧 사라질 객체에게서 자원을 훔쳐 오는" 복사입니다. 버퍼를 새로 할당해 내용을 복사하는 대신 포인터만 가져오고, 원본은 비워 둡니다.</p>
+<div class="code run"><div class="bar"><span class="fn">rule5.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;algorithm&gt;
+#include &lt;cstddef&gt;
+#include &lt;iostream&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+class Buffer {
+public:
+    explicit Buffer(std::size_t n) : size_(n), data_(new int[n]{}) { log("ctor"); }
+    ~Buffer() { delete[] data_; }
+
+    Buffer(const Buffer&amp; o) : size_(o.size_), data_(new int[o.size_]) {        // deep copy
+        std::copy(o.data_, o.data_ + size_, data_);
+        log("COPY ctor");
+    }
+    Buffer(Buffer&amp;&amp; o) noexcept : size_(o.size_), data_(o.data_) {            // steal
+        o.size_ = 0; o.data_ = nullptr;                                       // leave source empty
+        log("move ctor");
+    }
+    Buffer&amp; operator=(Buffer o) noexcept {     // copy-and-swap: handles copy AND move assignment
+        std::swap(size_, o.size_);
+        std::swap(data_, o.data_);
+        log("assign");
+        return *this;
+    }                                          // o (holding our old buffer) is destroyed here
+
+    std::size_t size() const { return size_; }
+private:
+    void log(const char* what) const { std::cout &lt;&lt; "  " &lt;&lt; what &lt;&lt; " (size " &lt;&lt; size_ &lt;&lt; ")\n"; }
+    std::size_t size_;
+    int* data_;
+};
+
+Buffer make(std::size_t n) { return Buffer(n); }   // guaranteed elision since C++17
+
+int main() {
+    std::cout &lt;&lt; "1) Buffer a(4)\n";             Buffer a(4);
+    std::cout &lt;&lt; "2) Buffer b = a\n";            Buffer b = a;
+    std::cout &lt;&lt; "3) Buffer c = std::move(a)\n"; Buffer c = std::move(a);
+    std::cout &lt;&lt; "   a.size() is now " &lt;&lt; a.size() &lt;&lt; '\n';
+    std::cout &lt;&lt; "4) Buffer d = make(8)\n";      Buffer d = make(8);
+    std::cout &lt;&lt; "5) b = d\n";                   b = d;
+    std::cout &lt;&lt; "6) vector growth\n";
+    std::vector&lt;Buffer&gt; v;
+    v.reserve(1);
+    v.emplace_back(2);
+    v.emplace_back(3);   // reallocation: moves old elements because the move ctor is noexcept
+}
+</code></pre></div>
+  <p>출력을 주의 깊게 보세요. 4번(<code>make(8)</code>)에서는 복사도 이동도 일어나지 않습니다. 함수가 값으로 반환한 객체가 처음부터 <code>d</code> 자리에 만들어집니다(보장된 복사 생략). 6번에서 벡터가 커질 때 기존 원소를 <strong>이동</strong>하는 것도 확인하세요. 이동 생성자에서 <code>noexcept</code>를 지우고 다시 실행하면 벡터가 안전을 위해 <strong>복사</strong>로 바꿉니다. 재할당 도중 예외가 나면 원래 상태로 되돌릴 수 있어야 하기 때문입니다.</p>
+
+  <h3>lvalue와 rvalue, 그리고 std::move의 정체</h3>
+  <p>어떤 생성자가 선택될지는 인자의 <strong>값 범주</strong>가 정합니다. 대략적으로, 이름이 있어 나중에 다시 쓸 수 있는 것은 <strong>lvalue</strong>(복사해야 안전), 이름이 없는 임시값은 <strong>rvalue</strong>(곧 사라지니 훔쳐도 됨)입니다. <code>T&amp;&amp;</code>는 rvalue에만 묶이는 참조이고, 이동 생성자가 이것을 받습니다.</p>
+  <p><code>std::move(x)</code>는 이름과 달리 아무것도 옮기지 않습니다. "<code>x</code>는 이제 안 쓸 테니 rvalue로 취급해도 된다"는 <strong>캐스팅</strong>일 뿐이고, 실제로 옮기는 일은 그 결과를 받은 이동 생성자가 합니다. 옮겨진 객체는 "유효하지만 값은 지정되지 않은" 상태이므로, 새 값을 대입하거나 소멸시키는 것 외에는 기대하지 마세요.</p>
+
+  <div class="bench" id="b-move">
+    <header><b>실습 벤치 5-A · 복사인가, 이동인가, 생략인가?</b><span>CLASSIFY · 8 ITEMS</span></header>
+    <div class="body">
+      <p class="tokc">공통 선언: <code>std::string s = "hello";</code> · <code>std::vector&lt;std::string&gt; v;</code> · <code>std::string make_name();</code></p>
+      <div id="moveList"></div>
+      <div class="row"><button type="button" class="btn" id="moveListReset">다시 하기</button></div>
+      <div class="status" id="moveScore"></div>
+    </div>
+  </div>
+
+  <h3>최선은 Rule of 0</h3>
+  <p>지금까지의 코드를 실무에서 직접 쓸 일은 드뭅니다. 자원 관리를 이미 올바르게 하는 타입(<code>std::vector</code>, <code>std::string</code>, <code>std::unique_ptr</code>)을 멤버로 쓰면, 컴파일러가 만들어 주는 복사·이동·소멸이 멤버별로 올바르게 동작합니다. 다섯 개 중 아무것도 쓰지 않는 것, 이것이 <strong>Rule of 0</strong>입니다. 자원을 직접 소유하는 클래스는 <code>File</code>이나 <code>Buffer</code> 같은 작은 래퍼 한 곳에만 두세요.</p>
+<div class="code run"><div class="bar"><span class="fn">rule0.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+struct Frame {                        // Rule of 0: no destructor, no copy/move code
+    std::string source;
+    std::vector&lt;unsigned char&gt; payload;
+};
+
+int main() {
+    Frame a{"camera0", std::vector&lt;unsigned char&gt;(1'000'000, 0x7f)};
+    const unsigned char* before = a.payload.data();
+
+    Frame b = a;                      // deep copy: new 1 MB buffer
+    Frame c = std::move(a);           // move: steals the buffer, O(1)
+
+    std::cout &lt;&lt; std::boolalpha;
+    std::cout &lt;&lt; "b has its own buffer:  " &lt;&lt; (b.payload.data() != before) &lt;&lt; '\n';
+    std::cout &lt;&lt; "c took a's buffer:     " &lt;&lt; (c.payload.data() == before) &lt;&lt; '\n';
+    std::cout &lt;&lt; "a.payload.size() now:  " &lt;&lt; a.payload.size() &lt;&lt; '\n';
+    std::cout &lt;&lt; "c.source = " &lt;&lt; c.source &lt;&lt; ", c.payload.size() = " &lt;&lt; c.payload.size() &lt;&lt; '\n';
+}
+</code></pre></div>
+  <div class="ladder">
+    <div><b>Rule 0</b><span>기본값. 멤버가 스스로 자원을 관리하게 하고 특수 멤버 함수를 쓰지 않는다.</span></div>
+    <div><b>= delete</b><span>복사가 의미 없는 소유자(파일, 락, 장치 핸들)는 복사를 금지하고, 필요하면 이동만 허용한다.</span></div>
+    <div><b>Rule 5</b><span>자원을 직접 소유하는 저수준 래퍼에서만. 다섯 개를 함께 정의하고 이동에는 <code>noexcept</code>.</span></div>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p><code>return std::move(local);</code>은 쓰지 마세요. 반환식이 이름 없는 지역 객체라면 컴파일러는 복사 생략(NRVO)을 하거나, 못 하더라도 자동으로 이동합니다. <code>std::move</code>를 붙이면 오히려 생략이 막힙니다. GCC의 <code>-Wpessimizing-move</code>가 이것을 경고합니다.</p>
+  </div>
+  <p>다음 장에서는 이 이동 의미론 위에 만들어진 표준 소유자, 스마트 포인터를 봅니다.</p>
+
+  <div class="quiz" data-quiz="ch5"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch5" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH6 ============ -->
+<section class="chapter col" id="ch6">
+  <div class="eyebrow">Part II · 자원과 수명 — 6장</div>
+  <h2>동적 메모리와 스마트 포인터</h2>
+  <p class="goal">이 장을 마치면: <code>new</code>/<code>delete</code>와 <code>malloc</code>/<code>free</code>의 차이를 설명할 수 있고, 소유 관계에 따라 <code>unique_ptr</code>·<code>shared_ptr</code>·<code>weak_ptr</code>·원시 포인터를 골라 쓸 수 있으며, C 라이브러리 핸들을 사용자 정의 삭제자로 감쌀 수 있습니다.</p>
+  <p>5장의 이동 의미론 덕분에 "소유권을 넘긴다"는 개념이 언어로 표현됩니다. 스마트 포인터는 그 개념을 가장 직접적으로 쓰는 타입입니다.</p>
+
+  <h3>new는 할당 + 생성, delete는 소멸 + 해제</h3>
+  <p><code>malloc</code>은 바이트를 줄 뿐이지만, <code>new T(args)</code>는 메모리를 할당한 뒤 그 자리에서 <strong>생성자를 실행</strong>합니다. <code>delete p</code>는 <strong>소멸자를 실행</strong>한 뒤 메모리를 돌려줍니다. 배열은 <code>new T[n]</code> / <code>delete[] p</code>로 짝을 맞춰야 하고, <code>new</code>로 얻은 것을 <code>free</code>로, <code>malloc</code>으로 얻은 것을 <code>delete</code>로 해제하면 정의되지 않은 동작입니다.</p>
+  <p>그런데 모던 C++ 코드에서 <code>new</code>와 <code>delete</code>를 직접 쓸 일은 거의 없습니다. 맨 <code>delete</code>는 C의 <code>free</code>와 똑같은 문제(누수, 이중 해제, 해제 후 사용)를 그대로 갖고 있기 때문입니다. 그래서 C++ 핵심 가이드라인은 "소유하는 원시 포인터를 쓰지 말라"고 권합니다. 대신 <strong>소유권을 타입으로 표현</strong>합니다.</p>
+
+  <h3>unique_ptr: 소유자는 정확히 하나</h3>
+  <p><code>std::unique_ptr&lt;T&gt;</code>는 힙 객체 하나를 단독으로 소유하고, 자신이 소멸할 때 그 객체를 <code>delete</code>합니다. 복사는 금지되고 이동만 됩니다. 4장의 <code>File</code>과 같은 설계입니다. 크기는 원시 포인터와 같고, 역참조 비용도 같습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">unique.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;cstdio&gt;
+#include &lt;iostream&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+struct Device {
+    std::string name;
+    explicit Device(std::string n) : name(std::move(n)) { std::cout &lt;&lt; "  probe " &lt;&lt; name &lt;&lt; '\n'; }
+    ~Device() { std::cout &lt;&lt; "  remove " &lt;&lt; name &lt;&lt; '\n'; }
+};
+
+struct FileCloser {                       // stateless deleter for C FILE handles
+    void operator()(std::FILE* f) const { std::fclose(f); std::cout &lt;&lt; "  fclose\n"; }
+};
+
+// Factory: ownership is transferred to the caller, visible in the type.
+std::unique_ptr&lt;Device&gt; probe(const std::string&amp; name) {
+    if (name.empty()) return nullptr;
+    return std::make_unique&lt;Device&gt;(name);
+}
+
+int main() {
+    std::cout &lt;&lt; std::boolalpha &lt;&lt; "sizeof(unique_ptr) == sizeof(raw ptr): "
+              &lt;&lt; (sizeof(std::unique_ptr&lt;Device&gt;) == sizeof(Device*)) &lt;&lt; '\n';
+
+    std::vector&lt;std::unique_ptr&lt;Device&gt;&gt; bus;
+    bus.push_back(probe("i2c-0x48"));
+    bus.push_back(probe("spi-flash"));
+    if (auto d = probe("")) bus.push_back(std::move(d));   // nullptr: skipped
+
+    std::unique_ptr&lt;Device&gt; keep = std::move(bus[0]);       // transfer ownership out
+    std::cout &lt;&lt; "bus[0] is now " &lt;&lt; (bus[0] ? "set" : "empty") &lt;&lt; ", keep = " &lt;&lt; keep-&gt;name &lt;&lt; '\n';
+
+    // A C handle with a custom deleter: fclose runs automatically.
+    std::unique_ptr&lt;std::FILE, FileCloser&gt; logf(std::fopen("log.txt", "w"));
+    if (logf) std::fputs("hello\n", logf.get());
+    std::cout &lt;&lt; "sizeof(logf) = " &lt;&lt; sizeof(logf) &lt;&lt; " (empty deleter takes no space)\n";
+
+    std::cout &lt;&lt; "end of main\n";
+}   // destruction order: logf (fclose), keep, bus (remaining devices)
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>C API에서 <code>xxx_create()</code> / <code>xxx_destroy()</code> 짝을 가진 핸들은 모두 <code>unique_ptr</code> + 삭제자로 감쌀 수 있습니다. 함수 포인터 대신 빈 구조체를 삭제자로 쓰면(<code>struct Closer { void operator()(FILE* f) const { fclose(f); } };</code>) 삭제자가 공간을 차지하지 않아 크기가 원시 포인터와 같아집니다.</p>
+  </div>
+
+  <h3>shared_ptr와 weak_ptr: 공유 소유와 관찰</h3>
+  <p>여러 곳이 같은 객체를 함께 소유하고, <strong>마지막 소유자가 사라질 때</strong> 객체를 해제하고 싶을 때가 있습니다(캐시, 여러 스레드가 보는 설정, 그래프 노드). <code>std::shared_ptr</code>는 객체 옆에 <strong>제어 블록</strong>을 두고 참조 카운트를 셉니다. <code>std::weak_ptr</code>는 카운트에 참여하지 않고 객체가 아직 살아 있는지 확인만 할 수 있는 관찰자입니다.</p>
+  <div class="bench" id="b-sp">
+    <header><b>실습 벤치 6-A · 참조 카운트 따라가기</b><span>STEPPER · 8 STEPS</span></header>
+    <div class="body">
+      <div class="srcview" id="spSrc"></div>
+      <div class="cb" id="spCb"></div>
+      <div class="sp-grid" id="spGrid"></div>
+      <p class="explain" id="spEx"></p>
+      <div class="row"><button type="button" class="btn" id="spPrev">◀ 이전</button><button type="button" class="btn pri" id="spNext">다음 ▶</button><button type="button" class="btn" id="spReset">처음으로</button><span class="tokc" id="spStep"></span></div>
+    </div>
+  </div>
+  <p>참조 카운트의 고전적인 함정은 <strong>순환 참조</strong>입니다. 부모가 자식을, 자식이 부모를 <code>shared_ptr</code>로 가리키면 둘 다 카운트가 0이 되지 않아 영원히 해제되지 않습니다. 아래 예제를 실행해 소멸자가 불리지 않는 것을 확인한 뒤, 주석대로 한 줄을 고쳐 다시 실행해 보세요.</p>
+<div class="code run"><div class="bar"><span class="fn">cycle.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+struct Node {
+    std::string name;
+    std::shared_ptr&lt;Node&gt; parent;               // FIX: change to std::weak_ptr&lt;Node&gt; parent;
+    std::vector&lt;std::shared_ptr&lt;Node&gt;&gt; children;
+    explicit Node(std::string n) : name(std::move(n)) {}
+    ~Node() { std::cout &lt;&lt; "~Node " &lt;&lt; name &lt;&lt; '\n'; }
+};
+
+int main() {
+    {
+        auto root = std::make_shared&lt;Node&gt;("root");
+        auto leaf = std::make_shared&lt;Node&gt;("leaf");
+        root-&gt;children.push_back(leaf);
+        leaf-&gt;parent = root;
+        std::cout &lt;&lt; "root.use_count = " &lt;&lt; root.use_count()
+                  &lt;&lt; ", leaf.use_count = " &lt;&lt; leaf.use_count() &lt;&lt; '\n';
+    }
+    std::cout &lt;&lt; "scope ended (did you see ~Node lines above?)\n";
+}
+</code></pre></div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><code>shared_ptr</code>는 공짜가 아닙니다. 복사할 때마다 원자적 증감이 일어나고, 제어 블록이 따로 있습니다. 함수에 넘길 때 소유권을 나눌 필요가 없으면 <code>const T&amp;</code>나 <code>T*</code>로 넘기세요.</li>
+      <li>같은 원시 포인터로 <code>shared_ptr</code>를 두 번 만들면 제어 블록이 두 개가 되어 이중 해제됩니다. 항상 <code>std::make_shared</code>로 만드세요.</li>
+    </ul>
+  </div>
+
+  <h3>포인터 선택 가이드: 소유권을 타입으로 말하라</h3>
+  <p>C에서 <code>int *p</code>를 보면 그것이 소유하는 포인터인지, 빌려 쓰는 포인터인지, 배열인지, 널이 될 수 있는지 알 수 없습니다. 주석과 관례에 의존하죠. 모던 C++은 이 정보를 타입에 담습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>의도</th><th>쓸 타입</th></tr></thead>
+    <tbody>
+      <tr><td>그냥 값이면 된다</td><td><code>T</code> (스택, 멤버). 첫 번째 선택지</td></tr>
+      <tr><td>여러 개의 값</td><td><code>std::vector&lt;T&gt;</code>, <code>std::array&lt;T, N&gt;</code></td></tr>
+      <tr><td>힙 객체를 단독 소유(다형성, 큰 객체, 선택적 존재)</td><td><code>std::unique_ptr&lt;T&gt;</code></td></tr>
+      <tr><td>여러 소유자가 공유, 마지막이 해제</td><td><code>std::shared_ptr&lt;T&gt;</code></td></tr>
+      <tr><td>공유 객체를 소유 없이 관찰(순환 끊기, 캐시)</td><td><code>std::weak_ptr&lt;T&gt;</code></td></tr>
+      <tr><td>빌려 쓰기, 반드시 존재</td><td><code>T&amp;</code> / <code>const T&amp;</code></td></tr>
+      <tr><td>빌려 쓰기, 없을 수도 있음</td><td><code>T*</code> (소유하지 않는 원시 포인터)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <p>원시 포인터 자체가 나쁜 것이 아니라 <strong>소유하는</strong> 원시 포인터가 나쁩니다. "소유 = 스마트 포인터 또는 컨테이너, 관찰 = 참조 또는 원시 포인터"로 나누면 <code>delete</code>를 쓸 일이 사라집니다.</p>
+  </div>
+  <p>Part II가 끝났습니다. 자원과 수명을 다룰 수 있게 되었으니, 다음 Part에서는 추상화 도구인 상속·템플릿·STL로 넘어갑니다.</p>
+
+  <div class="quiz" data-quiz="ch6"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch6" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH7 ============ -->
+<section class="chapter col" id="ch7">
+  <div class="eyebrow">Part III · 추상화 — 7장</div>
+  <h2>상속과 다형성</h2>
+  <p class="goal">이 장을 마치면: C의 함수 포인터 테이블과 가상 함수의 대응 관계를 그림으로 설명할 수 있고, 인터페이스(추상 클래스)를 설계해 <code>unique_ptr</code>로 다형적 객체를 관리할 수 있으며, 가상 소멸자·<code>override</code>·슬라이싱 같은 함정을 피할 수 있습니다.</p>
+  <p>Part II에서 객체의 수명과 소유를 다뤘습니다. 이제 "같은 인터페이스, 다른 구현"이라는 추상화로 넘어갑니다. C 개발자에게는 이미 익숙한 패턴입니다.</p>
+
+  <h3>C의 ops 테이블이 virtual이 되었다</h3>
+  <p>리눅스 커널의 <code>struct file_operations</code>처럼, C에서 다형성은 함수 포인터 구조체로 구현합니다. 각 드라이버가 자기 함수로 테이블을 채우고, 객체는 그 테이블을 가리키는 포인터를 들고 다닙니다.</p>
+<div class="code"><div class="bar"><span class="fn">sensor_ops.c</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="c">struct sensor;
+struct sensor_ops {
+    int  (*read)(struct sensor *s);
+    const char *(*name)(const struct sensor *s);
+};
+struct sensor {
+    const struct sensor_ops *ops;   /* "vptr": every object points at its type's table */
+    int bus_addr;
+};
+/* call site: value = s-&gt;ops-&gt;read(s); */
+</code></pre></div>
+  <p>C++의 가상 함수는 컴파일러가 이 구조를 대신 만들어 주는 것입니다. 클래스에 <code>virtual</code> 함수가 하나라도 있으면 컴파일러는 클래스마다 <strong>vtable</strong>(함수 포인터 표)을 하나 만들고, 각 객체에 그 표를 가리키는 숨은 포인터 <strong>vptr</strong>을 넣습니다. <code>s-&gt;read()</code> 호출은 <code>s-&gt;vptr-&gt;read(s)</code>로 번역됩니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 210" role="img" aria-label="객체의 vptr이 클래스별 vtable을 가리키고, vtable 항목이 실제 함수를 가리키는 구조">
+      <rect class="sv-r1" x="10" y="30" width="150" height="120" rx="6"/>
+      <text class="sv-m" x="20" y="22">Tmp36 객체 (힙)</text>
+      <rect class="sv-core" x="20" y="42" width="130" height="30" rx="4"/><text class="sv-core-t" x="85" y="62" text-anchor="middle">vptr</text>
+      <text class="sv-t" x="30" y="96">bus_addr_ = 0x48</text>
+      <text class="sv-t" x="30" y="120">offset_ = -2</text>
+      <path class="sv-ac" d="M150 57 C 200 57, 200 57, 240 57"/><path class="sv-ac" d="M233 52 l7 5 -7 5"/>
+      <rect class="sv-r2" x="240" y="30" width="170" height="120" rx="6"/>
+      <text class="sv-m" x="250" y="22">vtable for Tmp36 (읽기 전용 데이터)</text>
+      <text class="sv-t" x="252" y="62">[0] ~Tmp36()</text>
+      <text class="sv-t" x="252" y="90">[1] read → Tmp36::read</text>
+      <text class="sv-t" x="252" y="118">[2] name → Tmp36::name</text>
+      <path class="sv-ln" d="M410 86 H470"/><path class="sv-ln" d="M463 81 l7 5 -7 5"/>
+      <rect class="sv-r0" x="470" y="66" width="160" height="40" rx="6"/><text class="sv-t" x="550" y="91" text-anchor="middle">Tmp36::read() 코드</text>
+      <text class="sv-m" x="320" y="185" text-anchor="middle">Sensor* s = ...;  s-&gt;read();   ⇒   (*s-&gt;vptr[1])(s)   — 간접 호출 1회</text>
+    </svg>
+    <figcaption>그림 7-1. 가상 함수 호출의 실제 모습. 객체당 포인터 하나, 클래스당 표 하나가 비용의 전부다.</figcaption>
+  </figure>
+<div class="code run"><div class="bar"><span class="fn">sensors.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+class Sensor {                                   // an interface: pure virtual functions only
+public:
+    virtual ~Sensor() = default;                 // virtual destructor: required for polymorphic delete
+    virtual int read() = 0;                      // "= 0": pure virtual, derived classes must implement
+    virtual std::string name() const = 0;
+};
+
+class Tmp36 : public Sensor {
+public:
+    explicit Tmp36(int offset) : offset_(offset) {}
+    int read() override { return 25 + offset_; }
+    std::string name() const override { return "TMP36"; }
+private:
+    int offset_;
+};
+
+class FakeAccel : public Sensor {
+public:
+    int read() override { return ++tick_ * 100; }
+    std::string name() const override { return "fake-accel"; }
+private:
+    int tick_ = 0;
+};
+
+void poll(std::vector&lt;std::unique_ptr&lt;Sensor&gt;&gt;&amp; sensors) {
+    for (auto&amp; s : sensors)                      // same call, different behavior
+        std::cout &lt;&lt; s-&gt;name() &lt;&lt; " = " &lt;&lt; s-&gt;read() &lt;&lt; '\n';
+}
+
+int main() {
+    std::vector&lt;std::unique_ptr&lt;Sensor&gt;&gt; sensors;
+    sensors.push_back(std::make_unique&lt;Tmp36&gt;(-2));
+    sensors.push_back(std::make_unique&lt;FakeAccel&gt;());
+    poll(sensors);
+    poll(sensors);
+    std::cout &lt;&lt; "sizeof(Tmp36) = " &lt;&lt; sizeof(Tmp36) &lt;&lt; " (int + vptr + padding)\n";
+}
+</code></pre></div>
+
+  <h3>무엇이 불릴지는 '어떻게 접근하느냐'가 정한다</h3>
+  <p>가상 디스패치는 <strong>포인터나 참조를 통해 호출할 때만</strong> 일어납니다. 객체를 기반 클래스 타입의 <em>값</em>으로 복사하면 파생 클래스 부분이 잘려 나갑니다(슬라이싱). 비가상 함수는 늘 컴파일 타임의 정적 타입으로 결정됩니다. 아래 클래스를 기준으로 조합을 바꿔 보세요.</p>
+<div class="code"><div class="bar"><span class="fn">animal.hpp</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="cpp">struct Animal {
+    virtual ~Animal() = default;
+    virtual std::string speak() const { return "..."; }   // virtual
+    std::string name() const { return "animal"; }          // NOT virtual
+};
+struct Dog : Animal {
+    std::string speak() const override { return "Woof"; }
+    std::string name() const { return "dog"; }             // hides Animal::name, does not override
+};
+</code></pre></div>
+  <div class="bench" id="dispBench">
+    <header><b>실습 벤치 7-A · 가상 디스패치 실험실</b><span>EXPLORE · 12 COMBINATIONS</span></header>
+    <div class="body">
+      <div class="row" style="margin-bottom:8px"><span class="lbl">실제 객체</span><div class="seg" data-k="dyn"><button type="button" data-v="Animal">Animal</button><button type="button" data-v="Dog">Dog</button></div></div>
+      <div class="row" style="margin-bottom:8px"><span class="lbl">접근 방식</span><div class="seg" data-k="via"><button type="button" data-v="val">값 복사 Animal x</button><button type="button" data-v="ptr">포인터 Animal*</button><button type="button" data-v="ref">참조 Animal&amp;</button></div></div>
+      <div class="row" style="margin-bottom:12px"><span class="lbl">호출 함수</span><div class="seg" data-k="fn"><button type="button" data-v="speak">speak() · virtual</button><button type="button" data-v="name">name() · 비가상</button></div></div>
+      <div class="srcview"><pre id="dispCode" style="padding:0 12px;margin:0"></pre></div>
+      <div class="callres" id="dispRes" aria-live="polite"></div>
+      <p class="explain" id="dispEx"></p>
+      <div class="vt">
+        <div class="tbx" id="vtA"><b>vtable for Animal</b><div data-f="dtor">[0] ~Animal()</div><div data-f="speak">[1] Animal::speak</div></div>
+        <div class="tbx" id="vtD"><b>vtable for Dog</b><div data-f="dtor">[0] ~Dog()</div><div data-f="speak">[1] Dog::speak</div></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>virtual 소멸자, override, final</h3>
+  <p>기반 클래스 포인터로 파생 객체를 <code>delete</code>하려면(즉 <code>unique_ptr&lt;Base&gt;</code>로 소유하려면) 기반 클래스의 소멸자가 <strong>반드시</strong> <code>virtual</code>이어야 합니다. 그렇지 않으면 기반 부분의 소멸자만 불리고, 파생 클래스가 가진 자원은 새거나 더 나쁜 일이 벌어집니다(정의되지 않은 동작).</p>
+  <p><code>override</code>는 "기반 클래스의 가상 함수를 재정의하려는 것"이라는 선언입니다. 시그니처가 조금만 달라도(<code>const</code> 누락, 매개변수 타입 차이) 재정의가 아니라 <strong>새 함수</strong>가 되어 조용히 다형성이 깨지는데, <code>override</code>를 붙이면 그 실수가 컴파일 오류가 됩니다. 아래 코드는 일부러 틀렸습니다. 오류를 읽고 고쳐 보세요.</p>
+<div class="code run"><div class="bar"><span class="fn">override.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;memory&gt;
+
+struct Motor {
+    virtual ~Motor() = default;
+    virtual void set_speed(int rpm) { std::cout &lt;&lt; "Motor " &lt;&lt; rpm &lt;&lt; '\n'; }
+    virtual int speed() const { return 0; }
+};
+
+struct StepperMotor final : Motor {             // final: nobody can derive from StepperMotor
+    void set_speed(long rpm) override {         // BUG: long vs int -&gt; not an override
+        rpm_ = static_cast&lt;int&gt;(rpm);
+    }
+    int speed() override { return rpm_; }       // BUG: missing const -&gt; not an override
+private:
+    int rpm_ = 0;
+};
+
+int main() {
+    std::unique_ptr&lt;Motor&gt; m = std::make_unique&lt;StepperMotor&gt;();
+    m-&gt;set_speed(1200);
+    std::cout &lt;&lt; "speed = " &lt;&lt; m-&gt;speed() &lt;&lt; '\n';
+}
+</code></pre></div>
+
+  <h3>상속보다 합성, 열린 집합에는 virtual, 닫힌 집합에는 variant</h3>
+  <p>상속은 강한 결합입니다. "B는 A의 일종이다(is-a)"이고 A의 인터페이스로 B를 다뤄야 할 때만 쓰세요. 단지 A의 기능을 재사용하고 싶다면 A를 멤버로 두는 <strong>합성(has-a)</strong>이 낫습니다. 또 다형성이 필요해도 종류가 고정되어 있고(예: 프로토콜 메시지 5종) 나중에 늘어날 일이 적다면 <code>std::variant</code>가 더 단순합니다. 힙 할당도 vtable도 없고, 처리하지 않은 종류가 있으면 컴파일러가 알려 줍니다.</p>
+<div class="code run"><div class="bar"><span class="fn">variant.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;variant&gt;
+#include &lt;vector&gt;
+
+struct Ping  { int seq; };
+struct Data  { std::string payload; };
+struct Reset { };
+
+using Message = std::variant&lt;Ping, Data, Reset&gt;;     // a closed set of types, stored by value
+
+template &lt;class... Fs&gt; struct overloaded : Fs... { using Fs::operator()...; };
+
+int main() {
+    std::vector&lt;Message&gt; inbox{Ping{1}, Data{"temp=23"}, Reset{}, Ping{2}};
+    for (const auto&amp; m : inbox) {
+        std::visit(overloaded{
+            [](const Ping&amp; p)  { std::cout &lt;&lt; "PING #" &lt;&lt; p.seq &lt;&lt; '\n'; },
+            [](const Data&amp; d)  { std::cout &lt;&lt; "DATA " &lt;&lt; d.payload &lt;&lt; '\n'; },
+            [](const Reset&amp;)   { std::cout &lt;&lt; "RESET\n"; },
+        }, m);   // remove one lambda and the compiler rejects the program
+    }
+    std::cout &lt;&lt; "sizeof(Message) = " &lt;&lt; sizeof(Message) &lt;&lt; '\n';
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>가상 함수의 비용은 객체당 포인터 하나와 호출당 간접 분기 하나, 그리고 인라인화가 막힌다는 점입니다. 대부분의 코드에서는 무시할 만하지만, 초당 수백만 번 도는 ISR 경로나 작은 MCU에서는 의식할 만합니다. 그럴 때는 8장의 템플릿(정적 다형성)이나 위의 <code>variant</code>를 고려하세요. <code>std::variant</code>는 C의 "태그 + union"을 타입 안전하게 만든 것입니다.</p>
+  </div>
+  <p>다음 장에서는 런타임 대신 컴파일 타임에 "같은 코드, 다른 타입"을 만드는 템플릿을 봅니다.</p>
+
+  <div class="quiz" data-quiz="ch7"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch7" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH8 ============ -->
+<section class="chapter col" id="ch8">
+  <div class="eyebrow">Part III · 추상화 — 8장</div>
+  <h2>템플릿과 컨셉트</h2>
+  <p class="goal">이 장을 마치면: 매크로나 <code>void*</code>로 만들던 제네릭 코드를 함수·클래스 템플릿으로 바꿀 수 있고, 비타입 템플릿 매개변수로 크기가 고정된 컨테이너를 만들 수 있으며, C++20 컨셉트로 템플릿의 요구사항을 적고 <code>if constexpr</code>로 타입별 분기를 컴파일 타임에 할 수 있습니다.</p>
+  <p>7장의 가상 함수는 실행 중에 구현을 고릅니다. 템플릿은 같은 일을 <strong>컴파일할 때</strong> 합니다. 비용 없는 추상화라는 C++의 약속이 가장 잘 드러나는 기능입니다.</p>
+
+  <h3>void*와 매크로의 대안</h3>
+  <p>C에서 타입에 무관한 코드를 쓰는 방법은 두 가지였습니다. <code>qsort</code>처럼 <code>void*</code>와 함수 포인터를 쓰거나(타입 검사 없음, 간접 호출), 매크로로 코드를 찍어내거나(디버깅 어려움). 템플릿은 "타입을 매개변수로 받는 코드 틀"이고, 컴파일러가 쓰이는 타입마다 진짜 함수를 만들어 줍니다(<strong>인스턴스화</strong>).</p>
+<div class="code run"><div class="bar"><span class="fn">sort.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;algorithm&gt;
+#include &lt;cstdlib&gt;
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+// C style: comparator through void*, called indirectly for every comparison
+int cmp_int(const void* a, const void* b) {
+    int x = *static_cast&lt;const int*&gt;(a), y = *static_cast&lt;const int*&gt;(b);
+    return (x &gt; y) - (x &lt; y);
+}
+
+// A function template: T is deduced from the arguments
+template &lt;typename T&gt;
+T clamp_to(T v, T lo, T hi) { return v &lt; lo ? lo : (hi &lt; v ? hi : v); }
+
+int main() {
+    int raw[] = {42, 7, 19, 3, 88};
+    std::qsort(raw, 5, sizeof(int), cmp_int);
+
+    std::vector&lt;int&gt; v{42, 7, 19, 3, 88};
+    std::sort(v.begin(), v.end(), [](int a, int b) { return a &gt; b; });  // comparator can be inlined
+
+    for (int x : raw) std::cout &lt;&lt; x &lt;&lt; ' ';
+    std::cout &lt;&lt; "| ";
+    for (int x : v) std::cout &lt;&lt; x &lt;&lt; ' ';
+    std::cout &lt;&lt; '\n';
+
+    std::cout &lt;&lt; clamp_to(150, 0, 100) &lt;&lt; ' '                       // T = int
+              &lt;&lt; clamp_to(-0.5, 0.0, 1.0) &lt;&lt; ' '                    // T = double
+              &lt;&lt; clamp_to&lt;std::string&gt;("zebra", "apple", "mango")   // T = std::string (explicit)
+              &lt;&lt; '\n';
+}
+</code></pre></div>
+  <p><code>std::sort</code>는 비교 함수를 템플릿 인자로 받으므로 컴파일러가 비교 코드를 정렬 루프 안에 인라인할 수 있습니다. 그래서 대체로 <code>qsort</code>보다 빠릅니다. 추상화를 높였는데 성능도 좋아지는, 제로 오버헤드 원칙의 대표 사례입니다.</p>
+
+  <h3>클래스 템플릿: 타입과 크기를 매개변수로</h3>
+  <p>클래스도 템플릿이 될 수 있습니다. <code>std::vector&lt;T&gt;</code>가 그렇습니다. 템플릿 매개변수에는 타입뿐 아니라 <strong>컴파일 타임 상수</strong>도 올 수 있어서, 힙을 쓰지 않는 고정 용량 컨테이너처럼 임베디드에서 유용한 타입을 만들 수 있습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">static_vector.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;array&gt;
+#include &lt;cstddef&gt;
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+
+template &lt;typename T, std::size_t N&gt;
+class StaticVector {                      // like std::vector, but storage lives inside the object
+public:
+    bool push_back(const T&amp; v) {
+        if (size_ == N) return false;
+        data_[size_++] = v;
+        return true;
+    }
+    T&amp; operator[](std::size_t i) { return data_[i]; }
+    std::size_t size() const { return size_; }
+    static constexpr std::size_t capacity() { return N; }
+    T* begin() { return data_.data(); }   // begin/end make range-for work
+    T* end() { return data_.data() + size_; }
+private:
+    std::array&lt;T, N&gt; data_{};
+    std::size_t size_ = 0;
+};
+
+int main() {
+    StaticVector&lt;int, 4&gt; samples;                       // no heap allocation at all
+    for (int i = 0; i &lt; 6; ++i)
+        if (!samples.push_back(i * i)) std::cout &lt;&lt; "full at " &lt;&lt; i &lt;&lt; '\n';
+    for (int s : samples) std::cout &lt;&lt; s &lt;&lt; ' ';
+    std::cout &lt;&lt; "\ncapacity=" &lt;&lt; decltype(samples)::capacity()
+              &lt;&lt; " sizeof=" &lt;&lt; sizeof(samples) &lt;&lt; '\n';
+
+    StaticVector&lt;std::string, 2&gt; names;                 // same template, different T
+    names.push_back("left");
+    names.push_back("right");
+    std::cout &lt;&lt; names[0] &lt;&lt; '/' &lt;&lt; names[1] &lt;&lt; '\n';
+}
+</code></pre></div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p>템플릿은 쓰이는 곳에서 인스턴스화되므로, 그 지점에서 <strong>정의 전체가 보여야</strong> 합니다. 그래서 템플릿은 보통 헤더에 정의까지 둡니다. 선언만 헤더에 두고 정의를 .cpp에 두면 다른 파일에서 쓸 때 링크 오류가 납니다. 또 타입마다 코드가 생기므로, 거대한 템플릿을 많은 타입으로 인스턴스화하면 바이너리가 커질 수 있습니다.</p>
+  </div>
+
+  <h3>컨셉트로 요구사항을 적는다</h3>
+  <p>C++20 이전의 템플릿은 "일단 넣어 보고 안 되면 수백 줄짜리 오류"였습니다. <strong>컨셉트(concept)</strong>는 템플릿 인자가 만족해야 할 조건을 이름 붙여 적는 기능입니다. 조건을 어기면 컴파일러가 어떤 조건이 깨졌는지 짧게 알려 줍니다. 표준 라이브러리에 <code>std::integral</code>, <code>std::floating_point</code>, <code>std::totally_ordered</code> 같은 컨셉트가 준비되어 있고, 직접 만들 수도 있습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">concepts.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;concepts&gt;
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+template &lt;typename T&gt;
+concept Numeric = std::integral&lt;T&gt; || std::floating_point&lt;T&gt;;
+
+// A custom concept: anything with .size() returning something convertible to size_t
+template &lt;typename C&gt;
+concept Sized = requires(const C&amp; c) {
+    { c.size() } -&gt; std::convertible_to&lt;std::size_t&gt;;
+};
+
+template &lt;Numeric T&gt;
+double average(const std::vector&lt;T&gt;&amp; v) {
+    if (v.empty()) return 0.0;
+    double sum = 0;
+    for (T x : v) sum += x;
+    return sum / v.size();
+}
+
+void describe(const Sized auto&amp; c) {          // abbreviated template syntax
+    std::cout &lt;&lt; "container with " &lt;&lt; c.size() &lt;&lt; " elements\n";
+}
+
+int main() {
+    std::cout &lt;&lt; average(std::vector&lt;int&gt;{1, 2, 3, 4}) &lt;&lt; '\n';
+    std::cout &lt;&lt; average(std::vector&lt;double&gt;{0.5, 1.5}) &lt;&lt; '\n';
+    describe(std::vector&lt;char&gt;(7));
+    // average(std::vector&lt;const char*&gt;{"a", "b"});   // uncomment: "constraints not satisfied"
+}
+</code></pre></div>
+
+  <h3>if constexpr: 타입별 분기를 컴파일 타임에</h3>
+  <p><code>if constexpr</code>의 조건은 컴파일 타임에 평가되고, 선택되지 않은 가지는 아예 컴파일되지 않습니다. 매크로의 <code>#if</code>를 타입 정보까지 보면서 쓸 수 있게 된 것입니다. 아래 예제는 어떤 정수 타입이든 받아 바이트 순서를 바꾸고, 타입 크기에 맞는 경로를 컴파일 타임에 고릅니다.</p>
+<div class="code run"><div class="bar"><span class="fn">if_constexpr.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;bit&gt;
+#include &lt;concepts&gt;
+#include &lt;cstdint&gt;
+#include &lt;iostream&gt;
+
+template &lt;std::unsigned_integral T&gt;
+constexpr T to_big_endian(T v) {
+    if constexpr (std::endian::native == std::endian::big) {
+        return v;                                   // compiled only on big-endian targets
+    } else if constexpr (sizeof(T) == 1) {
+        return v;                                   // nothing to swap
+    } else {
+        T out = 0;
+        for (std::size_t i = 0; i &lt; sizeof(T); ++i) {
+            out = static_cast&lt;T&gt;((out &lt;&lt; 8) | (v &amp; 0xFF));
+            v = static_cast&lt;T&gt;(v &gt;&gt; 8);
+        }
+        return out;
+    }
+}
+
+int main() {
+    static_assert(to_big_endian&lt;std::uint16_t&gt;(0x1234) == 0x3412 || std::endian::native == std::endian::big);
+    std::cout &lt;&lt; std::hex
+              &lt;&lt; to_big_endian&lt;std::uint16_t&gt;(0x1234) &lt;&lt; ' '
+              &lt;&lt; to_big_endian&lt;std::uint32_t&gt;(0xA1B2C3D4u) &lt;&lt; ' '
+              &lt;&lt; +to_big_endian&lt;std::uint8_t&gt;(0x7F) &lt;&lt; '\n';
+}
+</code></pre></div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <p>런타임에 구현을 바꿔야 하면 <code>virtual</code>(7장), 컴파일 타임에 타입이 정해지면 템플릿. 템플릿에는 컨셉트로 요구사항을 적어 두세요. 그 자체로 문서가 되고, 사용자는 짧은 오류 메시지를 받습니다.</p>
+  </div>
+  <p>표준 라이브러리의 컨테이너와 알고리즘은 모두 이 템플릿 위에 서 있습니다. 다음 장에서 그 사용법을 익힙니다.</p>
+
+  <div class="quiz" data-quiz="ch8"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch8" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH9 ============ -->
+<section class="chapter col" id="ch9">
+  <div class="eyebrow">Part III · 추상화 — 9장</div>
+  <h2>STL과 람다</h2>
+  <p class="goal">이 장을 마치면: 요구사항에 맞는 표준 컨테이너를 고를 수 있고, 반복자와 알고리즘으로 손으로 짠 루프를 대체할 수 있으며, 람다의 캡처 방식을 구분하고 C++20 레인지로 데이터 처리 파이프라인을 작성할 수 있습니다.</p>
+  <p>8장의 템플릿이 "타입에 무관한 코드"였다면, STL(표준 템플릿 라이브러리)은 그 기술로 만든 자료구조와 알고리즘 모음입니다. C에서 매번 직접 짜던 연결 리스트·해시 테이블·정렬을 더는 짜지 않아도 됩니다.</p>
+
+  <h3>컨테이너: 고민되면 vector</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>컨테이너</th><th>구조</th><th>강점</th><th>C에서의 대응</th></tr></thead>
+    <tbody>
+      <tr><td><code>array&lt;T,N&gt;</code></td><td>고정 크기 연속 메모리</td><td>힙 없음, C 배열과 같은 배치</td><td><code>T a[N]</code></td></tr>
+      <tr><td><code>vector&lt;T&gt;</code></td><td>가변 크기 연속 메모리</td><td>임의 접근 O(1), 뒤 추가 분할상환 O(1), 캐시 친화적</td><td><code>malloc</code> + <code>realloc</code> 배열</td></tr>
+      <tr><td><code>deque&lt;T&gt;</code></td><td>블록 배열</td><td>양 끝 삽입·삭제 O(1)</td><td>링 버퍼</td></tr>
+      <tr><td><code>list&lt;T&gt;</code></td><td>이중 연결 리스트</td><td>중간 삽입 O(1), 반복자 안정성</td><td><code>struct list_head</code></td></tr>
+      <tr><td><code>map&lt;K,V&gt;</code> / <code>set&lt;K&gt;</code></td><td>균형 이진 트리</td><td>키 정렬 유지, 조회 O(log n)</td><td>직접 구현한 트리</td></tr>
+      <tr><td><code>unordered_map&lt;K,V&gt;</code></td><td>해시 테이블</td><td>평균 조회 O(1), 순서 없음</td><td>직접 구현한 해시</td></tr>
+    </tbody>
+  </table></div>
+  <p>교과서의 복잡도만 보면 리스트가 중간 삽입에 유리하지만, 실제 하드웨어에서는 캐시 미스 비용 때문에 수천 개 수준까지는 <code>vector</code>가 거의 항상 이깁니다. 그래서 기본값은 <code>vector</code>이고, 다른 컨테이너는 이유가 있을 때 씁니다.</p>
+  <div class="bench" id="b-cont">
+    <header><b>실습 벤치 9-A · 컨테이너 고르기</b><span>CLASSIFY · 7 SCENARIOS</span></header>
+    <div class="body">
+      <div id="contList"></div>
+      <div class="row"><button type="button" class="btn" id="contListReset">다시 하기</button></div>
+      <div class="status" id="contScore"></div>
+    </div>
+  </div>
+
+  <h3>반복자는 일반화된 포인터다</h3>
+  <p>STL 알고리즘은 컨테이너를 직접 받지 않고 <strong>반복자 쌍 [first, last)</strong>을 받습니다. 반복자는 포인터를 일반화한 것입니다. <code>*it</code>로 원소를 읽고 <code>++it</code>로 다음으로 갑니다. 그래서 C 배열의 포인터도 그대로 반복자로 쓸 수 있습니다. 알고리즘과 자료구조가 반복자로 분리되어 있기 때문에 알고리즘 N개 × 컨테이너 M개를 N + M개의 코드로 해결합니다.</p>
+<div class="code run"><div class="bar"><span class="fn">iterators.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;algorithm&gt;
+#include &lt;iostream&gt;
+#include &lt;list&gt;
+#include &lt;numeric&gt;
+#include &lt;vector&gt;
+
+int main() {
+    int raw[] = {5, 3, 9, 1, 7};                    // plain C array
+    std::sort(raw, raw + 5);                        // pointers are iterators
+    std::cout &lt;&lt; "sorted C array: ";
+    for (int* p = raw; p != raw + 5; ++p) std::cout &lt;&lt; *p &lt;&lt; ' ';
+
+    std::vector&lt;int&gt; v(raw, raw + 5);               // construct from an iterator range
+    std::list&lt;int&gt; l(v.rbegin(), v.rend());         // reverse iterators
+
+    auto it = std::find(l.begin(), l.end(), 7);     // same algorithm, different container
+    std::cout &lt;&lt; "\nfound 7 in list: " &lt;&lt; (it != l.end() ? "yes" : "no");
+    std::cout &lt;&lt; "\nsum = " &lt;&lt; std::accumulate(v.begin(), v.end(), 0);
+
+    auto [mn, mx] = std::minmax_element(v.begin(), v.end());
+    std::cout &lt;&lt; "\nmin = " &lt;&lt; *mn &lt;&lt; ", max = " &lt;&lt; *mx
+              &lt;&lt; ", max at index " &lt;&lt; (mx - v.begin()) &lt;&lt; '\n';
+}
+</code></pre></div>
+
+  <h3>알고리즘 + 람다 = 루프 대신 의도</h3>
+  <p><strong>람다</strong>는 그 자리에서 정의하는 이름 없는 함수 객체입니다. 문법은 <code>[캡처](매개변수) { 본문 }</code>. 캡처는 바깥 변수를 어떻게 가져올지 정합니다. <code>[x]</code>는 값 복사, <code>[&amp;x]</code>는 참조, <code>[=]</code>/<code>[&amp;]</code>는 쓰인 것 전부. C의 콜백 + <code>void *user_data</code> 조합이 람다 하나로 바뀝니다.</p>
+<div class="code run"><div class="bar"><span class="fn">lambdas.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;algorithm&gt;
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+struct Reading { std::string sensor; double value; };
+
+int main() {
+    std::vector&lt;Reading&gt; rs{{"t0", 21.5}, {"t1", 85.2}, {"t2", 19.0}, {"t3", 90.1}, {"t4", 22.3}};
+    const double limit = 80.0;
+
+    // count_if + lambda capturing 'limit' by value
+    auto hot = std::count_if(rs.begin(), rs.end(), [limit](const Reading&amp; r) { return r.value &gt; limit; });
+    std::cout &lt;&lt; hot &lt;&lt; " readings above " &lt;&lt; limit &lt;&lt; '\n';
+
+    // sort by value, descending
+    std::sort(rs.begin(), rs.end(), [](const Reading&amp; a, const Reading&amp; b) { return a.value &gt; b.value; });
+
+    // a stateful lambda: captures 'total' by reference
+    double total = 0;
+    std::for_each(rs.begin(), rs.end(), [&amp;total](const Reading&amp; r) { total += r.value; });
+
+    // transform into another container
+    std::vector&lt;std::string&gt; labels(rs.size());
+    std::transform(rs.begin(), rs.end(), labels.begin(),
+                   [](const Reading&amp; r) { return r.sensor + "=" + std::to_string(int(r.value)); });
+
+    for (const auto&amp; s : labels) std::cout &lt;&lt; s &lt;&lt; ' ';
+    std::cout &lt;&lt; "\naverage = " &lt;&lt; total / rs.size() &lt;&lt; '\n';
+
+    // C++20: erase all elements matching a predicate in one call
+    std::erase_if(rs, [](const Reading&amp; r) { return r.value &lt; 20.0; });
+    std::cout &lt;&lt; "after erase_if: " &lt;&lt; rs.size() &lt;&lt; " readings\n";
+
+    // a lambda stored in a variable, used like a function
+    auto in_range = [lo = 20.0, hi = 30.0](double x) { return lo &lt;= x &amp;&amp; x &lt;= hi; };
+    std::cout &lt;&lt; std::boolalpha &lt;&lt; "in_range(25) = " &lt;&lt; in_range(25) &lt;&lt; '\n';
+}
+</code></pre></div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><b>반복자 무효화</b>: 순회 중에 <code>erase</code>나 <code>push_back</code>을 하면 기존 반복자가 무효가 될 수 있습니다(<code>vector</code>는 재할당 시 전부). 지우면서 순회하지 말고 <code>std::erase_if</code>를 쓰세요.</li>
+      <li><b>매달린 캡처</b>: <code>[&amp;]</code> 람다를 저장해 두었다가 지역 변수가 사라진 뒤 호출하면 매달린 참조입니다. 오래 사는 람다는 필요한 것만 값으로 캡처하세요.</li>
+    </ul>
+  </div>
+
+  <h3>C++20 레인지: 파이프라인으로 읽는 데이터 처리</h3>
+  <p>레인지(ranges)는 <code>begin</code>/<code>end</code> 쌍 대신 컨테이너를 통째로 받고, <strong>뷰(view)</strong>를 <code>|</code>로 이어 지연 평가 파이프라인을 만듭니다. 셸의 파이프와 비슷하게 읽힙니다. 뷰는 원소를 복사하지 않고, 결과를 실제로 꺼낼 때 계산합니다.</p>
+<div class="code run"><div class="bar"><span class="fn">ranges.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;algorithm&gt;
+#include &lt;iostream&gt;
+#include &lt;ranges&gt;
+#include &lt;vector&gt;
+
+int main() {
+    std::vector&lt;int&gt; adc{512, 1023, 0, 700, 300, 950, 128, 880};
+
+    namespace views = std::views;
+    auto volts = adc
+        | views::filter([](int raw) { return raw &gt; 256; })            // drop low readings
+        | views::transform([](int raw) { return raw * 3.3 / 1023; })  // scale to volts
+        | views::take(4);                                             // first 4 only
+
+    for (double v : volts) std::cout &lt;&lt; v &lt;&lt; " V\n";
+
+    std::ranges::sort(adc);                                           // no begin()/end() needed
+    std::cout &lt;&lt; "median-ish: " &lt;&lt; adc[adc.size() / 2] &lt;&lt; '\n';
+
+    for (int i : views::iota(0, 5) | views::reverse) std::cout &lt;&lt; i &lt;&lt; ' ';
+    std::cout &lt;&lt; '\n';
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>"STL은 무겁다"는 인상은 대개 디버그 빌드에서 생깁니다. 최적화를 켜면(<code>-O2</code>) 반복자는 포인터로, 람다는 인라인 코드로 녹아 손으로 짠 루프와 같은 기계어가 나오는 경우가 많습니다. 확인하고 싶다면 같은 코드를 Compiler Explorer(godbolt.org)에 붙여 어셈블리를 비교해 보세요.</p>
+  </div>
+  <p>Part III가 끝났습니다. 마지막 Part에서는 실무 코드에서 꼭 필요한 오류 처리와 모던 C++의 자잘하지만 중요한 도구들을 다루고, 지금까지 배운 것을 하나의 프로그램으로 엮습니다.</p>
+
+  <div class="quiz" data-quiz="ch9"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch9" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH10 ============ -->
+<section class="chapter col" id="ch10">
+  <div class="eyebrow">Part IV · 현대 C++ 실무 — 10장</div>
+  <h2>오류 처리: 예외·optional·expected</h2>
+  <p class="goal">이 장을 마치면: 예외가 던져질 때 스택 되감기와 소멸자가 어떻게 맞물리는지 설명할 수 있고, 예외 안전성 보장 수준과 <code>noexcept</code>를 구분할 수 있으며, 상황에 따라 예외·<code>std::optional</code>·<code>std::expected</code>·<code>assert</code> 중 알맞은 방식을 고를 수 있습니다.</p>
+  <p>4장의 RAII는 "모든 출구에서 정리한다"고 했습니다. 예외는 그 출구 중 가장 극적인 경우입니다. 이 장에서 RAII가 왜 예외와 한 쌍인지 보게 됩니다.</p>
+  <div class="call warn"><span class="lab">실행 엔진 안내</span>
+    <p>이 장의 앞부분 예제는 <code>throw</code>/<code>try</code>를 씁니다. 브라우저 내장 엔진(WASM)은 예외를 지원하지 않으므로, 실행 엔진이 <b>자동</b>이나 <b>온라인</b>으로 설정되어 있어야 합니다. 뒷부분의 <code>optional</code>/<code>expected</code> 예제는 모든 엔진에서 실행됩니다.</p>
+  </div>
+
+  <h3>C의 오류 처리가 놓치는 것</h3>
+  <p>C에서는 반환값(-1, NULL)과 <code>errno</code>로 실패를 알립니다. 단순하고 비용이 예측 가능하지만 세 가지 약점이 있습니다. 호출자가 <strong>검사를 잊어도</strong> 컴파일러가 모르고, 오류를 위로 전달하려면 <strong>모든 중간 함수</strong>가 검사하고 다시 반환해야 하며, 생성자처럼 <strong>반환값이 없는 곳</strong>에서는 실패를 알릴 방법이 없습니다. C++은 이 문제에 두 가지 답을 줍니다. 제어 흐름을 바꾸는 <strong>예외</strong>, 그리고 실패를 타입에 담는 <strong>결과 타입</strong>(<code>optional</code>, <code>expected</code>)입니다.</p>
+
+  <h3>예외: 던지고, 되감고, 잡는다</h3>
+  <p><code>throw</code>는 현재 함수를 즉시 빠져나가 호출 스택을 거슬러 올라가며 맞는 <code>catch</code>를 찾습니다. 이 과정이 <strong>스택 되감기(stack unwinding)</strong>이고, 되감기 중에 지나치는 모든 스코프의 지역 객체는 소멸자가 실행됩니다. 중간 함수들은 오류 검사 코드를 한 줄도 쓰지 않았는데 자원은 하나도 새지 않습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">exceptions.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;stdexcept&gt;
+#include &lt;string&gt;
+
+struct Guard {                                   // RAII object to observe unwinding
+    std::string name;
+    explicit Guard(std::string n) : name(std::move(n)) { std::cout &lt;&lt; "  acquire " &lt;&lt; name &lt;&lt; '\n'; }
+    ~Guard() { std::cout &lt;&lt; "  release " &lt;&lt; name &lt;&lt; '\n'; }
+};
+
+class SensorError : public std::runtime_error {  // derive from the standard hierarchy
+public:
+    SensorError(const std::string&amp; what, int addr) : std::runtime_error(what), addr_(addr) {}
+    int addr() const { return addr_; }
+private:
+    int addr_;
+};
+
+int read_register(int addr) {
+    Guard bus("i2c bus lock");
+    if (addr == 0x77) throw SensorError("device did not ACK", addr);
+    return addr * 2;
+}
+
+int read_calibration() {
+    Guard buf("dma buffer");
+    int a = read_register(0x48);                 // no error checks in between
+    int b = read_register(0x77);                 // throws
+    return a + b;                                // never reached
+}
+
+int main() {
+    try {
+        int c = read_calibration();
+        std::cout &lt;&lt; "calibration = " &lt;&lt; c &lt;&lt; '\n';
+    } catch (const SensorError&amp; e) {             // catch by const reference
+        std::cout &lt;&lt; "SensorError: " &lt;&lt; e.what() &lt;&lt; " at 0x" &lt;&lt; std::hex &lt;&lt; e.addr() &lt;&lt; std::dec &lt;&lt; '\n';
+    } catch (const std::exception&amp; e) {          // more general handlers go last
+        std::cout &lt;&lt; "other error: " &lt;&lt; e.what() &lt;&lt; '\n';
+    }
+    std::cout &lt;&lt; "program continues\n";
+}
+</code></pre></div>
+  <p>출력에서 <code>release</code> 줄이 언제 찍히는지 보세요. 예외가 <code>read_register</code>에서 출발해 <code>main</code>의 <code>catch</code>에 닿기 전에, 두 <code>Guard</code>가 생성의 역순으로 정리됩니다.</p>
+
+  <h3>예외 안전성과 noexcept</h3>
+  <p>예외가 지나간 뒤 객체가 어떤 상태로 남는지에 대해 C++은 세 단계의 약속을 씁니다.</p>
+  <div class="ladder">
+    <div><b>기본</b><span>자원 누수가 없고 불변식이 유지된다. 값은 바뀌었을 수 있다. RAII만 지키면 대부분 자동으로 얻는다.</span></div>
+    <div><b>강한</b><span>실패하면 호출 전과 완전히 같은 상태. "트랜잭션처럼". 5장의 copy-and-swap 대입이 이 보장을 준다.</span></div>
+    <div><b>nothrow</b><span>절대 예외를 던지지 않는다. 소멸자, 이동 연산, swap은 이 수준이어야 하고 <code>noexcept</code>로 표시한다.</span></div>
+  </div>
+  <p><code>noexcept</code>는 문서 이상의 의미가 있습니다. 5장에서 본 것처럼 <code>std::vector</code>는 원소의 이동 생성자가 <code>noexcept</code>일 때만 재할당에 이동을 씁니다. 그리고 <code>noexcept</code> 함수에서 예외가 새어 나가면 프로그램은 <code>std::terminate</code>로 즉시 종료됩니다.</p>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>주요 구현의 예외는 "제로 비용" 모델입니다. 예외가 <em>던져지지 않는</em> 정상 경로에는 검사 코드가 없고, 대신 되감기 정보 테이블이 바이너리에 들어갑니다. 던질 때는 테이블을 해석하느라 비쌉니다(마이크로초 단위). 그래서 예외는 <strong>드문</strong> 실패에 쓰고, 흔한 실패에는 아래의 결과 타입을 씁니다. 코드 크기나 결정적 실행 시간이 중요한 펌웨어는 <code>-fno-exceptions</code>로 예외를 아예 끄는 경우가 많습니다.</p>
+  </div>
+
+  <h3>실패를 값으로: optional과 expected</h3>
+  <p><code>std::optional&lt;T&gt;</code>(C++17)는 "<code>T</code> 값이 있거나 없거나"입니다. 3장 링 버퍼의 <code>pop()</code>에서 이미 썼습니다. 없는 이유를 알릴 필요가 없을 때 가장 가볍습니다. <code>std::expected&lt;T, E&gt;</code>(C++23)는 "<code>T</code> 값이거나, 실패 이유 <code>E</code>이거나"입니다. 예외처럼 이유를 전달하면서도 제어 흐름은 평범한 반환입니다. 반환 타입에 실패 가능성이 드러나므로 호출자가 무시하기 어렵습니다.</p>
+<div class="code run" data-std="c++23"><div class="bar"><span class="fn">expected.cpp<span class="std">c++23</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;charconv&gt;
+#include &lt;expected&gt;
+#include &lt;iostream&gt;
+#include &lt;optional&gt;
+#include &lt;string&gt;
+#include &lt;string_view&gt;
+
+// optional: "maybe there is a value" - no reason needed
+std::optional&lt;std::string_view&gt; find_value(std::string_view line, std::string_view key) {
+    auto pos = line.find(key);
+    if (pos == std::string_view::npos || line.substr(pos + key.size(), 1) != "=") return std::nullopt;
+    auto rest = line.substr(pos + key.size() + 1);
+    return rest.substr(0, rest.find(','));
+}
+
+// expected: "a value, or the reason why not"
+enum class ParseError { Empty, NotANumber, OutOfRange };
+
+std::expected&lt;int, ParseError&gt; parse_int(std::string_view s, int lo, int hi) {
+    if (s.empty()) return std::unexpected(ParseError::Empty);
+    int v = 0;
+    auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), v);   // no locale, no exceptions
+    if (ec != std::errc{} || ptr != s.data() + s.size()) return std::unexpected(ParseError::NotANumber);
+    if (v &lt; lo || v &gt; hi) return std::unexpected(ParseError::OutOfRange);
+    return v;
+}
+
+const char* explain(ParseError e) {
+    switch (e) {
+        case ParseError::Empty:      return "empty";
+        case ParseError::NotANumber: return "not a number";
+        case ParseError::OutOfRange: return "out of range";
+    }
+    return "?";
+}
+
+int main() {
+    std::string_view cfg = "baud=115200,retries=x3,timeout=,parity=none";
+    for (std::string_view key : {"baud", "retries", "timeout", "stopbits"}) {
+        auto raw = find_value(cfg, key);
+        if (!raw) { std::cout &lt;&lt; key &lt;&lt; ": missing, using default\n"; continue; }
+        auto n = parse_int(*raw, 0, 1'000'000);
+        if (n) std::cout &lt;&lt; key &lt;&lt; " = " &lt;&lt; *n &lt;&lt; '\n';
+        else   std::cout &lt;&lt; key &lt;&lt; ": invalid (" &lt;&lt; explain(n.error()) &lt;&lt; ")\n";
+    }
+    // value_or: a default in one call
+    std::cout &lt;&lt; "retries or 3: " &lt;&lt; parse_int("x3", 0, 10).value_or(3) &lt;&lt; '\n';
+}
+</code></pre></div>
+
+  <div class="bench" id="b-err">
+    <header><b>실습 벤치 10-A · 오류 처리 방식 고르기</b><span>POLICY · 5 CASES</span></header>
+    <div class="body">
+      <div id="errList"></div>
+      <div class="row"><button type="button" class="btn" id="errListReset">다시 하기</button></div>
+      <div class="status" id="errScore"></div>
+    </div>
+  </div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li><b>프로그래머 버그</b>(계약 위반) → <code>assert</code>로 즉시 드러낸다. 복구하지 않는다.</li>
+      <li><b>드물고, 여러 층을 건너 처리해야 하는 실패</b>(생성자 실패, 자원 고갈) → 예외.</li>
+      <li><b>흔하고, 바로 위 호출자가 처리하는 실패</b>(입력 파싱, 조회 실패) → <code>expected</code> 또는 <code>optional</code>.</li>
+      <li>어떤 방식이든 RAII가 있어야 누수 없이 동작한다.</li>
+    </ul>
+  </div>
+  <p>다음 장에서는 이 장에서 슬쩍 쓴 <code>string_view</code>, <code>from_chars</code> 같은 모던 C++의 작은 도구들을 정리합니다.</p>
+
+  <div class="quiz" data-quiz="ch10"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch10" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH11 ============ -->
+<section class="chapter col" id="ch11">
+  <div class="eyebrow">Part IV · 현대 C++ 실무 — 11장</div>
+  <h2>모던 C++ 도구 상자</h2>
+  <p class="goal">이 장을 마치면: <code>enum class</code>·<code>std::span</code>·<code>std::string_view</code>로 C 인터페이스의 흔한 버그를 타입으로 막을 수 있고, <code>constexpr</code>/<code>static_assert</code>로 테이블 생성과 구조체 배치를 컴파일 타임에 검증할 수 있으며, <code>std::format</code>과 표준 스레드 도구의 기본 사용법을 익힙니다.</p>
+  <p>10장까지가 C++의 큰 기둥이었다면, 이 장은 매일 쓰는 작은 도구들입니다. 하나하나는 작지만 C에서 흔했던 버그 부류를 통째로 없애 줍니다.</p>
+
+  <h3>enum class: 이름이 새지 않고, 정수와 섞이지 않는다</h3>
+  <p>C의 <code>enum</code>은 이름이 바깥 스코프로 퍼지고(<code>RED</code>가 전역 이름이 됨), 아무 정수와 섞입니다. <code>enum class</code>는 이름이 <code>Mode::Fast</code>처럼 한정되고, 정수로의 암묵 변환이 막히며, 기저 타입을 지정해 레지스터나 프로토콜 필드 크기에 맞출 수 있습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">enum_class.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;cstdint&gt;
+#include &lt;iostream&gt;
+#include &lt;type_traits&gt;
+
+enum class Mode : std::uint8_t { Sleep = 0, Normal = 1, Fast = 3 };   // fits a 2-bit register field
+
+enum class Irq : std::uint32_t { None = 0, RxReady = 1u &lt;&lt; 0, TxEmpty = 1u &lt;&lt; 1, Overrun = 1u &lt;&lt; 7 };
+
+// Opt-in bit operations for a flags enum
+constexpr Irq operator|(Irq a, Irq b) {
+    using U = std::underlying_type_t&lt;Irq&gt;;
+    return static_cast&lt;Irq&gt;(static_cast&lt;U&gt;(a) | static_cast&lt;U&gt;(b));
+}
+constexpr bool has(Irq set, Irq bit) {
+    using U = std::underlying_type_t&lt;Irq&gt;;
+    return (static_cast&lt;U&gt;(set) &amp; static_cast&lt;U&gt;(bit)) != 0;
+}
+
+const char* name(Mode m) {
+    switch (m) {                       // -Wall warns if a Mode is missing here
+        case Mode::Sleep:  return "sleep";
+        case Mode::Normal: return "normal";
+        case Mode::Fast:   return "fast";
+    }
+    return "?";
+}
+
+int main() {
+    Mode m = Mode::Fast;
+    // int x = m;                      // error: no implicit conversion
+    auto raw = static_cast&lt;unsigned&gt;(m);   // explicit when you really need the bits
+    std::cout &lt;&lt; name(m) &lt;&lt; " = " &lt;&lt; raw &lt;&lt; ", sizeof(Mode) = " &lt;&lt; sizeof(Mode) &lt;&lt; '\n';
+
+    Irq pending = Irq::RxReady | Irq::Overrun;
+    std::cout &lt;&lt; std::boolalpha &lt;&lt; "rx: " &lt;&lt; has(pending, Irq::RxReady)
+              &lt;&lt; ", tx: " &lt;&lt; has(pending, Irq::TxEmpty)
+              &lt;&lt; ", overrun: " &lt;&lt; has(pending, Irq::Overrun) &lt;&lt; '\n';
+}
+</code></pre></div>
+
+  <h3>span과 string_view: 포인터 + 길이를 하나로</h3>
+  <p>C 함수는 배열을 <code>(const int *p, size_t n)</code> 두 인자로 받습니다. 길이를 잘못 넘기는 버그가 끊이지 않죠. <code>std::span&lt;T&gt;</code>(C++20)은 "포인터 + 길이"를 하나로 묶은 <strong>소유하지 않는 뷰</strong>입니다. C 배열, <code>std::array</code>, <code>std::vector</code> 무엇이든 받습니다. 문자열에는 같은 역할의 <code>std::string_view</code>(C++17)가 있습니다. 복사 없이 부분 문자열을 다룰 수 있어 파서에 특히 좋습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">span_view.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;array&gt;
+#include &lt;cstdint&gt;
+#include &lt;iostream&gt;
+#include &lt;span&gt;
+#include &lt;string&gt;
+#include &lt;string_view&gt;
+#include &lt;vector&gt;
+
+// One function for every contiguous byte sequence; the length travels with the pointer.
+int checksum(std::span&lt;const std::uint8_t&gt; bytes) {
+    int sum = 0;
+    for (auto b : bytes) sum = (sum + b) &amp; 0xFF;
+    return sum;
+}
+
+// string_view: tokenize without allocating
+void print_fields(std::string_view line, char sep) {
+    while (true) {
+        auto pos = line.find(sep);
+        std::cout &lt;&lt; '[' &lt;&lt; line.substr(0, pos) &lt;&lt; ']';
+        if (pos == std::string_view::npos) break;
+        line.remove_prefix(pos + 1);
+    }
+    std::cout &lt;&lt; '\n';
+}
+
+int main() {
+    std::uint8_t raw[] = {0x10, 0x20, 0x30};
+    std::array&lt;std::uint8_t, 4&gt; arr{1, 2, 3, 4};
+    std::vector&lt;std::uint8_t&gt; vec(100, 0x05);
+
+    std::cout &lt;&lt; checksum(raw) &lt;&lt; ' ' &lt;&lt; checksum(arr) &lt;&lt; ' ' &lt;&lt; checksum(vec) &lt;&lt; '\n';
+    std::cout &lt;&lt; checksum(std::span(vec).subspan(10, 5)) &lt;&lt; " (a sub-range, no copy)\n";
+
+    print_fields("$GPGGA,123519,4807.038,N", ',');
+    std::string owned = "a;b;c";
+    print_fields(owned, ';');           // std::string converts to string_view implicitly
+}
+</code></pre></div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p><code>span</code>과 <code>string_view</code>는 <strong>빌린 것</strong>입니다. 원본보다 오래 살면 매달립니다. <code>std::string_view f() { std::string s = "temp"; return s; }</code>는 컴파일되지만 반환되는 순간 원본이 사라집니다. 매개변수로 받아 함수 안에서 쓰는 용도가 가장 안전하고, 멤버 변수나 반환값으로 쓸 때는 원본의 수명을 반드시 확인하세요.</p>
+  </div>
+
+  <h3>constexpr과 static_assert: 컴파일러에게 검증을 맡긴다</h3>
+  <p>C에서는 CRC 테이블을 스크립트로 생성해 소스에 붙여 넣거나, 시작 시 계산합니다. C++에서는 <code>constexpr</code> 함수로 <strong>컴파일 타임에</strong> 만들 수 있고, 결과는 읽기 전용 데이터로 바이너리에 들어갑니다. <code>static_assert</code>는 통신 패킷 구조체의 크기와 오프셋처럼 "깨지면 안 되는 가정"을 빌드 단계에서 검사합니다.</p>
+<div class="code run"><div class="bar"><span class="fn">constexpr_table.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;array&gt;
+#include &lt;cstddef&gt;
+#include &lt;cstdint&gt;
+#include &lt;iostream&gt;
+
+constexpr std::array&lt;std::uint8_t, 256&gt; make_crc8_table(std::uint8_t poly) {
+    std::array&lt;std::uint8_t, 256&gt; t{};
+    for (int i = 0; i &lt; 256; ++i) {
+        std::uint8_t c = static_cast&lt;std::uint8_t&gt;(i);
+        for (int b = 0; b &lt; 8; ++b)
+            c = static_cast&lt;std::uint8_t&gt;((c &amp; 0x80) ? (c &lt;&lt; 1) ^ poly : (c &lt;&lt; 1));
+        t[i] = c;
+    }
+    return t;
+}
+
+constexpr auto CRC8 = make_crc8_table(0x07);       // computed by the compiler
+static_assert(CRC8[1] == 0x07 &amp;&amp; CRC8[255] == 0xF3, "unexpected CRC-8 table");
+
+constexpr std::uint8_t crc8(const std::uint8_t* p, std::size_t n) {
+    std::uint8_t c = 0;
+    while (n--) c = CRC8[c ^ *p++];
+    return c;
+}
+
+struct [[gnu::packed]] Packet {                    // wire format shared with a C peer
+    std::uint8_t  type;
+    std::uint16_t length;
+    std::uint32_t timestamp;
+    std::uint8_t  crc;
+};
+static_assert(sizeof(Packet) == 8, "Packet layout changed - protocol break!");
+static_assert(offsetof(Packet, timestamp) == 3);
+
+int main() {
+    constexpr std::uint8_t msg[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
+    constexpr auto c = crc8(msg, sizeof msg);       // also at compile time
+    std::cout &lt;&lt; std::hex &lt;&lt; "crc8(\"123456789\") = 0x" &lt;&lt; +c &lt;&lt; '\n';
+}
+</code></pre></div>
+
+  <h3>std::format, 구조적 바인딩, 그리고 동시성 맛보기</h3>
+  <p><code>std::format</code>(C++20)은 <code>printf</code>의 간결함과 <code>iostream</code>의 타입 안전성을 합쳤습니다. 형식이 맞지 않으면 컴파일 오류가 납니다. <strong>구조적 바인딩</strong>은 구조체·pair·tuple을 이름 있는 변수로 풀어 줍니다. 마지막으로, C++11부터 스레드·뮤텍스·원자 변수가 표준에 들어 있습니다. <code>pthread</code> 대신 이식 가능한 코드를 쓸 수 있고, RAII 원칙이 그대로 적용됩니다(<code>std::jthread</code>는 소멸자에서 <code>join</code>합니다).</p>
+<div class="code run"><div class="bar"><span class="fn">format_threads.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;algorithm&gt;
+#include &lt;atomic&gt;
+#include &lt;format&gt;
+#include &lt;iostream&gt;
+#include &lt;map&gt;
+#include &lt;mutex&gt;
+#include &lt;string&gt;
+#include &lt;thread&gt;
+#include &lt;tuple&gt;
+#include &lt;vector&gt;
+
+std::tuple&lt;double, double, int&gt; stats(const std::vector&lt;double&gt;&amp; v) {
+    double lo = v.front(), hi = v.front();
+    for (double x : v) { lo = std::min(lo, x); hi = std::max(hi, x); }
+    return {lo, hi, static_cast&lt;int&gt;(v.size())};
+}
+
+int main() {
+    auto [lo, hi, n] = stats({3.5, -1.25, 9.0, 4.75});        // structured binding
+    std::cout &lt;&lt; std::format("n={} min={:.2f} max={:&gt;7.2f} hex={:#06x}\n", n, lo, hi, 255);
+
+    std::map&lt;std::string, int&gt; retries{{"uart", 2}, {"spi", 0}};
+    for (const auto&amp; [bus, count] : retries) std::cout &lt;&lt; std::format("{:&lt;5}|{:3}\n", bus, count);
+
+    // Concurrency (needs an online engine: the in-browser engine has no threads)
+    std::atomic&lt;int&gt; hits{0};
+    std::mutex log_mutex;
+    std::vector&lt;std::string&gt; log;
+    {
+        std::vector&lt;std::jthread&gt; workers;
+        for (int id = 0; id &lt; 4; ++id)
+            workers.emplace_back([&amp;, id] {
+                for (int i = 0; i &lt; 1000; ++i) ++hits;             // lock-free atomic increment
+                std::lock_guard lock(log_mutex);                   // RAII lock
+                log.push_back(std::format("worker {} done", id));
+            });
+    }                                                              // jthreads join here
+    std::cout &lt;&lt; std::format("hits = {} ({} log lines)\n", hits.load(), log.size());
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p><code>std::atomic</code>은 C11의 <code>_Atomic</code>/<code>stdatomic.h</code>와 같은 메모리 모델을 공유합니다. 기본 순서는 <code>seq_cst</code>이고, 필요하면 <code>memory_order_relaxed</code> 등을 명시할 수 있습니다. 공유 데이터에 <code>volatile</code>을 쓰는 습관은 C++에서도 동기화가 아닙니다. <code>volatile</code>은 MMIO 레지스터 접근에만 쓰세요.</p>
+  </div>
+  <p>도구 상자가 갖춰졌습니다. 마지막 장에서는 지금까지의 거의 모든 기능을 써서 작은 프로그램 하나를 완성합니다.</p>
+
+  <div class="quiz" data-quiz="ch11"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch11" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH12 ============ -->
+<section class="chapter col" id="ch12">
+  <div class="eyebrow">Part IV · 현대 C++ 실무 — 12장</div>
+  <h2>실전: 미니 KV 저장소 만들기</h2>
+  <p class="goal">이 장을 마치면: 클래스·RAII·스마트 포인터·가상 함수·STL·람다·<code>string_view</code>·<code>expected</code>를 한 프로그램 안에서 각자 맞는 자리에 쓸 수 있고, C로 짰다면 어떤 코드가 필요했을지 비교해 설명할 수 있으며, 확장 과제를 스스로 설계해 붙일 수 있습니다.</p>
+  <p>11개 장에서 배운 도구를 하나로 엮을 차례입니다. 만들 것은 Redis를 아주 작게 줄인 <strong>인메모리 키-값 셸 <code>kvsh</code></strong>입니다. 표준 입력에서 명령을 한 줄씩 읽어 실행합니다. 표준 입력으로 동작하므로 이 페이지의 실행기에서 그대로 돌아가고, 예외를 쓰지 않으므로 브라우저 내장 엔진에서도 실행됩니다.</p>
+
+  <h3>사양: 일곱 개의 명령과 한 가지 규칙</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>명령</th><th>동작</th><th>예</th></tr></thead>
+    <tbody>
+      <tr><td><code>SET k v</code></td><td>키 k에 값 v 저장</td><td><code>SET temp 23</code> → <code>OK</code></td></tr>
+      <tr><td><code>GET k</code></td><td>값 조회, 없으면 오류</td><td><code>GET temp</code> → <code>23</code></td></tr>
+      <tr><td><code>DEL k</code></td><td>키 삭제</td><td><code>DEL temp</code> → <code>1</code></td></tr>
+      <tr><td><code>INCR k</code></td><td>정수 값 1 증가(없으면 0에서 시작), 정수가 아니면 오류</td><td><code>INCR visits</code> → <code>1</code></td></tr>
+      <tr><td><code>KEYS p</code></td><td>접두사 p로 시작하는 키를 정렬해 나열(<code>*</code>는 전체)</td><td><code>KEYS sensor.</code></td></tr>
+      <tr><td><code>COUNT</code></td><td>키 개수</td><td><code>COUNT</code> → <code>5</code></td></tr>
+      <tr><td><code>UNDO</code></td><td>마지막 변경(SET/DEL/INCR)을 되돌림</td><td><code>UNDO</code> → <code>OK</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>규칙은 하나입니다. <strong>잘못된 입력은 프로그램을 멈추지 않는다.</strong> 모든 오류는 <code>(error) 이유 [line N]</code>으로 보고하고 다음 줄로 넘어갑니다.</p>
+
+  <h3>1단계: 가장 단순하게 동작시키기</h3>
+  <p>먼저 <code>if</code>/<code>else</code>로 명령을 분기하는 최소 버전입니다. C로 짰다면 해시 테이블 구현과 문자열 메모리 관리에만 수백 줄이 들었을 부분이 <code>std::unordered_map&lt;std::string, std::string&gt;</code> 한 줄로 끝납니다.</p>
+<div class="code run" data-stdin="SET temp 23&#10;GET temp&#10;DEL temp&#10;GET temp&#10;COUNT"><div class="bar"><span class="fn">kvsh_v1.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;sstream&gt;
+#include &lt;string&gt;
+#include &lt;unordered_map&gt;
+
+int main() {
+    std::unordered_map&lt;std::string, std::string&gt; db;   // hash table + string memory: done
+    std::string line;
+    while (std::getline(std::cin, line)) {
+        std::istringstream in(line);
+        std::string cmd, key, value;
+        in &gt;&gt; cmd &gt;&gt; key &gt;&gt; value;
+        if (cmd == "SET") { db[key] = value; std::cout &lt;&lt; "OK\n"; }
+        else if (cmd == "GET") {
+            auto it = db.find(key);
+            std::cout &lt;&lt; (it != db.end() ? it-&gt;second : "(nil)") &lt;&lt; '\n';
+        }
+        else if (cmd == "DEL") std::cout &lt;&lt; db.erase(key) &lt;&lt; '\n';
+        else if (cmd == "COUNT") std::cout &lt;&lt; db.size() &lt;&lt; '\n';
+        else std::cout &lt;&lt; "(error) unknown command\n";
+    }
+}
+</code></pre></div>
+  <p>동작은 하지만 명령이 늘어날수록 <code>if</code> 사슬이 길어지고, 인자 개수 검사가 없고, 오류의 종류를 구분하지 못하고, <code>UNDO</code>를 넣을 자리가 없습니다. 2단계에서 구조를 바꿉니다.</p>
+
+  <h3>2단계: 각 도구를 제자리에</h3>
+  <p>완성본의 설계를 먼저 표로 보세요. 왼쪽 열은 이 책의 장, 오른쪽 열은 C라면 대신 무엇을 했어야 하는지입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>구성 요소</th><th>C++ 도구 (장)</th><th>C였다면</th></tr></thead>
+    <tbody>
+      <tr><td><code>Store</code>: 데이터와 되돌리기 기록</td><td>클래스와 캡슐화(3), <code>unordered_map</code>(9)</td><td>구조체 + 함수 묶음, 직접 만든 해시</td></tr>
+      <tr><td>되돌리기 기록</td><td>상태를 캡처한 람다를 <code>std::function</code> 벡터에 저장(9)</td><td>연산 종류 enum + union + switch</td></tr>
+      <tr><td>명령 처리기</td><td>인터페이스 <code>Command</code> + 가상 함수(7)</td><td>함수 포인터 테이블</td></tr>
+      <tr><td>명령 등록표</td><td><code>map&lt;string, unique_ptr&lt;Command&gt;&gt;</code>(6·9)</td><td>정적 배열 + 선형 검색, 수동 free</td></tr>
+      <tr><td>토큰 분리</td><td><code>string_view</code>로 복사 없이(11)</td><td><code>strtok</code>(원본 파괴, 재진입 불가)</td></tr>
+      <tr><td>오류 전달</td><td><code>expected&lt;string, Error&gt;</code> + <code>enum class</code>(10·11)</td><td>-1 반환 + 전역 <code>errno</code></td></tr>
+      <tr><td>숫자 변환</td><td><code>std::from_chars</code>(10)</td><td><code>strtol</code> + <code>errno</code> + 끝 포인터 검사</td></tr>
+      <tr><td>자원 정리</td><td>전부 RAII, <code>delete</code> 0개(4·6)</td><td>종료 경로마다 해제 코드</td></tr>
+    </tbody>
+  </table></div>
+  <p>완성본입니다. 먼저 그대로 실행해 출력과 사양을 대조하고, stdin의 명령을 바꿔 가며 오류 경로를 시험해 보세요.</p>
+<div class="code run" data-std="c++23" data-stdin="SET temp 23&#10;GET temp&#10;INCR visits&#10;INCR visits&#10;SET sensor.a 1&#10;SET sensor.b 2&#10;KEYS sensor.&#10;INCR temp&#10;SET name kim&#10;INCR name&#10;DEL temp&#10;GET temp&#10;UNDO&#10;GET temp&#10;KEYS *&#10;COUNT&#10;FOO bar&#10;GET"><div class="bar"><span class="fn">kvsh.cpp<span class="std">c++23</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">// kvsh: a tiny in-memory key-value shell.
+// Reads commands from stdin, one per line. Built with C++23 (std::expected).
+#include &lt;algorithm&gt;
+#include &lt;cctype&gt;
+#include &lt;charconv&gt;
+#include &lt;expected&gt;
+#include &lt;functional&gt;
+#include &lt;iostream&gt;
+#include &lt;map&gt;
+#include &lt;memory&gt;
+#include &lt;optional&gt;
+#include &lt;string&gt;
+#include &lt;string_view&gt;
+#include &lt;unordered_map&gt;
+#include &lt;vector&gt;
+
+// ---------- errors as values ----------
+enum class Errc { UnknownCommand, BadArity, NotFound, NotInteger, NothingToUndo };
+
+struct Error {
+    Errc code;
+    std::string detail;
+};
+
+std::string_view to_string(Errc e) {
+    switch (e) {
+        case Errc::UnknownCommand: return "unknown command";
+        case Errc::BadArity:       return "wrong number of arguments";
+        case Errc::NotFound:       return "no such key";
+        case Errc::NotInteger:     return "value is not an integer";
+        case Errc::NothingToUndo:  return "nothing to undo";
+    }
+    return "?";
+}
+
+using Result = std::expected&lt;std::string, Error&gt;;
+using Args = std::vector&lt;std::string_view&gt;;
+
+// ---------- the store: encapsulation + an undo log of lambdas ----------
+class Store {
+public:
+    std::optional&lt;std::string&gt; get(std::string_view key) const {
+        auto it = data_.find(std::string(key));
+        if (it == data_.end()) return std::nullopt;
+        return it-&gt;second;
+    }
+
+    void set(std::string_view key, std::string value) {
+        remember(std::string(key));
+        data_[std::string(key)] = std::move(value);
+    }
+
+    bool erase(std::string_view key) {
+        if (!data_.contains(std::string(key))) return false;
+        remember(std::string(key));
+        data_.erase(std::string(key));
+        return true;
+    }
+
+    bool undo() {
+        if (undo_.empty()) return false;
+        undo_.back()();          // run the stored inverse operation
+        undo_.pop_back();
+        return true;
+    }
+
+    std::vector&lt;std::string&gt; keys(std::string_view prefix) const {
+        std::vector&lt;std::string&gt; out;
+        for (const auto&amp; [k, v] : data_)
+            if (k.starts_with(prefix)) out.push_back(k);
+        std::ranges::sort(out);
+        return out;
+    }
+
+    std::size_t size() const { return data_.size(); }
+
+private:
+    // Capture the old state of 'key' in a lambda that can restore it later.
+    void remember(std::string key) {
+        auto old = get(key);
+        undo_.push_back([this, key = std::move(key), old = std::move(old)] {
+            if (old) data_[key] = *old;
+            else data_.erase(key);
+        });
+    }
+
+    std::unordered_map&lt;std::string, std::string&gt; data_;
+    std::vector&lt;std::function&lt;void()&gt;&gt; undo_;
+};
+
+// ---------- commands: an interface + one class per command ----------
+class Command {
+public:
+    virtual ~Command() = default;
+    virtual std::size_t arity() const = 0;                 // number of arguments expected
+    virtual Result run(Store&amp; db, const Args&amp; args) = 0;
+};
+
+class Set : public Command {
+public:
+    std::size_t arity() const override { return 2; }
+    Result run(Store&amp; db, const Args&amp; a) override { db.set(a[0], std::string(a[1])); return "OK"; }
+};
+
+class Get : public Command {
+public:
+    std::size_t arity() const override { return 1; }
+    Result run(Store&amp; db, const Args&amp; a) override {
+        if (auto v = db.get(a[0])) return *v;
+        return std::unexpected(Error{Errc::NotFound, std::string(a[0])});
+    }
+};
+
+class Del : public Command {
+public:
+    std::size_t arity() const override { return 1; }
+    Result run(Store&amp; db, const Args&amp; a) override {
+        if (db.erase(a[0])) return "1";
+        return std::unexpected(Error{Errc::NotFound, std::string(a[0])});
+    }
+};
+
+class Incr : public Command {
+public:
+    std::size_t arity() const override { return 1; }
+    Result run(Store&amp; db, const Args&amp; a) override {
+        long long n = 0;
+        if (auto v = db.get(a[0])) {
+            auto [ptr, ec] = std::from_chars(v-&gt;data(), v-&gt;data() + v-&gt;size(), n);
+            if (ec != std::errc{} || ptr != v-&gt;data() + v-&gt;size())
+                return std::unexpected(Error{Errc::NotInteger, *v});
+        }
+        db.set(a[0], std::to_string(++n));
+        return std::to_string(n);
+    }
+};
+
+class Keys : public Command {
+public:
+    std::size_t arity() const override { return 1; }
+    Result run(Store&amp; db, const Args&amp; a) override {
+        std::string out;
+        for (const auto&amp; k : db.keys(a[0] == "*" ? "" : a[0])) out += (out.empty() ? "" : " ") + k;
+        return out.empty() ? "(empty)" : out;
+    }
+};
+
+class Count : public Command {
+public:
+    std::size_t arity() const override { return 0; }
+    Result run(Store&amp; db, const Args&amp;) override { return std::to_string(db.size()); }
+};
+
+class Undo : public Command {
+public:
+    std::size_t arity() const override { return 0; }
+    Result run(Store&amp; db, const Args&amp;) override {
+        if (db.undo()) return "OK";
+        return std::unexpected(Error{Errc::NothingToUndo, ""});
+    }
+};
+
+// ---------- parsing: string_view tokens, no copies ----------
+Args split(std::string_view line) {
+    Args out;
+    while (!line.empty()) {
+        auto start = line.find_first_not_of(' ');
+        if (start == std::string_view::npos) break;
+        line.remove_prefix(start);
+        auto end = line.find(' ');
+        out.push_back(line.substr(0, end));
+        line.remove_prefix(end == std::string_view::npos ? line.size() : end);
+    }
+    return out;
+}
+
+std::string upper(std::string_view s) {
+    std::string r(s);
+    std::ranges::transform(r, r.begin(), [](unsigned char c) { return static_cast&lt;char&gt;(std::toupper(c)); });
+    return r;
+}
+
+// ---------- the shell ----------
+class Shell {
+public:
+    Shell() {
+        commands_["SET"]   = std::make_unique&lt;Set&gt;();
+        commands_["GET"]   = std::make_unique&lt;Get&gt;();
+        commands_["DEL"]   = std::make_unique&lt;Del&gt;();
+        commands_["INCR"]  = std::make_unique&lt;Incr&gt;();
+        commands_["KEYS"]  = std::make_unique&lt;Keys&gt;();
+        commands_["COUNT"] = std::make_unique&lt;Count&gt;();
+        commands_["UNDO"]  = std::make_unique&lt;Undo&gt;();
+    }
+
+    Result execute(std::string_view line) {
+        Args words = split(line);
+        if (words.empty()) return "";
+        auto it = commands_.find(upper(words[0]));
+        if (it == commands_.end())
+            return std::unexpected(Error{Errc::UnknownCommand, std::string(words[0])});
+        Args args(words.begin() + 1, words.end());
+        if (args.size() != it-&gt;second-&gt;arity())
+            return std::unexpected(Error{Errc::BadArity, std::string(words[0])});
+        return it-&gt;second-&gt;run(db_, args);
+    }
+
+private:
+    Store db_;
+    std::map&lt;std::string, std::unique_ptr&lt;Command&gt;&gt; commands_;
+};
+
+int main() {
+    Shell sh;
+    std::string line;
+    int lineno = 0;
+    while (std::getline(std::cin, line)) {
+        ++lineno;
+        if (line.empty() || line.starts_with('#')) continue;
+        std::cout &lt;&lt; "&gt; " &lt;&lt; line &lt;&lt; '\n';
+        if (auto r = sh.execute(line))
+            std::cout &lt;&lt; *r &lt;&lt; '\n';
+        else
+            std::cout &lt;&lt; "(error) " &lt;&lt; to_string(r.error().code)
+                      &lt;&lt; (r.error().detail.empty() ? "" : ": " + r.error().detail)
+                      &lt;&lt; "  [line " &lt;&lt; lineno &lt;&lt; "]\n";
+    }
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>이 프로그램에는 <code>new</code>, <code>delete</code>, <code>malloc</code>, <code>free</code>, 고정 크기 버퍼가 하나도 없습니다. 그런데도 모든 메모리가 정확히 한 번 해제됩니다. 명령 객체는 <code>unique_ptr</code>가, 문자열과 테이블은 컨테이너가, 되돌리기 람다는 <code>std::function</code>이 소유하고, 이들은 모두 <code>Shell</code> 객체의 수명에 묶여 있기 때문입니다. <code>Undo</code> 람다가 <code>this</code>를 캡처하는 부분은 의도적인 주의 지점입니다. 람다를 <code>Store</code>가 직접 소유하므로 <code>Store</code>보다 오래 살 수 없어 안전합니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">코드를 읽을 때 볼 곳</span>
+    <ul>
+      <li><code>Store::remember</code>: 이전 값을 <code>std::optional</code>로 캡처해 "없던 키였는지"까지 되돌립니다.</li>
+      <li><code>Shell::execute</code>: 인자 개수 검사를 각 명령이 아니라 한 곳에서 합니다. 각 명령은 <code>arity()</code>로 요구사항만 선언합니다.</li>
+      <li><code>split</code>: 반환된 <code>string_view</code>들은 <code>line</code>을 빌려 씁니다. <code>execute</code>가 끝나기 전에만 쓰이므로 안전합니다. 이것을 멤버 변수에 저장하면 11장의 함정에 빠집니다.</li>
+    </ul>
+  </div>
+
+  <h3>확장 과제</h3>
+  <p>아래 과제는 뒤로 갈수록 어렵습니다. 위 실행 블록에서 <b>편집</b>을 눌러 바로 작업할 수 있고, 내용은 페이지를 떠나면 사라지니 긴 작업은 부록 C의 <b>코드 놀이터</b>(자동 저장)에 붙여 넣고 하세요.</p>
+  <div class="ladder">
+    <div><b>과제 1</b><span><code>APPEND k v</code>: 기존 값 뒤에 문자열을 붙인다. <code>Command</code>를 하나 더 만들고 등록표에 한 줄 추가하면 끝나는지 확인한다(개방-폐쇄 원칙).</span></div>
+    <div><b>과제 2</b><span><code>HELP</code>: 등록된 모든 명령과 인자 수를 출력한다. <code>Command</code>에 <code>virtual std::string_view help() const</code>를 추가한다.</span></div>
+    <div><b>과제 3</b><span><code>MSET k1 v1 k2 v2 ...</code>: 가변 인자. <code>arity()</code>를 "최소 개수 + 짝수 조건"으로 일반화하려면 인터페이스를 어떻게 바꿔야 할까?</span></div>
+    <div><b>과제 4</b><span><code>BEGIN</code> / <code>COMMIT</code> / <code>ROLLBACK</code>: 되돌리기 기록에 표식을 넣어 트랜잭션 단위로 되돌린다. 강한 예외 안전성(10장)과 같은 생각이다.</span></div>
+    <div><b>과제 5</b><span><code>SAVE file</code> / <code>LOAD file</code>: <code>std::ofstream</code>/<code>std::ifstream</code>으로 저장·복원. 브라우저 내장 엔진에도 메모리 파일 시스템이 있어 같은 실행 안에서는 동작한다.</span></div>
+    <div><b>과제 6</b><span>값 타입 확장: <code>std::variant&lt;std::string, long long&gt;</code>로 값을 저장해 <code>INCR</code>이 매번 문자열을 파싱하지 않게 한다(7장의 variant).</span></div>
+  </div>
+
+  <h3>최종 체크리스트</h3>
+  <p>여러분의 확장 버전이 아래를 모두 만족하면 이 책의 목표를 달성한 것입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>항목</th><th>확인 방법</th></tr></thead>
+    <tbody>
+      <tr><td>소유하는 원시 포인터와 <code>new</code>/<code>delete</code>가 없다</td><td>소스에서 검색</td></tr>
+      <tr><td>복사가 의미 없는 타입은 복사가 막혀 있다</td><td><code>Shell a; Shell b = a;</code>가 컴파일 오류인가?</td></tr>
+      <tr><td>읽기 전용 멤버 함수에 <code>const</code>, 재정의에 <code>override</code></td><td><code>-Wall -Wextra</code> 경고 0개</td></tr>
+      <tr><td>오류 입력에도 프로그램이 계속 돈다</td><td>빈 줄, 공백만 있는 줄, 인자 과다, 숫자 아닌 값으로 시험</td></tr>
+      <tr><td>새 명령 추가가 기존 코드 수정 없이 가능하다</td><td>과제 1을 한 클래스 + 한 줄로 끝냈는가?</td></tr>
+      <tr><td>세 엔진에서 같은 출력</td><td>실행 엔진을 바꿔 가며 비교</td></tr>
+    </tbody>
+  </table></div>
+  <p>여기까지 오셨다면 C 개발자로서 C++의 핵심을 손에 쥔 것입니다. 다음 걸음으로는 부록 B의 C++ 핵심 가이드라인을 옆에 두고 실제 프로젝트의 작은 모듈 하나를 C++로 옮겨 보길 권합니다.</p>
+
+  <div class="quiz" data-quiz="ch12"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch12" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ APPENDIX ============ -->
+<section class="chapter col" id="glossary">
+  <div class="eyebrow">부록 A</div>
+  <h2>용어집 · C↔C++ 대응표</h2>
+  <h3>C에서 하던 일, C++에서는</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>C</th><th>C++</th><th>장</th></tr></thead>
+    <tbody>
+      <tr><td><code>malloc</code>/<code>realloc</code> 배열</td><td><code>std::vector&lt;T&gt;</code></td><td>9</td></tr>
+      <tr><td><code>malloc</code> + <code>free</code> 단일 객체</td><td><code>std::make_unique&lt;T&gt;()</code></td><td>6</td></tr>
+      <tr><td><code>char*</code> + <code>strcpy</code>/<code>strcat</code></td><td><code>std::string</code>, 읽기 전용은 <code>std::string_view</code></td><td>1·11</td></tr>
+      <tr><td>포인터 + 길이 인자 쌍</td><td><code>std::span&lt;T&gt;</code></td><td>11</td></tr>
+      <tr><td><code>#define N 16</code></td><td><code>constexpr int N = 16;</code></td><td>2</td></tr>
+      <tr><td>함수형 매크로</td><td><code>constexpr</code>/인라인 함수, 템플릿</td><td>2·8</td></tr>
+      <tr><td><code>void*</code> 제네릭 코드</td><td>템플릿 + 컨셉트</td><td>8</td></tr>
+      <tr><td>함수 포인터 테이블(ops)</td><td>가상 함수, 추상 클래스</td><td>7</td></tr>
+      <tr><td>태그 + <code>union</code></td><td><code>std::variant</code> + <code>std::visit</code></td><td>7</td></tr>
+      <tr><td><code>xxx_init</code> / <code>xxx_destroy</code></td><td>생성자 / 소멸자</td><td>3·4</td></tr>
+      <tr><td><code>goto cleanup</code></td><td>RAII</td><td>4</td></tr>
+      <tr><td><code>qsort</code>, <code>bsearch</code></td><td><code>std::sort</code>, <code>std::lower_bound</code>, <code>std::ranges::*</code></td><td>8·9</td></tr>
+      <tr><td>콜백 + <code>void *user</code></td><td>람다</td><td>9</td></tr>
+      <tr><td>-1 반환 + <code>errno</code></td><td><code>std::expected</code>, <code>std::optional</code>, 예외</td><td>10</td></tr>
+      <tr><td><code>strtol</code> + 끝 포인터 검사</td><td><code>std::from_chars</code></td><td>10</td></tr>
+      <tr><td><code>enum</code></td><td><code>enum class</code></td><td>11</td></tr>
+      <tr><td><code>pthread_*</code>, <code>_Atomic</code></td><td><code>std::jthread</code>, <code>std::mutex</code>, <code>std::atomic</code></td><td>11</td></tr>
+      <tr><td><code>printf</code></td><td><code>std::format</code>, C++23 <code>std::print</code></td><td>11</td></tr>
+    </tbody>
+  </table></div>
+  <h3>용어</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>용어</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td>RAII</td><td>자원의 수명을 객체의 수명에 묶는 기법. 생성자에서 얻고 소멸자에서 놓는다.</td></tr>
+      <tr><td>이름 맹글링</td><td>오버로딩을 위해 컴파일러가 함수 심벌 이름에 타입 정보를 넣는 것. C와 링크할 때 <code>extern "C"</code>로 끈다.</td></tr>
+      <tr><td>참조 (<code>T&amp;</code>)</td><td>기존 객체의 별명. 반드시 초기화되고 다른 대상으로 바꿀 수 없다.</td></tr>
+      <tr><td>불변식</td><td>객체가 살아 있는 동안 늘 참이어야 하는 조건. 생성자가 세우고 멤버 함수가 유지한다.</td></tr>
+      <tr><td>lvalue / rvalue</td><td>이름이 있어 다시 쓸 수 있는 식 / 곧 사라질 임시값. 복사냐 이동이냐를 가른다.</td></tr>
+      <tr><td>이동 의미론</td><td>곧 사라질 객체의 자원을 복사 대신 넘겨받는 것. <code>T&amp;&amp;</code>를 받는 이동 생성자·대입이 구현한다.</td></tr>
+      <tr><td>복사 생략 (RVO/NRVO)</td><td>반환값을 호출자 자리에 직접 만들어 복사·이동을 없애는 것. C++17부터 prvalue에 대해 보장.</td></tr>
+      <tr><td>Rule of 0/3/5</td><td>특수 멤버 함수(소멸자, 복사 2개, 이동 2개)를 하나도 안 쓰거나, 쓰려면 함께 쓴다는 지침.</td></tr>
+      <tr><td>제어 블록</td><td><code>shared_ptr</code>가 참조 카운트(use/weak)를 보관하는 별도 메모리.</td></tr>
+      <tr><td>vtable / vptr</td><td>클래스별 가상 함수 포인터 표 / 각 객체가 그 표를 가리키는 숨은 포인터.</td></tr>
+      <tr><td>슬라이싱</td><td>파생 객체를 기반 타입 값으로 복사할 때 파생 부분이 잘려 나가는 것.</td></tr>
+      <tr><td>인스턴스화</td><td>템플릿에 구체 타입을 넣어 실제 함수·클래스를 만드는 컴파일러의 작업.</td></tr>
+      <tr><td>컨셉트</td><td>템플릿 인자가 만족해야 할 조건에 붙인 이름(C++20).</td></tr>
+      <tr><td>반복자 / 무효화</td><td>원소를 가리키는 일반화된 포인터 / 컨테이너 변경으로 반복자가 더는 유효하지 않게 되는 것.</td></tr>
+      <tr><td>람다 캡처</td><td>람다가 바깥 변수를 값(<code>[x]</code>)이나 참조(<code>[&amp;x]</code>)로 가져오는 방식.</td></tr>
+      <tr><td>스택 되감기</td><td>예외가 전파되며 지나는 스코프의 지역 객체를 소멸시키는 과정.</td></tr>
+      <tr><td>예외 안전성</td><td>예외 후 상태에 대한 약속: 기본 / 강한 / nothrow.</td></tr>
+      <tr><td>뷰(view)</td><td>원소를 소유하지 않고 다른 범위를 바라보는 가벼운 객체(<code>span</code>, <code>string_view</code>, 레인지 뷰).</td></tr>
+      <tr><td>정의되지 않은 동작(UB)</td><td>표준이 결과를 정하지 않은 동작. 이중 해제, 범위 밖 접근, 매달린 참조 사용 등. C와 같다.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="chapter col" id="refs">
+  <div class="eyebrow">부록 B</div>
+  <h2>참고 자료</h2>
+  <h3>레퍼런스와 지침</h3>
+  <ul>
+    <li><a href="https://en.cppreference.com/w/cpp" rel="noopener">cppreference.com — C++ reference</a>: 표준 라이브러리와 언어 규칙의 사실상 표준 레퍼런스. 기능별 도입 표준(C++11/17/20…)이 표시되어 있다.</li>
+    <li><a href="https://en.cppreference.com/w/cpp/compiler_support" rel="noopener">cppreference — Compiler support</a>: GCC·Clang·MSVC가 어떤 기능을 어느 버전부터 지원하는지.</li>
+    <li><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines" rel="noopener">C++ Core Guidelines</a> (Stroustrup, Sutter 편집): 소유권, 자원 관리, 인터페이스 설계 지침. 6장의 "소유하는 원시 포인터 금지"의 출처.</li>
+    <li><a href="https://isocpp.org/get-started" rel="noopener">isocpp.org — Get Started</a>: 표준 위원회 재단의 입문 안내와 추천 도서 목록.</li>
+  </ul>
+  <h3>책</h3>
+  <ul>
+    <li>Bjarne Stroustrup, <i>A Tour of C++</i> (3rd ed., Addison-Wesley, 2022): 이미 프로그래밍을 아는 사람을 위한 C++20 개관. 이 책 다음으로 읽기 좋다.</li>
+    <li>Scott Meyers, <i>Effective Modern C++</i> (O'Reilly, 2014): 이동 의미론, 스마트 포인터, 람다의 함정 42가지.</li>
+    <li>Bjarne Stroustrup, <i>The Design and Evolution of C++</i> (Addison-Wesley, 1994): 왜 C 호환성과 제로 오버헤드를 택했는지에 대한 설계자의 기록.</li>
+  </ul>
+  <h3>표준 동향과 도구</h3>
+  <ul>
+    <li><a href="https://herbsutter.com/" rel="noopener">Sutter's Mill (Herb Sutter)</a>: 표준 위원회 회의 보고. 2026년 3월 글 "C++26 is done!"에 C++26 기술 작업 완료 소식이 있다.</li>
+    <li><a href="https://godbolt.org" rel="noopener">Compiler Explorer</a>: 코드가 어떤 어셈블리로 바뀌는지 컴파일러별로 비교. 이 책의 실행 엔진 중 하나.</li>
+    <li><a href="https://wandbox.org" rel="noopener">Wandbox</a>: 여러 버전의 GCC/Clang으로 코드를 실행하는 온라인 서비스. 이 책의 기본 실행 엔진.</li>
+    <li><a href="https://yowasp.org" rel="noopener">YoWASP</a>: LLVM/Clang을 WebAssembly로 빌드한 배포판. 이 책의 브라우저 내장 엔진.</li>
+    <li><a href="https://github.com/bjorn3/browser_wasi_shim" rel="noopener">browser_wasi_shim</a>: 브라우저에서 WASI 프로그램을 실행하는 런타임. 내장 엔진이 컴파일한 프로그램을 돌린다.</li>
+  </ul>
+</section>
+
+<section class="chapter col" id="playground">
+  <div class="eyebrow">부록 C</div>
+  <h2>코드 놀이터</h2>
+  <p>자유롭게 코드를 써 보는 곳입니다. 편집 내용은 이 브라우저에 자동 저장되고, <code>Ctrl/⌘ + Enter</code>로 실행됩니다. 표준(<code>c++17/20/23</code>)과 최적화 수준은 왼쪽 목차 아래 실행 엔진 상자에서 바꿉니다.</p>
+<div class="code run" data-stdin=""><div class="bar"><span class="fn">playground.cpp</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="cpp">#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+
+int main() {
+    std::vector&lt;std::string&gt; todo{"read chapter 4", "try the RAII bench", "build kvsh"};
+    for (std::size_t i = 0; i &lt; todo.size(); ++i)
+        std::cout &lt;&lt; i + 1 &lt;&lt; ". " &lt;&lt; todo[i] &lt;&lt; '\n';
+}
+</code></pre></div>
+</section>
+
+
+<footer class="foot col">
+  C 개발자를 위한 C++ 교본 · 코드와 주석은 영어, 설명은 한국어로 썼습니다. 실행 엔진: <a href="https://wandbox.org" rel="noopener">Wandbox</a>, <a href="https://godbolt.org" rel="noopener">Compiler Explorer</a>, <a href="https://yowasp.org" rel="noopener">YoWASP Clang</a> + <a href="https://github.com/bjorn3/browser_wasi_shim" rel="noopener">browser_wasi_shim</a>.
+</footer>
+</main>
+</div>
+<script src="assets/runner.js"></script>
+<script src="assets/book.js"></script>
+</body>
+</html>

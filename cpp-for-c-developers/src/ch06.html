@@ -1,0 +1,128 @@
+<!-- ============ CH6 ============ -->
+<section class="chapter col" id="ch6">
+  <div class="eyebrow">Part II · 자원과 수명 — 6장</div>
+  <h2>동적 메모리와 스마트 포인터</h2>
+  <p class="goal">이 장을 마치면: <code>new</code>/<code>delete</code>와 <code>malloc</code>/<code>free</code>의 차이를 설명할 수 있고, 소유 관계에 따라 <code>unique_ptr</code>·<code>shared_ptr</code>·<code>weak_ptr</code>·원시 포인터를 골라 쓸 수 있으며, C 라이브러리 핸들을 사용자 정의 삭제자로 감쌀 수 있습니다.</p>
+  <p>5장의 이동 의미론 덕분에 "소유권을 넘긴다"는 개념이 언어로 표현됩니다. 스마트 포인터는 그 개념을 가장 직접적으로 쓰는 타입입니다.</p>
+
+  <h3>new는 할당 + 생성, delete는 소멸 + 해제</h3>
+  <p><code>malloc</code>은 바이트를 줄 뿐이지만, <code>new T(args)</code>는 메모리를 할당한 뒤 그 자리에서 <strong>생성자를 실행</strong>합니다. <code>delete p</code>는 <strong>소멸자를 실행</strong>한 뒤 메모리를 돌려줍니다. 배열은 <code>new T[n]</code> / <code>delete[] p</code>로 짝을 맞춰야 하고, <code>new</code>로 얻은 것을 <code>free</code>로, <code>malloc</code>으로 얻은 것을 <code>delete</code>로 해제하면 정의되지 않은 동작입니다.</p>
+  <p>그런데 모던 C++ 코드에서 <code>new</code>와 <code>delete</code>를 직접 쓸 일은 거의 없습니다. 맨 <code>delete</code>는 C의 <code>free</code>와 똑같은 문제(누수, 이중 해제, 해제 후 사용)를 그대로 갖고 있기 때문입니다. 그래서 C++ 핵심 가이드라인은 "소유하는 원시 포인터를 쓰지 말라"고 권합니다. 대신 <strong>소유권을 타입으로 표현</strong>합니다.</p>
+
+  <h3>unique_ptr: 소유자는 정확히 하나</h3>
+  <p><code>std::unique_ptr&lt;T&gt;</code>는 힙 객체 하나를 단독으로 소유하고, 자신이 소멸할 때 그 객체를 <code>delete</code>합니다. 복사는 금지되고 이동만 됩니다. 4장의 <code>File</code>과 같은 설계입니다. 크기는 원시 포인터와 같고, 역참조 비용도 같습니다.</p>
+<run file="unique.cpp">
+#include <cstdio>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
+struct Device {
+    std::string name;
+    explicit Device(std::string n) : name(std::move(n)) { std::cout << "  probe " << name << '\n'; }
+    ~Device() { std::cout << "  remove " << name << '\n'; }
+};
+
+struct FileCloser {                       // stateless deleter for C FILE handles
+    void operator()(std::FILE* f) const { std::fclose(f); std::cout << "  fclose\n"; }
+};
+
+// Factory: ownership is transferred to the caller, visible in the type.
+std::unique_ptr<Device> probe(const std::string& name) {
+    if (name.empty()) return nullptr;
+    return std::make_unique<Device>(name);
+}
+
+int main() {
+    std::cout << std::boolalpha << "sizeof(unique_ptr) == sizeof(raw ptr): "
+              << (sizeof(std::unique_ptr<Device>) == sizeof(Device*)) << '\n';
+
+    std::vector<std::unique_ptr<Device>> bus;
+    bus.push_back(probe("i2c-0x48"));
+    bus.push_back(probe("spi-flash"));
+    if (auto d = probe("")) bus.push_back(std::move(d));   // nullptr: skipped
+
+    std::unique_ptr<Device> keep = std::move(bus[0]);       // transfer ownership out
+    std::cout << "bus[0] is now " << (bus[0] ? "set" : "empty") << ", keep = " << keep->name << '\n';
+
+    // A C handle with a custom deleter: fclose runs automatically.
+    std::unique_ptr<std::FILE, FileCloser> logf(std::fopen("log.txt", "w"));
+    if (logf) std::fputs("hello\n", logf.get());
+    std::cout << "sizeof(logf) = " << sizeof(logf) << " (empty deleter takes no space)\n";
+
+    std::cout << "end of main\n";
+}   // destruction order: logf (fclose), keep, bus (remaining devices)
+</run>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>C API에서 <code>xxx_create()</code> / <code>xxx_destroy()</code> 짝을 가진 핸들은 모두 <code>unique_ptr</code> + 삭제자로 감쌀 수 있습니다. 함수 포인터 대신 빈 구조체를 삭제자로 쓰면(<code>struct Closer { void operator()(FILE* f) const { fclose(f); } };</code>) 삭제자가 공간을 차지하지 않아 크기가 원시 포인터와 같아집니다.</p>
+  </div>
+
+  <h3>shared_ptr와 weak_ptr: 공유 소유와 관찰</h3>
+  <p>여러 곳이 같은 객체를 함께 소유하고, <strong>마지막 소유자가 사라질 때</strong> 객체를 해제하고 싶을 때가 있습니다(캐시, 여러 스레드가 보는 설정, 그래프 노드). <code>std::shared_ptr</code>는 객체 옆에 <strong>제어 블록</strong>을 두고 참조 카운트를 셉니다. <code>std::weak_ptr</code>는 카운트에 참여하지 않고 객체가 아직 살아 있는지 확인만 할 수 있는 관찰자입니다.</p>
+  <div class="bench" id="b-sp">
+    <header><b>실습 벤치 6-A · 참조 카운트 따라가기</b><span>STEPPER · 8 STEPS</span></header>
+    <div class="body">
+      <div class="srcview" id="spSrc"></div>
+      <div class="cb" id="spCb"></div>
+      <div class="sp-grid" id="spGrid"></div>
+      <p class="explain" id="spEx"></p>
+      <div class="row"><button type="button" class="btn" id="spPrev">◀ 이전</button><button type="button" class="btn pri" id="spNext">다음 ▶</button><button type="button" class="btn" id="spReset">처음으로</button><span class="tokc" id="spStep"></span></div>
+    </div>
+  </div>
+  <p>참조 카운트의 고전적인 함정은 <strong>순환 참조</strong>입니다. 부모가 자식을, 자식이 부모를 <code>shared_ptr</code>로 가리키면 둘 다 카운트가 0이 되지 않아 영원히 해제되지 않습니다. 아래 예제를 실행해 소멸자가 불리지 않는 것을 확인한 뒤, 주석대로 한 줄을 고쳐 다시 실행해 보세요.</p>
+<run file="cycle.cpp">
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+
+struct Node {
+    std::string name;
+    std::shared_ptr<Node> parent;               // FIX: change to std::weak_ptr<Node> parent;
+    std::vector<std::shared_ptr<Node>> children;
+    explicit Node(std::string n) : name(std::move(n)) {}
+    ~Node() { std::cout << "~Node " << name << '\n'; }
+};
+
+int main() {
+    {
+        auto root = std::make_shared<Node>("root");
+        auto leaf = std::make_shared<Node>("leaf");
+        root->children.push_back(leaf);
+        leaf->parent = root;
+        std::cout << "root.use_count = " << root.use_count()
+                  << ", leaf.use_count = " << leaf.use_count() << '\n';
+    }
+    std::cout << "scope ended (did you see ~Node lines above?)\n";
+}
+</run>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><code>shared_ptr</code>는 공짜가 아닙니다. 복사할 때마다 원자적 증감이 일어나고, 제어 블록이 따로 있습니다. 함수에 넘길 때 소유권을 나눌 필요가 없으면 <code>const T&amp;</code>나 <code>T*</code>로 넘기세요.</li>
+      <li>같은 원시 포인터로 <code>shared_ptr</code>를 두 번 만들면 제어 블록이 두 개가 되어 이중 해제됩니다. 항상 <code>std::make_shared</code>로 만드세요.</li>
+    </ul>
+  </div>
+
+  <h3>포인터 선택 가이드: 소유권을 타입으로 말하라</h3>
+  <p>C에서 <code>int *p</code>를 보면 그것이 소유하는 포인터인지, 빌려 쓰는 포인터인지, 배열인지, 널이 될 수 있는지 알 수 없습니다. 주석과 관례에 의존하죠. 모던 C++은 이 정보를 타입에 담습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>의도</th><th>쓸 타입</th></tr></thead>
+    <tbody>
+      <tr><td>그냥 값이면 된다</td><td><code>T</code> (스택, 멤버). 첫 번째 선택지</td></tr>
+      <tr><td>여러 개의 값</td><td><code>std::vector&lt;T&gt;</code>, <code>std::array&lt;T, N&gt;</code></td></tr>
+      <tr><td>힙 객체를 단독 소유(다형성, 큰 객체, 선택적 존재)</td><td><code>std::unique_ptr&lt;T&gt;</code></td></tr>
+      <tr><td>여러 소유자가 공유, 마지막이 해제</td><td><code>std::shared_ptr&lt;T&gt;</code></td></tr>
+      <tr><td>공유 객체를 소유 없이 관찰(순환 끊기, 캐시)</td><td><code>std::weak_ptr&lt;T&gt;</code></td></tr>
+      <tr><td>빌려 쓰기, 반드시 존재</td><td><code>T&amp;</code> / <code>const T&amp;</code></td></tr>
+      <tr><td>빌려 쓰기, 없을 수도 있음</td><td><code>T*</code> (소유하지 않는 원시 포인터)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <p>원시 포인터 자체가 나쁜 것이 아니라 <strong>소유하는</strong> 원시 포인터가 나쁩니다. "소유 = 스마트 포인터 또는 컨테이너, 관찰 = 참조 또는 원시 포인터"로 나누면 <code>delete</code>를 쓸 일이 사라집니다.</p>
+  </div>
+  <p>Part II가 끝났습니다. 자원과 수명을 다룰 수 있게 되었으니, 다음 Part에서는 추상화 도구인 상속·템플릿·STL로 넘어갑니다.</p>
+
+  <div class="quiz" data-quiz="ch6"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch6" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
