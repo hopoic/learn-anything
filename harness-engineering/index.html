@@ -1,0 +1,1518 @@
+<!doctype html><html lang="ko"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>하네스 엔지니어링 교본</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: field-manual book — sticky chapter rail on the left, single reading column (~70ch) with margin callouts, interactive "bench" panels inside chapters */
+:root{
+  --paper:#F1F3F5; --panel:#FFFFFF; --ink:#16202A; --muted:#5A6875; --rule:#D3DAE1;
+  --accent:#0A6E8C; --accent-ink:#FFFFFF; --signal:#B06A00; --ok:#2E7A4C; --bad:#B23838; --code:#E7EBEF;
+  --f-display:"Hahmlet","Nanum Myeongjo",Georgia,serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0F141A; --panel:#161D25; --ink:#DCE3EA; --muted:#93A1AE; --rule:#2A3541;
+  --accent:#58B7D4; --accent-ink:#06222C; --signal:#E2A142; --ok:#62BD88; --bad:#E57373; --code:#0B1015; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0F141A; --panel:#161D25; --ink:#DCE3EA; --muted:#93A1AE; --rule:#2A3541;
+  --accent:#58B7D4; --accent-ink:#06222C; --signal:#E2A142; --ok:#62BD88; --bad:#E57373; --code:#0B1015; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16.5px;line-height:1.75;word-break:keep-all;overflow-wrap:anywhere}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+.shell{display:grid;grid-template-columns:270px minmax(0,1fr);max-width:1240px;margin:0 auto;gap:48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+@media (max-width:960px){.shell{grid-template-columns:minmax(0,1fr);gap:0}}
+
+/* TOC rail */
+.toc{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;max-height:100vh;overflow:auto;padding-block:28px}
+@media (max-width:960px){.toc{position:static;max-height:none;padding-block:16px 0}}
+.toc details{border:1px solid var(--rule);background:var(--panel);border-radius:6px}
+.toc summary{cursor:pointer;list-style:none;padding:12px 14px;font-weight:600;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.toc summary::-webkit-details-marker{display:none}
+.toc .meter{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-weight:400}
+.toc ol{list-style:none;margin:0;padding:0 6px 10px}
+.toc .part{font-size:11px;letter-spacing:.12em;color:var(--muted);padding:12px 8px 4px;text-transform:uppercase}
+.toc a{display:flex;gap:10px;align-items:baseline;padding:5px 8px;border-radius:4px;text-decoration:none;color:var(--ink);font-size:14.5px;line-height:1.45}
+.toc a:hover{background:var(--code)}
+.toc a.active{background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--accent)}
+.toc .n{font-family:var(--f-mono);font-size:12px;color:var(--muted);min-width:22px}
+.toc .chk{margin-left:auto;color:var(--ok);font-size:13px}
+.theme-btn{margin-top:10px;width:100%;font:inherit;font-size:13px;padding:8px;border:1px solid var(--rule);background:transparent;color:var(--muted);border-radius:6px;cursor:pointer}
+
+/* Main column */
+main{min-width:0;padding-block:28px 80px}
+.col{max-width:72ch}
+.cover{padding-block:36px 40px;border-bottom:2px solid var(--ink);margin-bottom:24px}
+.cover .kicker{font-family:var(--f-mono);font-size:12.5px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.cover h1{font-family:var(--f-display);font-weight:800;font-size:clamp(40px,7vw,72px);line-height:1.05;margin:12px 0 18px;letter-spacing:-.01em;text-wrap:balance}
+.formula{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;font-family:var(--f-mono);font-size:clamp(18px,3vw,26px);margin:18px 0 22px}
+.formula .term{padding:6px 14px;border:1.5px solid var(--ink);border-radius:4px;background:var(--panel)}
+.formula .term.h{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--panel))}
+.formula .op{color:var(--muted)}
+.cover p.lede{font-size:18px;color:var(--muted);max-width:60ch;margin:0}
+.cover .stats{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:22px;font-size:14px;color:var(--muted)}
+.cover .stats b{font-family:var(--f-mono);color:var(--ink);font-weight:500;margin-right:4px}
+
+/* Chapters */
+.chapter{padding-block:48px 24px;border-bottom:1px solid var(--rule);scroll-margin-top:12px}
+.eyebrow{font-family:var(--f-mono);font-size:12.5px;letter-spacing:.12em;color:var(--accent);text-transform:uppercase}
+h2{font-family:var(--f-display);font-weight:700;font-size:clamp(28px,4.2vw,40px);line-height:1.2;margin:8px 0 14px;text-wrap:balance}
+h3{font-family:var(--f-display);font-weight:700;font-size:22px;line-height:1.35;margin:36px 0 8px;text-wrap:balance}
+h4{font-size:16.5px;margin:22px 0 4px}
+p{margin:0 0 14px}
+.goal{font-size:15px;color:var(--muted);border-left:3px solid var(--rule);padding-left:14px;margin-bottom:20px}
+ul,ol.steps{padding-left:22px;margin:0 0 16px}
+li{margin-bottom:6px}
+strong{font-weight:600}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--code);padding:1px 5px;border-radius:3px}
+
+/* Callouts */
+.call{border:1px solid var(--rule);background:var(--panel);border-radius:6px;padding:14px 16px;margin:18px 0;font-size:15.5px}
+.call .lab{display:block;font-family:var(--f-mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;color:var(--muted)}
+.call.sys{border-left:4px solid var(--accent)} .call.sys .lab{color:var(--accent)}
+.call.warn{border-left:4px solid var(--signal)} .call.warn .lab{color:var(--signal)}
+.call.key{border-left:4px solid var(--ink)}
+.call p:last-child,.call ul:last-child{margin-bottom:0}
+
+/* Tables */
+.tbl{overflow-x:auto;margin:16px 0 20px;border:1px solid var(--rule);border-radius:6px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:520px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-weight:600;background:var(--code);font-size:13.5px}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+
+/* Code */
+.code{position:relative;margin:16px 0 20px;border:1px solid var(--rule);border-radius:6px;background:var(--code)}
+.code .bar{display:flex;justify-content:space-between;align-items:center;padding:6px 10px 6px 14px;border-bottom:1px solid var(--rule);font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.code button{font:inherit;font-size:12px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);border-radius:4px;padding:2px 9px;cursor:pointer}
+pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--f-mono);font-size:13.5px;line-height:1.6;tab-size:4}
+pre code{background:none;padding:0;font-size:inherit}
+.tk-c{color:var(--muted);font-style:italic} .tk-s{color:var(--ok)} .tk-k{color:var(--accent);font-weight:500}
+
+/* Tabs */
+.tabs{margin:16px 0}
+.tabs [role=tablist]{display:flex;gap:4px;flex-wrap:wrap}
+.tabs [role=tab]{font:inherit;font-size:14px;padding:7px 14px;border:1px solid var(--rule);border-bottom:0;background:var(--code);color:var(--muted);border-radius:6px 6px 0 0;cursor:pointer}
+.tabs [role=tab][aria-selected=true]{background:var(--panel);color:var(--ink);font-weight:600}
+.tabs .panel .code{margin-top:0;border-top-left-radius:0}
+
+/* Bench (interactive) */
+.bench{border:1.5px solid var(--ink);border-radius:8px;background:var(--panel);margin:26px 0;overflow:hidden}
+.bench>header{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between;align-items:baseline;padding:10px 16px;background:var(--ink);color:var(--paper)}
+.bench>header b{font-weight:600}
+.bench>header span{font-family:var(--f-mono);font-size:12px;opacity:.75;letter-spacing:.08em}
+.bench .body{padding:16px}
+.btn{font:inherit;font-size:14px;padding:7px 14px;border-radius:5px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* Loop simulator */
+.lanes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.lane{border:1.5px solid var(--rule);border-radius:6px;padding:10px;text-align:center;font-size:14px;transition:all .2s}
+.lane small{display:block;color:var(--muted);font-size:12px}
+.lane.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
+.msgs{font-family:var(--f-mono);font-size:12.5px;line-height:1.55;background:var(--code);border-radius:6px;padding:10px;max-height:260px;overflow:auto;margin-bottom:12px}
+.msg{padding:5px 8px;border-left:3px solid var(--rule);margin-bottom:5px;white-space:pre-wrap}
+.msg.u{border-color:var(--muted)} .msg.a{border-color:var(--accent)} .msg.t{border-color:var(--signal)}
+.msg.new{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.explain{font-size:15px;min-height:3.4em}
+.tokc{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+
+/* Sliders */
+.ctl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;margin-bottom:10px;font-size:14px}
+.ctl output{font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums}
+.ctl input{grid-column:1/-1;width:100%;accent-color:var(--accent)}
+.stack{display:flex;height:30px;border-radius:5px;overflow:hidden;border:1px solid var(--rule);background:var(--code);margin:14px 0 8px}
+.stack div{height:100%;transition:width .2s}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.status{margin-top:12px;padding:10px 12px;border-radius:5px;font-size:14.5px}
+.status.g{background:color-mix(in srgb,var(--ok) 13%,transparent)}
+.status.y{background:color-mix(in srgb,var(--signal) 15%,transparent)}
+.status.r{background:color-mix(in srgb,var(--bad) 15%,transparent)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 24px}
+@media (max-width:640px){.grid2{grid-template-columns:minmax(0,1fr)}.lanes{grid-template-columns:minmax(0,1fr)}}
+
+/* Choice items (policy / triage) */
+.item{border:1px solid var(--rule);border-radius:6px;padding:10px 12px;margin-bottom:8px}
+.item .q{font-size:15px;margin-bottom:8px}
+.seg{display:inline-flex;flex-wrap:wrap;gap:4px}
+.seg button{font:inherit;font-size:13px;padding:4px 11px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);border-radius:999px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.fb{font-size:14px;margin-top:8px;padding:8px 10px;border-radius:5px}
+.fb.good{background:color-mix(in srgb,var(--ok) 13%,transparent)}
+.fb.mid{background:color-mix(in srgb,var(--signal) 15%,transparent)}
+.fb.bad{background:color-mix(in srgb,var(--bad) 15%,transparent)}
+
+/* Quiz */
+.quiz{border:1px dashed var(--muted);border-radius:8px;padding:14px 16px;margin:28px 0 16px}
+.quiz h4{margin:0 0 10px;font-family:var(--f-mono);font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.qq{margin-bottom:16px}
+.qq p{font-weight:600;margin-bottom:8px}
+.qq .opt{display:block;width:100%;text-align:left;font:inherit;font-size:15px;padding:8px 12px;margin-bottom:6px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);border-radius:5px;cursor:pointer}
+.qq .opt.right{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--panel))}
+.qq .opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--panel))}
+.done-row{display:flex;justify-content:flex-end;margin-top:8px}
+.done-btn[aria-pressed=true]{background:var(--ok);border-color:var(--ok);color:var(--panel)}
+
+/* SVG diagrams */
+.fig{margin:20px 0;overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:520px;height:auto}
+.fig figcaption{font-size:13px;color:var(--muted);margin-top:6px}
+.sv-t{fill:var(--ink);font-family:var(--f-body);font-size:13px}
+.sv-m{fill:var(--muted);font-family:var(--f-mono);font-size:11px}
+.sv-r0{fill:var(--panel);stroke:var(--rule)}
+.sv-r1{fill:color-mix(in srgb,var(--accent) 5%,var(--panel));stroke:var(--rule)}
+.sv-r2{fill:color-mix(in srgb,var(--accent) 10%,var(--panel));stroke:var(--rule)}
+.sv-r3{fill:color-mix(in srgb,var(--accent) 16%,var(--panel));stroke:var(--rule)}
+.sv-core{fill:var(--accent);stroke:none}
+.sv-core-t{fill:var(--accent-ink);font-family:var(--f-mono);font-size:14px;font-weight:500}
+.sv-ln{stroke:var(--muted);stroke-width:1.4;fill:none}
+.sv-ac{stroke:var(--accent);stroke-width:1.6;fill:none}
+
+.ladder{display:grid;gap:6px;margin:16px 0}
+.ladder div{display:grid;grid-template-columns:52px minmax(0,1fr);gap:12px;align-items:baseline;padding:8px 12px;border:1px solid var(--rule);border-radius:5px;background:var(--panel);font-size:15px}
+.ladder b{font-family:var(--f-mono);font-weight:500;color:var(--accent)}
+.foot{color:var(--muted);font-size:13.5px;padding-block:32px}
+</style>
+
+<div class="shell">
+<aside class="toc" aria-label="목차">
+  <details id="tocd" open>
+    <summary>목차 <span class="meter" id="meter">0 / 11 완료</span></summary>
+    <ol id="tocl">
+      <li class="part">Part I · 기초</li>
+      <li><a href="#ch1"><span class="n">01</span>하네스란 무엇인가<span class="chk" data-c="ch1"></span></a></li>
+      <li><a href="#ch2"><span class="n">02</span>에이전트 루프<span class="chk" data-c="ch2"></span></a></li>
+      <li><a href="#ch3"><span class="n">03</span>도구 설계 (ACI)<span class="chk" data-c="ch3"></span></a></li>
+      <li class="part">Part II · 컨텍스트와 상태</li>
+      <li><a href="#ch4"><span class="n">04</span>컨텍스트 엔지니어링<span class="chk" data-c="ch4"></span></a></li>
+      <li><a href="#ch5"><span class="n">05</span>상태·메모리·장기 실행<span class="chk" data-c="ch5"></span></a></li>
+      <li class="part">Part III · 신뢰성</li>
+      <li><a href="#ch6"><span class="n">06</span>검증과 피드백 루프<span class="chk" data-c="ch6"></span></a></li>
+      <li><a href="#ch7"><span class="n">07</span>가드레일·권한·샌드박스<span class="chk" data-c="ch7"></span></a></li>
+      <li><a href="#ch8"><span class="n">08</span>관측성과 평가<span class="chk" data-c="ch8"></span></a></li>
+      <li class="part">Part IV · 고급</li>
+      <li><a href="#ch9"><span class="n">09</span>멀티 에이전트<span class="chk" data-c="ch9"></span></a></li>
+      <li><a href="#ch10"><span class="n">10</span>하네스 운영과 진화<span class="chk" data-c="ch10"></span></a></li>
+      <li><a href="#ch11"><span class="n">11</span>실전: 미니 하네스 제작<span class="chk" data-c="ch11"></span></a></li>
+      <li class="part">부록</li>
+      <li><a href="#glossary"><span class="n">A</span>용어집</a></li>
+      <li><a href="#refs"><span class="n">B</span>참고 자료</a></li>
+    </ol>
+  </details>
+  <button class="theme-btn" id="themeBtn" type="button">테마 전환 (시스템 / 라이트 / 다크)</button>
+</aside>
+
+<main>
+<header class="cover col">
+  <div class="kicker">Field Manual · 2026 Edition</div>
+  <h1>하네스 엔지니어링 교본</h1>
+  <div class="formula" aria-label="Agent equals Model plus Harness">
+    <span class="term">Agent</span><span class="op">=</span><span class="term">Model</span><span class="op">+</span><span class="term h">Harness</span>
+  </div>
+  <p class="lede">모델은 두뇌이고, 하네스는 그 두뇌가 실제 일을 하게 만드는 몸과 신경계입니다. 이 책은 에이전트 루프 한 줄부터 멀티 에이전트 운영까지, 직접 설계하고 측정하고 개선할 수 있는 수준을 목표로 합니다.</p>
+  <div class="stats"><span><b>11</b>개 장</span><span><b>7</b>개 실습 벤치</span><span><b>22</b>개 확인 문제</span><span><b>1</b>개 완성 프로젝트</span></div>
+</header>
+
+<!-- ============ CH1 ============ -->
+<section class="chapter col" id="ch1">
+  <div class="eyebrow">Part I · 기초 — 1장</div>
+  <h2>하네스란 무엇인가</h2>
+  <p class="goal">이 장을 마치면: 하네스의 정의와 범위를 말할 수 있고, 프롬프트·컨텍스트·하네스 엔지니어링의 차이를 설명할 수 있으며, "실수는 하네스 버그"라는 사고방식을 갖추게 됩니다.</p>
+
+  <h3>모델을 뺀 나머지 전부</h3>
+  <p>LLM 자체는 토큰을 받아 토큰을 내놓는 함수입니다. 파일을 읽지도, 테스트를 돌리지도, 어제 한 일을 기억하지도 못합니다. 이 함수를 반복 호출하고, 도구를 실행해 결과를 돌려주고, 무엇을 보여줄지 고르고, 무엇을 못 하게 막고, 결과가 맞는지 확인하는 소프트웨어 전체가 <strong>하네스(harness)</strong>입니다. 하네스 엔지니어링은 이 실행 환경을 의도적으로 설계하고 계속 진화시키는 분야입니다.</p>
+  <p>용어 자체는 2026년 2월에 퍼졌습니다. Terraform 공동 창시자 Mitchell Hashimoto가 코딩 에이전트가 실수할 때마다 다시 지시하는 대신 환경에 영구적인 수정을 넣는 습관을 "engineering the harness"라고 불렀고, 곧이어 OpenAI와 Anthropic이 같은 생각을 확장한 엔지니어링 글을 냈습니다. 특히 OpenAI Codex 팀은 엔지니어 3명이 5개월 동안 사람이 직접 쓴 코드 없이 약 100만 줄 규모의 제품을 만들었다고 보고했는데, 초반이 예상보다 느렸던 이유를 모델 능력이 아니라 <em>환경이 충분히 정의되지 않았기 때문</em>이라고 진단했습니다.</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 640 330" role="img" aria-label="하네스 계층 구조: 중심에 모델, 바깥으로 에이전트 루프, 도구, 컨텍스트와 상태, 가드레일, 검증과 관측">
+      <rect class="sv-r0" x="4" y="4" width="632" height="322" rx="10"/>
+      <text class="sv-t" x="20" y="28">검증 · 관측 · 평가 (Verify)</text>
+      <rect class="sv-r1" x="40" y="42" width="560" height="264" rx="9"/>
+      <text class="sv-t" x="56" y="66">가드레일 · 권한 · 샌드박스 (Constrain)</text>
+      <rect class="sv-r2" x="76" y="80" width="488" height="206" rx="8"/>
+      <text class="sv-t" x="92" y="104">컨텍스트 조립 · 상태 · 메모리 (Inform)</text>
+      <rect class="sv-r3" x="112" y="118" width="416" height="148" rx="7"/>
+      <text class="sv-t" x="128" y="142">도구 (ACI) · 에이전트 루프</text>
+      <rect class="sv-core" x="250" y="166" width="140" height="64" rx="6"/>
+      <text class="sv-core-t" x="320" y="203" text-anchor="middle">Model</text>
+      <text class="sv-m" x="128" y="252">tool_use → execute → tool_result</text>
+      <text class="sv-m" x="420" y="252" text-anchor="end"></text>
+    </svg>
+    <figcaption>그림 1-1. 하네스는 모델을 겹겹이 감싼다. 바깥 계층일수록 결정적(deterministic) 코드로 구현하는 편이 안전하다.</figcaption>
+  </figure>
+
+  <h3>프롬프트 → 컨텍스트 → 하네스</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>단계</th><th>최적화 대상</th><th>핵심 질문</th><th>단위</th></tr></thead>
+    <tbody>
+      <tr><td>프롬프트 엔지니어링</td><td>언어</td><td>어떻게 말해야 원하는 답이 나오나?</td><td>한 번의 요청</td></tr>
+      <tr><td>컨텍스트 엔지니어링</td><td>정보</td><td>모델이 지금 무엇을 봐야 하나?</td><td>한 번의 모델 호출</td></tr>
+      <tr><td>하네스 엔지니어링</td><td>환경</td><td>시스템이 무엇을 막고, 측정하고, 교정해야 하나?</td><td>수백 번의 호출로 이뤄진 작업 전체</td></tr>
+    </tbody>
+  </table></div>
+  <p>세 단계는 대체 관계가 아니라 포함 관계입니다. 좋은 하네스 안에는 좋은 컨텍스트 엔지니어링이 있고, 그 안에 좋은 프롬프트가 있습니다. 다만 장시간 자율 작업에서는 바깥 계층의 결함이 안쪽 노력을 무력화합니다. 프롬프트를 아무리 다듬어도, 테스트를 돌릴 방법이 없는 에이전트는 자기가 고친 코드가 맞는지 알 수 없습니다.</p>
+
+  <h3>하네스의 네 가지 기능</h3>
+  <p>OpenAI의 정리를 빌리면 하네스는 에이전트를 <strong>제약(Constrain)</strong>하고, 할 일을 <strong>알려주고(Inform)</strong>, 제대로 했는지 <strong>검증(Verify)</strong>하고, 틀렸을 때 <strong>교정(Correct)</strong>합니다. 이 책의 Part II는 Inform, Part III는 Constrain·Verify·Correct를 다룹니다.</p>
+
+  <div class="call sys"><span class="lab">시스템 엔지니어의 눈으로</span>
+    <p>모델을 CPU로, 하네스를 OS와 BSP로 보면 대부분의 설계 결정이 익숙해집니다.</p>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>OS / 임베디드 개념</th><th>하네스 대응물</th></tr></thead>
+    <tbody>
+      <tr><td>시스템 콜 인터페이스</td><td>도구(tool) 스키마. 에이전트가 세상에 영향을 주는 유일한 통로</td></tr>
+      <tr><td>스케줄러 메인 루프</td><td>에이전트 루프 (모델 호출 → 도구 실행 → 결과 주입)</td></tr>
+      <tr><td>MMU, 권한 레벨, cgroup</td><td>샌드박스, 파일 시스템 범위, 네트워크 허용 목록</td></tr>
+      <tr><td>제한된 RAM과 페이지 교체</td><td>컨텍스트 윈도우와 컴팩션(compaction)</td></tr>
+      <tr><td>워치독 타이머</td><td>최대 턴 수, 토큰·비용 예산, 타임아웃</td></tr>
+      <tr><td>dmesg, ftrace, perf</td><td>트레이스, 구조화 로그, 토큰·지연 계측</td></tr>
+      <tr><td>디스크 위 상태, 체크포인트</td><td>진행 파일, git 커밋, 기능 목록 JSON</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>핵심 사고방식: 실수는 하네스 버그다</h3>
+  <p>에이전트가 같은 실수를 반복할 때 초보자는 채팅창에 "그거 하지 말라고 했잖아"를 입력합니다. 하네스 엔지니어는 질문을 바꿉니다. <em>어떤 능력이 빠져 있었고, 그걸 어떻게 보이게 하고 강제할 수 있을까?</em> 그리고 그 답을 문서, 도구, 린터, 테스트, 권한 규칙 중 하나로 환경에 새겨 넣습니다. 이렇게 하면 수정이 누적됩니다. 오늘 고친 실수는 내일의 모든 세션에서 다시 일어나지 않습니다.</p>
+
+  <h3>안쪽 하네스와 바깥쪽 하네스</h3>
+  <ul>
+    <li><strong>안쪽(inner) 하네스</strong>: 에이전트 제품 자체에 내장된 루프, 기본 도구, 컨텍스트 관리, 권한 체계. Claude Code나 Codex CLI 같은 도구가 기본으로 제공합니다. 에이전트를 직접 만들면 이 부분까지 설계합니다.</li>
+    <li><strong>바깥쪽(outer) 하네스</strong>: 그 제품 위에 프로젝트가 얹는 것. <code>AGENTS.md</code> 같은 지침 파일, 커스텀 린터와 테스트, 훅, 스킬, 관측 스택, CI 게이트. 대부분의 팀이 실제로 손대는 영역입니다.</li>
+  </ul>
+  <p>두 층의 원리는 같습니다. 이 책은 원리를 안쪽 하네스를 직접 만들면서 익히고(2·3·11장), 그 감각을 바깥쪽 하네스 운영에 적용하는(6·7·10장) 순서로 진행합니다.</p>
+
+  <div class="quiz" data-quiz="ch1"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch1" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH2 ============ -->
+<section class="chapter col" id="ch2">
+  <div class="eyebrow">Part I · 기초 — 2장</div>
+  <h2>에이전트 루프</h2>
+  <p class="goal">이 장을 마치면: 에이전트 루프를 직접 작성하고, 메시지 배열이 어떻게 자라는지 설명하며, 종료 조건과 무한 루프 방지를 설계할 수 있습니다.</p>
+
+  <h3>전부 이 while 문에서 시작한다</h3>
+  <p>모든 에이전트의 심장은 놀라울 만큼 단순합니다. 모델을 호출하고, 응답에 도구 호출이 있으면 실행하고, 결과를 대화에 붙여 다시 호출합니다. 도구 호출이 없으면 끝납니다. 아래 코드는 특정 SDK의 세부 사항을 걷어낸 최소 형태입니다.</p>
+  <div class="code"><div class="bar"><span>agent_loop.py</span><button type="button" class="cp">복사</button></div><pre><code data-lang="py">def run_agent(task: str, tools: dict, max_turns: int = 30) -&gt; str:
+    # The conversation is the agent's entire working memory.
+    messages = [{"role": "user", "content": task}]
+
+    for turn in range(max_turns):
+        response = call_model(
+            system=SYSTEM_PROMPT,
+            messages=messages,
+            tools=[t.schema for t in tools.values()],
+        )
+        messages.append({"role": "assistant", "content": response.content})
+
+        tool_calls = [b for b in response.content if b.type == "tool_use"]
+        if not tool_calls:
+            # No tool request means the model believes it is done.
+            return response.text
+
+        results = []
+        for call in tool_calls:
+            try:
+                output = tools[call.name].run(**call.input)
+                results.append(tool_result(call.id, output))
+            except Exception as e:
+                # Errors are feedback, never a crash: return them to the model.
+                results.append(tool_result(call.id, f"ERROR: {e}", is_error=True))
+
+        # Every tool_use id must be answered by a matching tool_result.
+        messages.append({"role": "user", "content": results})
+
+    return "Stopped: max_turns reached"</code></pre></div>
+  <p>세 가지를 기억하세요. 첫째, 모델은 상태가 없습니다. 매 호출마다 <code>messages</code> 전체를 다시 읽습니다. 둘째, 도구 결과는 다음 입력이 되므로 토큰이 매 턴 누적됩니다. 셋째, 예외도 결과입니다. 하네스가 죽으면 에이전트는 배울 기회를 잃습니다.</p>
+
+  <div class="bench" id="loopBench">
+    <header><b>실습 벤치 2-A · 루프 한 단계씩 돌려보기</b><span>LOOP STEPPER</span></header>
+    <div class="body">
+      <div class="lanes">
+        <div class="lane" data-lane="user">사용자<small>task 입력</small></div>
+        <div class="lane" data-lane="model">모델<small>다음 행동 결정</small></div>
+        <div class="lane" data-lane="harness">하네스<small>도구 실행 · 결과 주입</small></div>
+      </div>
+      <div class="msgs" id="loopMsgs" aria-live="polite"></div>
+      <p class="explain" id="loopExplain"></p>
+      <div class="row" style="justify-content:space-between">
+        <div class="row">
+          <button class="btn" id="loopReset" type="button">처음으로</button>
+          <button class="btn" id="loopPrev" type="button">이전</button>
+          <button class="btn pri" id="loopNext" type="button">다음 단계</button>
+        </div>
+        <span class="tokc" id="loopTok"></span>
+      </div>
+    </div>
+  </div>
+
+  <h3>종료 조건 설계</h3>
+  <p>"도구 호출이 없으면 끝"은 모델의 자기 판단에 종료를 맡기는 것입니다. 실전 하네스는 여러 겹의 종료 조건을 둡니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>조건</th><th>목적</th><th>구현 메모</th></tr></thead>
+    <tbody>
+      <tr><td>자연 종료 (<code>end_turn</code>)</td><td>정상 완료</td><td>단독으로 믿지 말 것. 검증 게이트와 묶는다</td></tr>
+      <tr><td>최대 턴</td><td>폭주 방지 (워치독)</td><td>작업 유형별로 다르게. 도달 시 상태를 저장하고 멈춘다</td></tr>
+      <tr><td>토큰·비용 예산</td><td>비용 상한</td><td>누적 입력 토큰을 매 턴 계산</td></tr>
+      <tr><td>벽시계 타임아웃</td><td>행(hang) 방지</td><td>도구 단위 타임아웃과 전체 타임아웃을 분리</td></tr>
+      <tr><td>검증 게이트</td><td>"성급한 승리 선언" 방지</td><td>완료 전 테스트를 하네스가 직접 실행, 실패 시 결과를 돌려주고 계속</td></tr>
+      <tr><td>반복 감지</td><td>같은 행동 무한 반복 차단</td><td>(도구, 인자) 해시가 N회 반복되면 개입 메시지 주입</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="code"><div class="bar"><span>loop_guard.py</span><button type="button" class="cp">복사</button></div><pre><code data-lang="py">import hashlib, json
+from collections import Counter
+
+class LoopGuard:
+    """Detects the agent repeating the same action with the same arguments."""
+
+    def __init__(self, limit: int = 3):
+        self.limit = limit
+        self.seen = Counter()
+
+    def check(self, name: str, args: dict) -&gt; str | None:
+        key = hashlib.sha1(f"{name}:{json.dumps(args, sort_keys=True)}".encode()).hexdigest()
+        self.seen[key] += 1
+        if self.seen[key] &gt;= self.limit:
+            # Do not silently block; tell the model what is happening and what to try.
+            return (f"You have called {name} with identical arguments "
+                    f"{self.seen[key]} times and the result has not changed. "
+                    "Stop and reconsider: read the last error carefully, "
+                    "try a different approach, or report what is blocking you.")
+        return None</code></pre></div>
+
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>tool_result 누락</strong>: 병렬 도구 호출 중 하나만 결과를 돌려주면 대부분의 API가 다음 요청을 거부합니다. 실패해도 결과는 반드시 짝을 맞춥니다.</li>
+      <li><strong>도구 결과 무제한 주입</strong>: 10MB 로그를 그대로 넣으면 한 번에 컨텍스트가 망가집니다. 4장의 자르기·요약·파일 오프로드를 적용하세요.</li>
+      <li><strong>재현 불가능한 실행</strong>: 모든 모델 입출력과 도구 입출력을 기록하지 않으면, 실패를 디버깅할 수 없습니다(8장).</li>
+    </ul>
+  </div>
+
+  <div class="quiz" data-quiz="ch2"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch2" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH3 ============ -->
+<section class="chapter col" id="ch3">
+  <div class="eyebrow">Part I · 기초 — 3장</div>
+  <h2>도구 설계: 에이전트-컴퓨터 인터페이스</h2>
+  <p class="goal">이 장을 마치면: 모델이 잘못 쓰기 어려운 도구를 설계하고, 도구 출력을 토큰 효율적으로 만들며, 에러 메시지를 교정 신호로 활용할 수 있습니다.</p>
+
+  <p>사람에게 좋은 UI/UX가 필요하듯, 에이전트에게는 좋은 <strong>ACI(Agent-Computer Interface)</strong>가 필요합니다. 도구 이름, 설명, 파라미터, 출력 형식, 에러 메시지 하나하나가 모델의 행동을 바꿉니다. 같은 모델이라도 도구 설계에 따라 성공률이 크게 달라집니다.</p>
+
+  <h3>여섯 가지 설계 원칙</h3>
+  <ol class="steps">
+    <li><strong>작업 단위로 묶어라.</strong> <code>list_files</code>, <code>open_file</code>, <code>filter_lines</code>를 따로 주기보다 에이전트가 실제로 하려는 일(<code>search_logs(service, level, since)</code>)에 맞춘 도구가 턴과 토큰을 아낍니다. API 엔드포인트를 1:1로 감싸는 것은 대개 나쁜 설계입니다.</li>
+    <li><strong>설명은 신입 동료에게 쓰는 문서처럼.</strong> 무엇을 하는지, 언제 쓰고 언제 쓰지 말아야 하는지, 파라미터의 형식과 예시를 적습니다. 모델은 이 설명만 보고 판단합니다.</li>
+    <li><strong>실수하기 어렵게(poka-yoke).</strong> 상대 경로 대신 절대 경로를 요구하고, 자유 문자열 대신 enum을 쓰고, 위험한 조합은 스키마 단계에서 막습니다.</li>
+    <li><strong>출력은 짧고 의미 있게.</strong> 기본값은 요약, 필요할 때만 상세. 페이지네이션과 잘림 표시를 넣고, 잘렸다면 어떻게 더 볼 수 있는지 힌트를 줍니다. 내부 UUID보다 사람이 읽을 수 있는 이름을 반환합니다.</li>
+    <li><strong>에러는 다음 행동을 알려줘라.</strong> <code>Error 400</code>이 아니라 "date는 YYYY-MM-DD 형식이어야 합니다. 받은 값: 11/05/2026"처럼 고치는 방법을 담습니다.</li>
+    <li><strong>부작용을 분리하라.</strong> 읽기 전용 도구와 변경 도구를 나누고, 변경 도구에는 <code>dry_run</code>이나 멱등성 키를 둡니다. 7장의 권한 정책이 이 구분 위에서 작동합니다.</li>
+  </ol>
+
+  <div class="tabs" data-tabs>
+    <div role="tablist" aria-label="도구 정의 비교">
+      <button role="tab" type="button" aria-selected="true">나쁜 정의</button>
+      <button role="tab" type="button" aria-selected="false">좋은 정의</button>
+      <button role="tab" type="button" aria-selected="false">에러 메시지</button>
+    </div>
+    <div class="panel"><div class="code"><div class="bar"><span>bad_tool.json</span><button type="button" class="cp">복사</button></div><pre><code data-lang="json">{
+  "name": "query",
+  "description": "Runs a query.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "q": {"type": "string"},
+      "mode": {"type": "string"}
+    }
+  }
+}</code></pre></div></div>
+    <div class="panel" hidden><div class="code"><div class="bar"><span>good_tool.json</span><button type="button" class="cp">복사</button></div><pre><code data-lang="json">{
+  "name": "search_robot_logs",
+  "description": "Search structured logs from fleet robots. Use this to investigate a failure on a specific robot or service. Do NOT use it for metrics or time-series data; use query_metrics instead. Returns at most `limit` entries, newest first, plus a `next_cursor` when more exist.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "robot_id": {"type": "string", "description": "Fleet robot id, e.g. 'amr-017'. Use list_robots if unknown."},
+      "service":  {"type": "string", "enum": ["nav", "perception", "dds_bridge", "power"]},
+      "level":    {"type": "string", "enum": ["error", "warn", "info"], "default": "error"},
+      "since":    {"type": "string", "description": "ISO 8601 timestamp, e.g. 2026-11-05T09:00:00+09:00"},
+      "limit":    {"type": "integer", "minimum": 1, "maximum": 200, "default": 50},
+      "response_format": {"type": "string", "enum": ["concise", "detailed"], "default": "concise"}
+    },
+    "required": ["robot_id", "service", "since"]
+  }
+}</code></pre></div></div>
+    <div class="panel" hidden><div class="code"><div class="bar"><span>errors.txt</span><button type="button" class="cp">복사</button></div><pre><code data-lang="md">BAD:   Error: invalid input
+
+GOOD:  'since' must be an ISO 8601 timestamp with timezone.
+       Received: "yesterday 9am".
+       Example: "2026-11-04T09:00:00+09:00".
+
+GOOD:  Output truncated: showing 50 of 1,284 matching entries.
+       Narrow the search with 'level' or a later 'since',
+       or pass cursor="c_8f2a" to see the next page.</code></pre></div></div>
+  </div>
+
+  <h3>범용 셸 vs 전용 도구</h3>
+  <p>강력한 모델에게 <code>bash</code> 하나만 줘도 상당히 많은 일을 합니다. 범용성이 높고, 모델이 이미 학습한 CLI 지식을 그대로 활용합니다. 대신 통제와 관측이 어렵습니다. 실무에서는 섞어 씁니다.</p>
+  <ul>
+    <li><strong>셸</strong>: 탐색, 빌드, 일회성 스크립트. 샌드박스 안에서 넓게 허용.</li>
+    <li><strong>전용 도구</strong>: 자주 쓰는 작업(파일 편집, 검색), 위험하거나 감사가 필요한 작업(배포, DB 쓰기), 출력 형식을 통제해야 하는 작업.</li>
+    <li><strong>코드를 도구로</strong>: 수십 번 도구를 부르는 대신, 에이전트가 스크립트를 작성해 한 번에 실행하게 하면 중간 결과가 컨텍스트를 거치지 않아 효율적입니다.</li>
+  </ul>
+  <p>도구를 외부 서비스와 표준 방식으로 연결하는 프로토콜이 <strong>MCP(Model Context Protocol)</strong>입니다. MCP는 연결 방법을 표준화할 뿐, 위의 설계 원칙을 대신해 주지는 않습니다. MCP 서버를 붙일 때도 도구 수와 설명 품질을 같은 기준으로 검토하세요.</p>
+
+  <div class="call key"><span class="lab">실전 팁</span>
+    <p>도구를 만들었으면 에이전트에게 그 도구로 실제 과제 10개를 풀게 하고 트레이스를 읽으세요. 잘못된 인자, 불필요한 반복 호출, 무시된 출력 필드가 보이면 그게 다음 수정 대상입니다. 에이전트에게 트레이스를 주고 도구 설명을 개선하게 하는 것도 효과적입니다.</p>
+  </div>
+
+  <div class="quiz" data-quiz="ch3"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch3" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH4 ============ -->
+<section class="chapter col" id="ch4">
+  <div class="eyebrow">Part II · 컨텍스트와 상태 — 4장</div>
+  <h2>컨텍스트 엔지니어링</h2>
+  <p class="goal">이 장을 마치면: 컨텍스트 예산을 계산하고, 지침 파일을 "지도"로 설계하며, 점진적 공개와 적시(just-in-time) 검색을 하네스에 적용할 수 있습니다.</p>
+
+  <h3>컨텍스트는 희소 자원이다</h3>
+  <p>컨텍스트 윈도우가 100만 토큰이어도 공짜가 아닙니다. 컨텍스트가 길어질수록 모델이 중간에 있는 정보를 놓치거나 오래된 지시에 끌려가는 현상, 흔히 <strong>컨텍스트 부패(context rot)</strong>라 부르는 품질 저하가 생깁니다. 비용과 지연도 입력 길이에 비례합니다. 목표는 "많이 넣기"가 아니라 <em>이번 결정에 필요한 최소한의 고신호 토큰</em>을 넣는 것입니다.</p>
+
+  <h3>컨텍스트를 구성하는 층</h3>
+  <ul>
+    <li><strong>시스템 프롬프트</strong>: 역할, 원칙, 작업 방식. 너무 구체적인 if-else 규칙 나열도, 너무 막연한 격려도 피하고 적절한 고도를 유지합니다.</li>
+    <li><strong>도구 정의</strong>: 도구 하나당 수백 토큰. 도구 50개면 그것만으로 수만 토큰입니다.</li>
+    <li><strong>프로젝트 지침</strong>: <code>AGENTS.md</code> 같은 파일. 매 세션 자동 로드됩니다.</li>
+    <li><strong>대화 이력과 도구 결과</strong>: 가장 빠르게 자라는 부분. 대부분의 컨텍스트 문제는 여기서 납니다.</li>
+  </ul>
+
+  <div class="bench" id="ctxBench">
+    <header><b>실습 벤치 4-A · 컨텍스트 예산 계산기</b><span>CONTEXT BUDGET</span></header>
+    <div class="body">
+      <div class="ctl"><label for="cWin">컨텍스트 윈도우</label><output id="oWin"></output>
+        <select id="cWin" class="btn" style="grid-column:1/-1"><option value="128000">128K</option><option value="200000" selected>200K</option><option value="1000000">1M</option></select></div>
+      <div class="grid2">
+        <div class="ctl"><label for="cSys">시스템 프롬프트 (K 토큰)</label><output id="oSys"></output><input type="range" id="cSys" min="1" max="30" value="4"></div>
+        <div class="ctl"><label for="cTools">도구 개수 (개당 약 400토큰)</label><output id="oTools"></output><input type="range" id="cTools" min="0" max="120" value="18"></div>
+        <div class="ctl"><label for="cDoc">지침 파일 길이 (줄, 줄당 약 12토큰)</label><output id="oDoc"></output><input type="range" id="cDoc" min="0" max="3000" value="120" step="20"></div>
+        <div class="ctl"><label for="cTurns">진행된 턴 수</label><output id="oTurns"></output><input type="range" id="cTurns" min="0" max="200" value="40"></div>
+        <div class="ctl"><label for="cOut">턴당 평균 도구 출력 (K 토큰)</label><output id="oOut"></output><input type="range" id="cOut" min="0.2" max="12" value="1.5" step="0.1"></div>
+        <div class="ctl"><label for="cTrunc">도구 출력 상한 적용</label><output id="oTrunc"></output>
+          <select id="cTrunc" class="btn" style="grid-column:1/-1"><option value="0">적용 안 함</option><option value="2">2K에서 자르기</option><option value="1">1K에서 자르기 + 파일로 오프로드</option></select></div>
+      </div>
+      <div class="stack" id="cStack" aria-hidden="true"></div>
+      <div class="legend" id="cLegend"></div>
+      <div class="status" id="cStatus" role="status"></div>
+    </div>
+  </div>
+  <p style="font-size:14px;color:var(--muted)">사용률 구간(40%, 70%)은 업계에서 흔히 쓰는 경험칙이며 모델과 과제에 따라 다릅니다. 핵심은 수치가 아니라, 어떤 항목이 예산을 잡아먹는지 감각을 기르는 것입니다.</p>
+
+  <h3>매뉴얼 말고 지도를 줘라</h3>
+  <p>OpenAI Codex 팀이 얻은 첫 교훈이 이것입니다. 거대한 지침 파일은 과제와 코드와 관련 문서를 밀어내고, 에이전트는 핵심 제약을 놓치거나 엉뚱한 것을 최적화합니다. 그래서 <code>AGENTS.md</code>는 짧은 목차로 두고, 상세 내용은 리포 안 문서로 분리해 필요할 때 읽게 했습니다. 이것이 <strong>점진적 공개(progressive disclosure)</strong>입니다.</p>
+  <div class="code"><div class="bar"><span>AGENTS.md</span><button type="button" class="cp">복사</button></div><pre><code data-lang="md"># AGENTS.md — fleet-manager
+
+## What this repo is
+Multi-robot fleet manager. ROS 2 Humble, DDS (Cyclone), Python 3.11 + C++17.
+
+## Commands (run these, do not guess)
+- Setup:      ./scripts/init.sh
+- Unit tests: make test            # must pass before you finish
+- Lint/type:  make check           # ruff + mypy + clang-tidy
+- Sim smoke:  make sim-smoke       # launches 3 robots in Gazebo, ~90s
+
+## Map (read only what you need)
+- docs/architecture.md   layers and allowed dependencies
+- docs/dds-qos.md        QoS profiles; read before touching any topic
+- docs/plans/            active execution plans, one file per task
+- docs/quality.md        known weak areas, graded per package
+
+## Hard rules
+- Never edit generated code under msg_gen/.
+- Domain layer must not import from infra/. A test enforces this.
+- If a rule here conflicts with a failing check, the check wins; report it.</code></pre></div>
+
+  <h3>적시 검색 vs 미리 싣기</h3>
+  <p>예전 RAG 방식은 관련 있어 보이는 문서를 임베딩으로 찾아 미리 컨텍스트에 넣었습니다. 코딩 에이전트에서는 에이전트가 <code>grep</code>, <code>glob</code>, 파일 읽기 도구로 <em>스스로 필요한 순간에</em> 찾아보는 방식이 더 잘 작동하는 경우가 많습니다. 사람이 전체 코드베이스를 외우지 않고 파일 트리와 검색으로 일하는 것과 같습니다. 파일 경로, 디렉터리 이름, 문서 제목 같은 가벼운 식별자만 먼저 주고 내용은 나중에 읽게 하세요.</p>
+  <p><strong>스킬(skill)</strong>은 이 원칙을 패키지로 만든 것입니다. 이름과 한 줄 설명만 항상 컨텍스트에 있고, 본문 지침과 스크립트는 해당 작업을 할 때만 로드됩니다. 수십 개의 전문 절차를 두면서도 평소 컨텍스트 비용은 거의 들지 않습니다.</p>
+
+  <h3>도구 결과 위생</h3>
+  <ul>
+    <li><strong>자르기</strong>: 상한을 두고, 잘렸다는 사실과 더 보는 방법을 명시.</li>
+    <li><strong>오프로드</strong>: 큰 결과는 파일로 저장하고 경로와 요약만 반환. 에이전트가 필요하면 부분만 읽습니다.</li>
+    <li><strong>지우기</strong>: 오래전 도구 결과의 원문은 컨텍스트에서 제거해도 대부분 문제없습니다. 결정과 결론은 남기고 원자료는 버립니다.</li>
+  </ul>
+
+  <div class="quiz" data-quiz="ch4"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch4" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH5 ============ -->
+<section class="chapter col" id="ch5">
+  <div class="eyebrow">Part II · 컨텍스트와 상태 — 5장</div>
+  <h2>상태, 메모리, 장기 실행</h2>
+  <p class="goal">이 장을 마치면: 컴팩션을 설계하고, 여러 컨텍스트 윈도우에 걸친 작업을 진행 파일과 git으로 이어가는 패턴을 구현할 수 있습니다.</p>
+
+  <h3>상태는 모델 밖에 둔다</h3>
+  <p>모델은 매번 백지에서 시작합니다. 몇 시간, 며칠 걸리는 작업에서 연속성을 만드는 것은 전적으로 하네스의 책임입니다. 메모리를 네 종류로 나눠 생각하면 설계가 명확해집니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>종류</th><th>내용</th><th>저장 위치</th></tr></thead>
+    <tbody>
+      <tr><td>작업 메모리</td><td>지금 이 결정에 필요한 것</td><td>컨텍스트 윈도우</td></tr>
+      <tr><td>일화 메모리</td><td>무엇을 했고 무슨 일이 있었나</td><td>진행 파일, git 로그, 트레이스</td></tr>
+      <tr><td>의미 메모리</td><td>프로젝트에 대한 사실, 규칙</td><td>AGENTS.md, docs/, 메모리 파일</td></tr>
+      <tr><td>절차 메모리</td><td>어떻게 하는가</td><td>스킬, 스크립트, Makefile</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>컴팩션: 페이지 교체 정책</h3>
+  <p>컨텍스트가 한계에 가까워지면 오래된 대화를 요약으로 바꿔 끼웁니다. 어려운 부분은 무엇을 남길지입니다. 너무 공격적으로 요약하면 나중에야 중요해지는 미묘한 단서를 잃습니다.</p>
+  <div class="code"><div class="bar"><span>compaction.py</span><button type="button" class="cp">복사</button></div><pre><code data-lang="py">COMPACT_PROMPT = """Summarize the work so far for a fresh engineer who will continue it.
+Keep: the goal, decisions made and why, files changed (paths), commands that work,
+open problems, the exact text of any unresolved error, and the next intended step.
+Drop: raw tool output, superseded attempts, pleasantries."""
+
+def maybe_compact(messages, count_tokens, window, threshold=0.7, keep_recent=6):
+    if count_tokens(messages) &lt; window * threshold:
+        return messages
+
+    head, recent = messages[1:-keep_recent], messages[-keep_recent:]
+    summary = call_model(system=COMPACT_PROMPT, messages=head).text
+
+    # Keep the original task verbatim; summaries drift, the task must not.
+    return [messages[0],
+            {"role": "user", "content": f"[Summary of earlier work]\n{summary}"},
+            *recent]</code></pre></div>
+  <div class="call warn"><span class="lab">주의</span><p><code>recent</code>를 자를 때 tool_use와 tool_result 쌍이 갈라지지 않게 경계를 맞추세요. 많은 하네스 버그가 여기서 납니다.</p></div>
+
+  <h3>컨텍스트 윈도우를 건너는 작업</h3>
+  <p>Anthropic은 장시간 코딩 에이전트에서 두 가지 실패 패턴을 보고했습니다. 한 번에 전부 만들려다 컨텍스트 중간에 반쯤 구현된 상태로 끊기는 것, 그리고 일부만 해놓고 다 끝났다고 선언하는 것입니다. 해결책은 사람 엔지니어의 교대 근무를 흉내 내는 구조였습니다.</p>
+  <ol class="steps">
+    <li><strong>초기화 세션</strong>: 환경을 세팅하고 <code>init.sh</code>, 기능 목록(전부 미완료 상태), 진행 파일, 첫 커밋을 만듭니다.</li>
+    <li><strong>작업 세션 시작</strong>: 진행 파일과 <code>git log</code>를 읽고, <code>init.sh</code>와 스모크 테스트로 현재 상태가 정상인지 먼저 확인합니다.</li>
+    <li><strong>한 번에 하나</strong>: 미완료 기능 하나를 골라 구현하고, 실제 사용자처럼 끝까지 검증합니다.</li>
+    <li><strong>깨끗하게 넘기기</strong>: 커밋하고, 기능 상태를 갱신하고, 진행 파일에 다음 사람을 위한 메모를 남깁니다.</li>
+  </ol>
+  <div class="code"><div class="bar"><span>feature_list.json</span><button type="button" class="cp">복사</button></div><pre><code data-lang="json">[
+  {
+    "id": "F-012",
+    "description": "Operator can pause a single robot from the dashboard",
+    "verify": "Start sim, click Pause on amr-002, confirm /amr_002/cmd_vel goes to zero within 1s",
+    "passes": false
+  },
+  {
+    "id": "F-013",
+    "description": "Fleet view shows battery percentage per robot",
+    "verify": "Battery widget matches /amr_xxx/battery_state for all 3 sim robots",
+    "passes": false
+  }
+]</code></pre></div>
+  <p>JSON을 쓰는 이유가 있습니다. 마크다운 체크리스트보다 모델이 함부로 다시 쓰거나 항목을 지우는 일이 적고, 하네스가 기계적으로 읽어 진척을 계산할 수 있습니다. "passes 필드만 바꿀 것, 항목 삭제 금지" 같은 규칙은 프롬프트보다 검증 스크립트로 강제하는 편이 확실합니다.</p>
+
+  <div class="quiz" data-quiz="ch5"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch5" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH6 ============ -->
+<section class="chapter col" id="ch6">
+  <div class="eyebrow">Part III · 신뢰성 — 6장</div>
+  <h2>검증과 피드백 루프</h2>
+  <p class="goal">이 장을 마치면: 에이전트용 센서를 설계하고, 실패를 적절한 수준의 하네스 수정으로 분류하며, 에이전트를 위한 에러 메시지를 쓸 수 있습니다.</p>
+
+  <h3>검증 없는 에이전트는 눈을 감고 운전한다</h3>
+  <p>에이전트의 출력은 그럴듯하지만 틀릴 수 있습니다. 하네스는 에이전트에게 자기 결과를 확인할 <strong>센서</strong>를 줘야 합니다. 그리고 그 센서는 빠를수록 좋습니다. 피드백 지연이 짧을수록 에이전트는 더 많이 시도하고 더 빨리 수렴합니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>센서</th><th>지연</th><th>잡아내는 것</th></tr></thead>
+    <tbody>
+      <tr><td>타입 체커, 컴파일러</td><td>밀리초~초</td><td>인터페이스 불일치, 오타</td></tr>
+      <tr><td>린터 (커스텀 규칙 포함)</td><td>초</td><td>컨벤션, 아키텍처 위반, 금지 패턴</td></tr>
+      <tr><td>단위 테스트</td><td>초~분</td><td>로직 오류</td></tr>
+      <tr><td>E2E, 시뮬레이션, 브라우저 조작</td><td>분</td><td>통합 오류, 실제 동작</td></tr>
+      <tr><td>로그·메트릭·트레이스 조회</td><td>분</td><td>런타임 동작, 성능</td></tr>
+      <tr><td>리뷰 에이전트, LLM 심사</td><td>분</td><td>설계 품질, 요구사항 누락</td></tr>
+      <tr><td>사람 리뷰</td><td>시간~일</td><td>판단이 필요한 모든 것</td></tr>
+    </tbody>
+  </table></div>
+  <p>Codex 팀은 앱을 git worktree마다 띄울 수 있게 만들고, Chrome DevTools Protocol을 에이전트 런타임에 연결해 DOM 스냅숏과 스크린숏으로 UI 버그를 직접 재현하고 수정을 확인하게 했습니다. 로그와 메트릭도 worktree별 임시 관측 스택으로 노출했습니다. 사람이 보던 화면을 에이전트도 볼 수 있게 만든 것, 즉 <strong>애플리케이션 가독성(legibility)</strong>을 높인 것입니다.</p>
+
+  <h3>에이전트를 위한 에러 메시지</h3>
+  <p>커스텀 린터의 진짜 가치는 메시지에 있습니다. 위반을 알리는 데서 그치지 않고 <em>고치는 방법</em>을 담으면, 에러 메시지가 곧 컨텍스트 주입이 됩니다. 필요한 순간에만 나타나는 가장 효율적인 문서입니다.</p>
+  <div class="code"><div class="bar"><span>check_layers.py</span><button type="button" class="cp">복사</button></div><pre><code data-lang="py">import ast, pathlib, sys
+
+# Allowed import direction: domain -&gt; (nothing), app -&gt; domain, infra -&gt; app/domain
+FORBIDDEN = {"domain": ("infra", "app"), "app": ("infra",)}
+
+def check(root="src"):
+    errors = []
+    for path in pathlib.Path(root).rglob("*.py"):
+        layer = path.relative_to(root).parts[0]
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.ImportFrom) and node.module:
+                target = node.module.split(".")[0]
+                if target in FORBIDDEN.get(layer, ()):
+                    errors.append(
+                        f"{path}:{node.lineno}: '{layer}' must not import '{target}'.\n"
+                        f"  WHY: domain logic must stay testable without ROS/DDS.\n"
+                        f"  FIX: define a Protocol in {layer}/ports.py and inject the "
+                        f"implementation from infra/ at wiring time (see docs/architecture.md#ports)."
+                    )
+    return errors
+
+if __name__ == "__main__":
+    errs = check()
+    print("\n".join(errs) or "layer check: OK")
+    sys.exit(1 if errs else 0)</code></pre></div>
+
+  <h3>수정의 사다리</h3>
+  <p>실수를 발견했을 때 어느 수준에서 고칠지 고르는 것이 하네스 엔지니어의 핵심 판단입니다. 위로 갈수록 내구성이 높지만 비용도 듭니다.</p>
+  <div class="ladder">
+    <div><b>L0</b><span>이번 대화에서 다시 지시한다. 이번 한 번만 해당하는 제약이면 이게 맞다.</span></div>
+    <div><b>L1</b><span>AGENTS.md나 docs/에 적는다. 몰라서 틀린 경우.</span></div>
+    <div><b>L2</b><span>도구나 환경을 추가한다. 확인할 수단이 없어서 틀린 경우.</span></div>
+    <div><b>L3</b><span>린터·테스트·훅으로 기계적으로 막는다. 알면서도 반복되는 경우.</span></div>
+    <div><b>L4</b><span>구조적으로 불가능하게 만든다. 권한, 샌드박스, 타입. 한 번이라도 일어나면 안 되는 경우.</span></div>
+  </div>
+
+  <div class="bench" id="triBench">
+    <header><b>실습 벤치 6-A · 실패 분류 훈련</b><span>FAILURE TRIAGE</span></header>
+    <div class="body"><div id="triList"></div><p class="tokc" id="triScore"></p></div>
+  </div>
+
+  <h3>자기 검토와 리뷰 에이전트</h3>
+  <p>같은 컨텍스트에서 자기 결과를 검토하면 자기 추론에 끌려가기 쉽습니다. 리뷰는 <strong>깨끗한 컨텍스트의 별도 에이전트</strong>에게 맡기고, 변경 diff와 요구사항, 구체적인 루브릭만 줍니다. Codex 팀은 PR마다 에이전트가 스스로 검토하고 추가 에이전트 리뷰를 요청해, 모든 리뷰어가 만족할 때까지 반복하게 했습니다. LLM 심사는 결정적 검사(테스트, 린트)로 잡을 수 없는 것에만 쓰고, 주기적으로 사람 판단과 일치하는지 보정하세요.</p>
+
+  <div class="quiz" data-quiz="ch6"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch6" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH7 ============ -->
+<section class="chapter col" id="ch7">
+  <div class="eyebrow">Part III · 신뢰성 — 7장</div>
+  <h2>가드레일, 권한, 샌드박스</h2>
+  <p class="goal">이 장을 마치면: 폭발 반경(blast radius)을 기준으로 권한 정책을 설계하고, 훅으로 결정적 규칙을 강제하며, 프롬프트 인젝션에 대비한 구조를 만들 수 있습니다.</p>
+
+  <h3>확률적 규칙과 결정적 규칙</h3>
+  <p>"프로덕션 DB는 건드리지 마"를 프롬프트에 쓰면 대부분 지켜집니다. 대부분. 안전 경계는 모델의 순응에 기대지 말고 코드로 구현합니다. 프롬프트는 의도를 알려주고, 하네스는 경계를 강제합니다.</p>
+  <ul>
+    <li><strong>샌드박스</strong>: 컨테이너나 VM, 마운트된 디렉터리만 쓰기 가능, 네트워크는 허용 목록. 비밀 정보는 아예 마운트하지 않습니다.</li>
+    <li><strong>권한 정책</strong>: 행동마다 허용(allow) / 확인(ask) / 거부(deny).</li>
+    <li><strong>훅</strong>: 도구 실행 전후에 끼어드는 결정적 코드. 위험 명령 차단, 편집 후 자동 포맷, 감사 로그.</li>
+    <li><strong>사람 승인</strong>: 실수 비용이 가장 큰 지점에만 둡니다. 모든 것에 확인을 요구하면 사람은 읽지 않고 승인 버튼만 누르게 됩니다.</li>
+  </ul>
+
+  <div class="code"><div class="bar"><span>hooks/pre_tool_use.py</span><button type="button" class="cp">복사</button></div><pre><code data-lang="py">"""PreToolUse hook: reads the pending tool call as JSON on stdin.
+Exit 0 = allow, exit 2 = block (stderr is shown to the agent as the reason)."""
+import json, re, sys
+
+call = json.load(sys.stdin)
+cmd = call.get("tool_input", {}).get("command", "")
+
+RULES = [
+    (r"git\s+push\s+.*(--force|-f)\b", "Force push is not allowed. Push a new branch and open a PR."),
+    (r"\brm\s+-rf\s+/(?!workspace)", "Deleting outside /workspace is blocked."),
+    (r"(cat|less|head|tail).*\.env\b", "Secrets files are off-limits. Ask the user for the specific value you need."),
+    (r"curl\s+.*(-d|--data|-F)\b", "Outbound POST is blocked by policy (data exfiltration risk)."),
+]
+
+for pattern, reason in RULES:
+    if re.search(pattern, cmd):
+        print(reason, file=sys.stderr)
+        sys.exit(2)
+sys.exit(0)</code></pre></div>
+  <p>정규식 차단 목록은 우회 가능하다는 점을 기억하세요. 훅은 실수를 막는 장치이고, 악의적 입력을 막는 최종 경계는 샌드박스입니다. 방어는 겹쳐 쌓습니다.</p>
+
+  <div class="bench" id="polBench">
+    <header><b>실습 벤치 7-A · 권한 정책 설계</b><span>PERMISSION POLICY</span></header>
+    <div class="body">
+      <p style="font-size:14.5px;margin-bottom:12px">상황: 컨테이너 샌드박스 안에서 버그를 고치는 코딩 에이전트. 리포는 <code>/workspace</code>에 마운트되어 있고, 웹 문서를 읽을 수 있습니다. 각 행동에 정책을 매긴 뒤 채점하세요.</p>
+      <div id="polList"></div>
+      <div class="row" style="margin-top:10px"><button class="btn pri" id="polGrade" type="button">채점하기</button><button class="btn" id="polReset" type="button">다시 하기</button><span class="tokc" id="polScore"></span></div>
+    </div>
+  </div>
+
+  <h3>프롬프트 인젝션과 치명적 삼요소</h3>
+  <p>에이전트가 읽는 웹 페이지, 이슈 본문, 이메일, 파일 안의 텍스트는 <strong>데이터이지 명령이 아닙니다</strong>. 하지만 모델은 둘을 완벽히 구분하지 못합니다. Simon Willison은 다음 세 가지가 한 에이전트에 동시에 있으면 데이터 유출 공격이 가능해진다고 정리했습니다(lethal trifecta).</p>
+  <ol class="steps">
+    <li>비공개 데이터에 대한 접근</li>
+    <li>신뢰할 수 없는 콘텐츠에 노출</li>
+    <li>외부로 정보를 보낼 수 있는 통로</li>
+  </ol>
+  <p>방어의 핵심은 셋 중 하나를 구조적으로 끊는 것입니다. 웹을 읽는 에이전트라면 외부 전송을 막고, 외부로 보내야 하는 에이전트라면 비밀 정보를 주지 않습니다. 모델에게 "인젝션을 무시하라"고 부탁하는 것은 방어가 아닙니다.</p>
+
+  <div class="quiz" data-quiz="ch7"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch7" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH8 ============ -->
+<section class="chapter col" id="ch8">
+  <div class="eyebrow">Part III · 신뢰성 — 8장</div>
+  <h2>관측성과 평가</h2>
+  <p class="goal">이 장을 마치면: 트레이스 구조를 설계하고, 하네스 변경을 평가 세트로 측정하며, pass@k와 pass^k의 차이로 신뢰성을 판단할 수 있습니다.</p>
+
+  <h3>측정하지 않은 하네스 개선은 추측이다</h3>
+  <p>같은 모델이라도 하네스에 따라 성능이 몇 배씩 차이 난다는 연구가 나오면서, 하네스 변경도 코드 변경처럼 회귀 테스트를 거쳐야 한다는 인식이 자리 잡았습니다. 시스템 프롬프트 한 문단, 도구 설명 한 줄이 성공률을 바꿉니다. 느낌으로 판단하지 말고 평가 세트로 판단하세요.</p>
+
+  <h3>트레이스: 에이전트의 ftrace</h3>
+  <p>실행 하나를 스팬(span) 트리로 기록합니다. 루트는 작업, 자식은 각 모델 호출과 도구 호출입니다. 스팬마다 입력, 출력, 토큰 수, 지연, 비용, 에러를 남기면 실패한 실행을 그대로 재생하며 어디서 길을 잃었는지 볼 수 있습니다.</p>
+  <div class="code"><div class="bar"><span>trace.jsonl (one span per line)</span><button type="button" class="cp">복사</button></div><pre><code data-lang="json">{"run":"r_41","span":"s1","parent":null,"kind":"task","name":"fix test_parse_date","t0":0.0}
+{"run":"r_41","span":"s2","parent":"s1","kind":"llm","in_tok":5210,"out_tok":88,"ms":1840}
+{"run":"r_41","span":"s3","parent":"s1","kind":"tool","name":"run_tests","exit":1,"ms":4210,"out_bytes":2311}
+{"run":"r_41","span":"s4","parent":"s1","kind":"llm","in_tok":6020,"out_tok":64,"ms":1510}
+{"run":"r_41","span":"s5","parent":"s1","kind":"tool","name":"read_file","args":{"path":"src/parser.py"},"ms":3}
+{"run":"r_41","span":"s1","kind":"end","status":"pass","turns":5,"cost_usd":0.041}</code></pre></div>
+
+  <h3>평가 세트 만들기</h3>
+  <ul>
+    <li><strong>실제 과제에서 뽑는다</strong>: 지난 실패 사례, 실제 이슈, 자주 하는 작업. 장난감 문제는 장난감 결과만 줍니다.</li>
+    <li><strong>채점은 가능한 한 결정적으로</strong>: 테스트 통과, 파일 상태, 출력 비교. 모호한 품질만 LLM 심사로, 그리고 심사 결과를 사람이 표본 검토.</li>
+    <li><strong>여러 번 돌린다</strong>: 에이전트는 확률적입니다. 과제당 여러 시행이 필요하고, 작은 세트의 몇 % 차이는 노이즈일 수 있습니다.</li>
+    <li><strong>성공률 외 지표</strong>: 과제당 비용, 턴 수, 사람 개입 비율, 시간.</li>
+  </ul>
+
+  <div class="bench" id="pkBench">
+    <header><b>실습 벤치 8-A · pass@k와 pass^k</b><span>RELIABILITY MATH</span></header>
+    <div class="body">
+      <div class="grid2">
+        <div class="ctl"><label for="pkP">시행 1회 성공 확률 p</label><output id="oP"></output><input type="range" id="pkP" min="0.05" max="0.99" step="0.01" value="0.7"></div>
+        <div class="ctl"><label for="pkK">시행 횟수 k</label><output id="oK"></output><input type="range" id="pkK" min="1" max="10" value="5"></div>
+      </div>
+      <div class="row" style="gap:28px;margin:6px 0 10px;font-size:15px">
+        <span>pass@k = 1 − (1 − p)<sup>k</sup> = <b id="pkAt" style="font-family:var(--f-mono)"></b></span>
+        <span>pass^k = p<sup>k</sup> = <b id="pkAll" style="font-family:var(--f-mono)"></b></span>
+      </div>
+      <div class="fig" style="margin:0"><svg id="pkSvg" viewBox="0 0 560 200" role="img" aria-label="k에 따른 pass@k와 pass^k 그래프"></svg></div>
+      <p class="explain" id="pkNote" style="margin-top:8px"></p>
+    </div>
+  </div>
+  <p>pass@k는 "k번 중 한 번이라도 성공"으로, 사람이 결과를 골라 쓸 수 있는 상황에 맞습니다. pass^k는 "k번 모두 성공"으로, 매번 믿고 맡겨야 하는 자동화의 신뢰성 지표입니다. 위 계산은 시행이 독립이라고 가정합니다. 실제로는 어려운 과제에서 실패가 몰리므로 직접 측정해야 합니다.</p>
+
+  <div class="code"><div class="bar"><span>eval_runner.py</span><button type="button" class="cp">복사</button></div><pre><code data-lang="py">import json, statistics
+
+def run_suite(tasks, harness, trials=5):
+    report = []
+    for task in tasks:
+        results = [harness.run(task["prompt"], workdir=task["fixture"]) for _ in range(trials)]
+        passed = [task["grader"](r) for r in results]   # deterministic grader first
+        report.append({
+            "id": task["id"],
+            "pass_rate": sum(passed) / trials,
+            "pass_all": all(passed),
+            "median_cost": statistics.median(r.cost for r in results),
+            "median_turns": statistics.median(r.turns for r in results),
+        })
+    return report
+
+# Gate in CI: a harness change must not regress the suite.
+def gate(new, baseline, tolerance=0.03):
+    mean = lambda rep: sum(t["pass_rate"] for t in rep) / len(rep)
+    return mean(new) &gt;= mean(baseline) - tolerance</code></pre></div>
+
+  <div class="quiz" data-quiz="ch8"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch8" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH9 ============ -->
+<section class="chapter col" id="ch9">
+  <div class="eyebrow">Part IV · 고급 — 9장</div>
+  <h2>멀티 에이전트와 오케스트레이션</h2>
+  <p class="goal">이 장을 마치면: 멀티 에이전트가 이득인 경우와 손해인 경우를 구분하고, 서브에이전트 핸드오프 계약을 설계할 수 있습니다.</p>
+
+  <h3>왜 여러 에이전트인가</h3>
+  <p>멀티 에이전트의 가장 큰 이점은 "협업"보다 <strong>컨텍스트 격리</strong>입니다. 서브에이전트가 파일 50개를 뒤지고 로그 수천 줄을 읽어도, 메인 에이전트에게는 요약 몇 줄만 돌아옵니다. 메인 컨텍스트는 깨끗하게 유지되고 결정에 집중할 수 있습니다. 그 밖의 이점은 병렬성, 역할 특화, 독립적인 검토입니다.</p>
+  <p>대가도 분명합니다. 토큰 사용량이 여러 배로 늘고, 핸드오프에서 맥락이 손실되고, 에이전트끼리 서로 모순되는 결정을 내릴 수 있습니다. 시스템 엔지니어 관점에서 보면 프로세스를 나누는 것과 같습니다. 격리와 병렬성을 얻는 대신 IPC 비용과 동기화 문제를 떠안습니다.</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 640 270" role="img" aria-label="오케스트레이터-워커 구조: 오케스트레이터가 세 워커에게 과제를 위임하고 요약된 결과를 받는다">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker>
+      <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+      <rect class="sv-core" x="220" y="16" width="200" height="56" rx="6"/>
+      <text class="sv-core-t" x="320" y="40" text-anchor="middle">Orchestrator</text>
+      <text class="sv-core-t" x="320" y="60" text-anchor="middle" style="font-size:11px">계획 · 위임 · 통합 · 판단</text>
+      <rect class="sv-r2" x="30" y="170" width="170" height="70" rx="6"/>
+      <text class="sv-t" x="115" y="198" text-anchor="middle">Worker A · 탐색</text>
+      <text class="sv-m" x="115" y="218" text-anchor="middle">grep, read 80 files</text>
+      <rect class="sv-r2" x="235" y="170" width="170" height="70" rx="6"/>
+      <text class="sv-t" x="320" y="198" text-anchor="middle">Worker B · 구현</text>
+      <text class="sv-m" x="320" y="218" text-anchor="middle">own git worktree</text>
+      <rect class="sv-r2" x="440" y="170" width="170" height="70" rx="6"/>
+      <text class="sv-t" x="525" y="198" text-anchor="middle">Worker C · 리뷰</text>
+      <text class="sv-m" x="525" y="218" text-anchor="middle">clean context, diff only</text>
+      <path class="sv-ln" d="M260 72 L130 168" marker-end="url(#ar)"/>
+      <path class="sv-ln" d="M305 72 L305 168" marker-end="url(#ar)"/>
+      <path class="sv-ln" d="M380 72 L510 168" marker-end="url(#ar)"/>
+      <path class="sv-ac" d="M150 168 L278 76" marker-end="url(#ar2)"/>
+      <path class="sv-ac" d="M335 168 L335 76" marker-end="url(#ar2)"/>
+      <path class="sv-ac" d="M490 168 L362 76" marker-end="url(#ar2)"/>
+      <text class="sv-m" x="120" y="120">handoff contract</text>
+      <text class="sv-m" x="420" y="120" style="fill:var(--accent)">condensed result</text>
+    </svg>
+    <figcaption>그림 9-1. 오케스트레이터-워커. 회색은 위임(과제 계약), 파란색은 요약된 결과. 원자료는 워커의 컨텍스트 안에서 소멸한다.</figcaption>
+  </figure>
+
+  <h3>주요 패턴</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>패턴</th><th>언제</th><th>주의점</th></tr></thead>
+    <tbody>
+      <tr><td>오케스트레이터-워커</td><td>넓은 조사, 독립적인 하위 과제 다수</td><td>워커 결과 형식을 고정할 것</td></tr>
+      <tr><td>파이프라인 (계획→구현→검토)</td><td>단계마다 다른 관점이 필요할 때</td><td>단계 간 산출물을 파일로 남겨 추적 가능하게</td></tr>
+      <tr><td>병렬 worktree</td><td>서로 다른 기능을 동시에 개발</td><td>병합 충돌, 공유 자원(DB, 포트) 격리</td></tr>
+      <tr><td>생성자-비평자</td><td>품질 기준이 명확한 산출물</td><td>비평자에게 구체적 루브릭과 종료 조건</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>쓰지 말아야 할 때</strong>: 같은 파일을 긴밀하게 함께 고쳐야 하는 작업, 모든 단계가 공유 상태에 강하게 의존하는 작업, 단일 에이전트로 충분히 풀리는 작업. 단일 에이전트 + 좋은 도구 + 컴팩션으로 먼저 해보고, 컨텍스트 압박이나 병렬성 요구가 측정될 때 나누세요.</p>
+
+  <h3>핸드오프 계약</h3>
+  <p>서브에이전트는 메인 에이전트의 대화를 보지 못합니다. 위임 메시지가 그 에이전트가 아는 전부입니다. 사람에게 일을 넘기는 티켓처럼 씁니다.</p>
+  <div class="code"><div class="bar"><span>spawn_subagent.json</span><button type="button" class="cp">복사</button></div><pre><code data-lang="json">{
+  "name": "spawn_subagent",
+  "description": "Delegate a self-contained subtask to a fresh agent with its own context. Use for broad searches or independent work whose raw details you do not need. The subagent cannot see this conversation, so the brief must stand alone.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "role":      {"type": "string", "enum": ["explorer", "implementer", "reviewer"]},
+      "objective": {"type": "string", "description": "One sentence: what done looks like."},
+      "context":   {"type": "string", "description": "Facts the subagent needs: paths, constraints, what was already tried."},
+      "deliverable": {"type": "string", "description": "Exact output shape, e.g. 'list of file:line with one-line reason each, max 15 items'."},
+      "budget_turns": {"type": "integer", "minimum": 3, "maximum": 40, "default": 15}
+    },
+    "required": ["role", "objective", "context", "deliverable"]
+  }
+}</code></pre></div>
+
+  <div class="quiz" data-quiz="ch9"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch9" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH10 ============ -->
+<section class="chapter col" id="ch10">
+  <div class="eyebrow">Part IV · 고급 — 10장</div>
+  <h2>하네스 운영과 진화</h2>
+  <p class="goal">이 장을 마치면: 하네스를 제품처럼 버전 관리하고, 엔트로피를 관리하며, 모델이 바뀔 때 하네스를 덜어낼 줄 알게 됩니다. 자기 팀의 성숙도를 진단할 수 있습니다.</p>
+
+  <h3>에이전트는 패턴을 복제한다</h3>
+  <p>에이전트는 코드베이스에 이미 있는 패턴을 따라 합니다. 좋은 패턴도, 나쁜 패턴도. 사람이 직접 쓰지 않는 코드베이스에서는 이 복제 속도가 빨라서 작은 일탈이 금세 퍼집니다. Codex 팀은 이를 관리하기 위해 제품 도메인과 아키텍처 계층별로 품질 등급을 매기는 문서를 유지하고, 주기적으로 도는 정리 에이전트가 일탈을 찾아 리팩터링 PR을 올리게 했습니다. 가비지 컬렉션을 사람이 아니라 하네스가 하는 것입니다.</p>
+
+  <h3>덜어낼 수 있게 만들어라</h3>
+  <p>하네스의 상당 부분은 현재 모델의 약점을 보완하는 비계(scaffolding)입니다. 모델이 좋아지면 그 비계는 도움이 아니라 방해가 됩니다. 과도한 단계 분할, 지나치게 상세한 지시, 불필요한 확인 단계가 더 똑똑한 모델의 판단을 묶습니다. 그래서 하네스 구성요소는 독립적으로 끄고 켤 수 있게 만들고, 모델이 바뀔 때마다 <strong>제거 실험(ablation)</strong>을 합니다. 하나씩 끄고 평가 세트를 돌려, 성능이 떨어지지 않으면 지웁니다.</p>
+  <div class="call key"><span class="lab">원칙</span><p>제약과 검증(테스트, 권한, 샌드박스)은 모델이 좋아져도 남습니다. 지시와 절차(단계별 프롬프트, 하드코딩된 워크플로)는 모델이 좋아질수록 줄어듭니다. 앞의 것에 투자하고, 뒤의 것은 가볍게 유지하세요.</p></div>
+
+  <h3>하네스를 코드처럼</h3>
+  <ul>
+    <li>시스템 프롬프트, 도구 정의, 훅, 정책 파일을 리포에 두고 리뷰를 거쳐 변경합니다.</li>
+    <li>"하네스 버그" 로그를 유지합니다. 실패 사례, 원인, 사다리 몇 단계로 고쳤는지. 이것이 곧 평가 세트의 원천입니다.</li>
+    <li>하네스 변경은 평가 세트 게이트를 통과해야 병합됩니다(8장).</li>
+    <li>최근에는 하네스 자체를 평가 세트에 맞춰 자동으로 진화시키는 연구도 나오고 있습니다. 측정 체계가 먼저 갖춰져야 가능한 일입니다.</li>
+  </ul>
+
+  <div class="bench" id="matBench">
+    <header><b>실습 벤치 10-A · 성숙도 자가 진단</b><span>MATURITY CHECK</span></header>
+    <div class="body"><div id="matList"></div><div class="status g" id="matOut" role="status"></div></div>
+  </div>
+
+  <div class="quiz" data-quiz="ch10"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch10" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH11 ============ -->
+<section class="chapter col" id="ch11">
+  <div class="eyebrow">Part IV · 고급 — 11장</div>
+  <h2>실전: 미니 하네스 만들기</h2>
+  <p class="goal">이 장을 마치면: 지금까지 배운 요소를 하나의 동작하는 하네스로 통합하고, 확장 과제를 통해 직접 개선할 수 있습니다.</p>
+
+  <h3>사양</h3>
+  <p>목표는 "샌드박스에 마운트된 파이썬 리포에서 실패하는 테스트를 고치는 에이전트"입니다. 200줄이 안 되지만 이 책의 핵심 요소가 모두 들어 있습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>요소</th><th>구현</th><th>장</th></tr></thead>
+    <tbody>
+      <tr><td>에이전트 루프, 종료 조건</td><td><code>main()</code>, 최대 턴, 토큰 예산</td><td>2</td></tr>
+      <tr><td>도구와 ACI</td><td>경로 가드, 유일 매칭 편집, 고치는 법을 담은 에러</td><td>3</td></tr>
+      <tr><td>출력 위생</td><td><code>cap()</code>: 자르기 + 파일 오프로드</td><td>4</td></tr>
+      <tr><td>권한과 반복 감지</td><td><code>permit()</code>, <code>LoopGuard</code></td><td>2, 7</td></tr>
+      <tr><td>검증 게이트</td><td><code>verify()</code>: 완료 선언 시 하네스가 테스트 직접 실행</td><td>6</td></tr>
+      <tr><td>관측</td><td>JSONL 트레이스</td><td>8</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="code"><div class="bar"><span>mini_harness.py</span><button type="button" class="cp">복사</button></div><pre><code data-lang="py">"""mini_harness.py - a small but complete coding-agent harness.
+
+Fixes failing tests in a Python repo mounted at WORKDIR.
+Run inside a container: WORKDIR=/workspace MODEL=... python mini_harness.py
+"""
+import json, os, pathlib, subprocess, sys, time, uuid
+import anthropic
+from loop_guard import LoopGuard          # chapter 2
+
+WORKDIR = pathlib.Path(os.environ.get("WORKDIR", "/workspace")).resolve()
+MODEL = os.environ["MODEL"]               # keep the code model-agnostic
+MAX_TURNS = 40
+MAX_INPUT_TOKENS = 600_000                # cumulative budget across turns
+OUTPUT_CAP = 4_000                        # chars per tool result
+
+client = anthropic.Anthropic()
+RUN_ID = uuid.uuid4().hex[:8]
+TRACE = open(f"trace_{RUN_ID}.jsonl", "a")
+
+SYSTEM = """You are fixing failing tests in the repository at the workspace root.
+Work in small steps: run the tests, read the failing code, make a minimal fix, re-run.
+Never edit files under tests/. Fix the source code instead.
+When the full suite passes, stop and explain the root cause in 2-3 sentences."""
+
+
+def trace(**span):
+    span.update(run=RUN_ID, t=round(time.time(), 3))
+    TRACE.write(json.dumps(span, ensure_ascii=False, default=str) + "\n")
+    TRACE.flush()
+
+
+# ---------- tools ----------
+def safe_path(p: str) -&gt; pathlib.Path:
+    path = (WORKDIR / p).resolve()
+    if not path.is_relative_to(WORKDIR):
+        raise PermissionError(f"'{p}' is outside the workspace. Use paths relative to the repo root.")
+    return path
+
+
+def cap(text: str) -&gt; str:
+    """Truncate large output and spill the full text to a file the agent can page through."""
+    if len(text) &lt;= OUTPUT_CAP:
+        return text
+    spill = WORKDIR / ".harness" / f"out_{uuid.uuid4().hex[:6]}.txt"
+    spill.parent.mkdir(exist_ok=True)
+    spill.write_text(text)
+    return (text[:OUTPUT_CAP] + f"\n[truncated {len(text) - OUTPUT_CAP} chars. Full output: "
+            f"{spill.relative_to(WORKDIR)}. Use read_file with start_line to page.]")
+
+
+def read_file(path: str, start_line: int = 1, max_lines: int = 200) -&gt; str:
+    lines = safe_path(path).read_text().splitlines()
+    chunk = lines[start_line - 1 : start_line - 1 + max_lines]
+    body = "\n".join(f"{i}: {line}" for i, line in enumerate(chunk, start_line))
+    return body + f"\n[{len(lines)} lines total]"
+
+
+def replace_in_file(path: str, old: str, new: str) -&gt; str:
+    f = safe_path(path)
+    src = f.read_text()
+    n = src.count(old)
+    if n != 1:
+        return (f"ERROR: 'old' must match exactly once, found {n}. "
+                "Include more surrounding lines so the match is unique.")
+    f.write_text(src.replace(old, new))
+    return "OK"
+
+
+def search(pattern: str) -&gt; str:
+    out = subprocess.run(["grep", "-rn", "--include=*.py", pattern, "."],
+                         cwd=WORKDIR, capture_output=True, text=True, timeout=30)
+    return out.stdout or "No matches."
+
+
+def run_tests(target: str = "") -&gt; str:
+    cmd = ["python", "-m", "pytest", "-q"] + ([target] if target else [])
+    out = subprocess.run(cmd, cwd=WORKDIR, capture_output=True, text=True, timeout=300)
+    return f"exit={out.returncode}\n{out.stdout[-6000:]}{out.stderr[-2000:]}"
+
+
+def tool(fn, desc, props, required):
+    return fn, {"name": fn.__name__, "description": desc,
+                "input_schema": {"type": "object", "properties": props, "required": required}}
+
+TOOLS = dict((f.__name__, (f, s)) for f, s in [
+    tool(read_file, "Read a text file with line numbers. Page with start_line.",
+         {"path": {"type": "string"}, "start_line": {"type": "integer"}, "max_lines": {"type": "integer"}}, ["path"]),
+    tool(replace_in_file, "Replace one exact, unique snippet in a file. Read the file first.",
+         {"path": {"type": "string"}, "old": {"type": "string"}, "new": {"type": "string"}}, ["path", "old", "new"]),
+    tool(search, "grep -rn over *.py files. Use to find definitions and usages.",
+         {"pattern": {"type": "string"}}, ["pattern"]),
+    tool(run_tests, "Run pytest. Optional target like tests/test_parser.py::test_x.",
+         {"target": {"type": "string"}}, []),
+]]
+SCHEMAS = [s for _, s in TOOLS.values()]
+
+
+# ---------- policy and verification ----------
+def permit(name: str, args: dict) -&gt; str | None:
+    if name == "replace_in_file" and args.get("path", "").startswith(("tests/", "./tests/")):
+        # Blocks the classic shortcut of making tests pass by editing the tests.
+        return "Editing tests is not allowed. Fix the code under src/ so the existing tests pass."
+    return None
+
+
+def verify() -&gt; tuple[bool, str]:
+    out = run_tests()
+    return out.startswith("exit=0"), out
+
+
+# ---------- loop ----------
+def main(task: str) -&gt; str:
+    messages = [{"role": "user", "content": task}]
+    guard, used = LoopGuard(limit=3), 0
+
+    for turn in range(MAX_TURNS):
+        resp = client.messages.create(model=MODEL, max_tokens=4096, system=SYSTEM,
+                                      tools=SCHEMAS, messages=messages)
+        used += resp.usage.input_tokens
+        trace(kind="llm", turn=turn, in_tok=resp.usage.input_tokens,
+              out_tok=resp.usage.output_tokens, stop=resp.stop_reason)
+        messages.append({"role": "assistant", "content": resp.content})
+
+        if resp.stop_reason != "tool_use":
+            ok, out = verify()                    # never trust "I'm done" on its own
+            trace(kind="gate", passed=ok)
+            if ok:
+                return "DONE"
+            messages.append({"role": "user", "content":
+                "The harness ran the full test suite and it still fails:\n"
+                f"{cap(out)}\nKeep working until it passes."})
+            continue
+
+        results = []
+        for block in resp.content:
+            if block.type != "tool_use":
+                continue
+            t0 = time.time()
+            blocked = permit(block.name, block.input) or guard.check(block.name, block.input)
+            if blocked:
+                out, err = blocked, True
+            else:
+                try:
+                    out, err = cap(str(TOOLS[block.name][0](**block.input))), False
+                except Exception as e:
+                    out, err = f"ERROR: {type(e).__name__}: {e}", True
+            trace(kind="tool", name=block.name, args=block.input, error=err,
+                  ms=int((time.time() - t0) * 1000))
+            results.append({"type": "tool_result", "tool_use_id": block.id,
+                            "content": out, "is_error": err})
+        messages.append({"role": "user", "content": results})
+
+        if used &gt; MAX_INPUT_TOKENS:
+            trace(kind="stop", reason="budget")
+            return "STOPPED: token budget exceeded"
+
+    trace(kind="stop", reason="max_turns")
+    return "STOPPED: max turns reached"
+
+
+if __name__ == "__main__":
+    print(main(sys.argv[1] if len(sys.argv) &gt; 1 else "Make the test suite pass."))</code></pre></div>
+  <div class="call sys"><span class="lab">로컬 모델로 돌리기</span><p>구조는 모델 제공자와 무관합니다. Ollama처럼 OpenAI 호환 API와 도구 호출을 지원하는 로컬 런타임을 쓰려면 <code>client.messages.create</code> 부분과 응답 파싱(tool_calls, tool 역할 메시지)만 바꾸면 됩니다. 작은 로컬 모델일수록 도구 수를 줄이고, 설명을 더 구체적으로 쓰고, 검증 게이트를 엄격하게 하는 효과가 크게 나타납니다. 하네스의 가치를 체감하기 좋은 실험 환경입니다.</p></div>
+
+  <h3>확장 과제</h3>
+  <p>한 단계씩 직접 구현하고, 매번 같은 실패 사례 세트로 전후를 비교하세요.</p>
+  <ol class="steps">
+    <li><strong>평가 세트</strong>: 일부러 버그를 심은 작은 리포 10개를 만들고 8장의 <code>run_suite</code>로 기준선을 잡는다.</li>
+    <li><strong>컴팩션</strong>: 5장의 <code>maybe_compact</code>를 붙이고, tool_use/tool_result 쌍이 갈라지지 않게 경계를 맞춘다.</li>
+    <li><strong>린트 센서</strong>: <code>run_checks</code> 도구를 추가하고 검증 게이트에 린트·타입 검사를 포함한다.</li>
+    <li><strong>리뷰어 서브에이전트</strong>: 게이트 통과 후 diff만 보는 리뷰 에이전트를 호출해, 테스트를 우회하는 꼼수(예: 특수 케이스 하드코딩)를 잡게 한다.</li>
+    <li><strong>진행 파일</strong>: 최대 턴 도달 시 <code>progress.md</code>를 남기고, 다음 실행이 그것을 읽고 이어가게 한다.</li>
+    <li><strong>제거 실험</strong>: 각 구성요소를 플래그로 끄고 켜며 평가 세트를 돌려, 실제로 기여하는 요소를 표로 만든다.</li>
+  </ol>
+
+  <h3>최종 체크리스트</h3>
+  <ul>
+    <li>에이전트가 자기 결과를 확인할 센서가 있는가?</li>
+    <li>완료 판단을 모델 혼자 하지 않는가?</li>
+    <li>위험한 행동은 프롬프트가 아니라 코드로 막혀 있는가?</li>
+    <li>모든 실행이 재생 가능한 트레이스로 남는가?</li>
+    <li>하네스 변경이 평가 세트로 측정되는가?</li>
+    <li>실수가 나면 사다리의 적절한 단에 수정이 들어가는가?</li>
+  </ul>
+
+  <div class="quiz" data-quiz="ch11"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch11" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ APPENDIX ============ -->
+<section class="chapter col" id="glossary">
+  <div class="eyebrow">부록 A</div>
+  <h2>용어집</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>용어</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td>하네스 (harness)</td><td>모델을 감싸 실제 작업을 가능하게 하는 실행 환경 전체. 루프, 도구, 컨텍스트, 상태, 권한, 검증, 관측</td></tr>
+      <tr><td>에이전트 루프</td><td>모델 호출 → 도구 실행 → 결과 주입을 반복하는 제어 흐름</td></tr>
+      <tr><td>ACI</td><td>Agent-Computer Interface. 에이전트가 쓰는 도구의 이름·설명·스키마·출력·에러 설계</td></tr>
+      <tr><td>컨텍스트 부패</td><td>컨텍스트가 길어질수록 정보 회상과 지시 준수가 나빠지는 현상</td></tr>
+      <tr><td>점진적 공개</td><td>요약·목차만 먼저 주고 상세는 필요할 때 읽게 하는 설계</td></tr>
+      <tr><td>스킬</td><td>이름·설명만 상주하고 본문 지침과 스크립트는 필요 시 로드되는 절차 패키지</td></tr>
+      <tr><td>컴팩션</td><td>오래된 대화를 요약으로 교체해 컨텍스트 공간을 회수하는 것</td></tr>
+      <tr><td>검증 게이트</td><td>모델의 완료 선언을 하네스가 결정적 검사로 확인하는 관문</td></tr>
+      <tr><td>훅</td><td>도구 실행 전후에 실행되는 결정적 코드. 차단, 변환, 기록</td></tr>
+      <tr><td>폭발 반경</td><td>한 행동이 잘못됐을 때 피해가 미치는 범위</td></tr>
+      <tr><td>치명적 삼요소</td><td>비공개 데이터 접근 + 신뢰 불가 콘텐츠 + 외부 전송 통로가 공존하는 위험 구성</td></tr>
+      <tr><td>pass@k / pass^k</td><td>k번 중 한 번 이상 성공 / k번 모두 성공할 확률</td></tr>
+      <tr><td>제거 실험 (ablation)</td><td>구성요소를 하나씩 빼고 평가해 실제 기여도를 측정하는 것</td></tr>
+      <tr><td>서브에이전트</td><td>별도 컨텍스트에서 하위 과제를 수행하고 요약만 돌려주는 에이전트</td></tr>
+      <tr><td>AGENTS.md</td><td>리포에서 에이전트에게 설정 명령, 테스트 방법, 컨벤션을 알려주는 표준화된 지침 파일</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="chapter col" id="refs">
+  <div class="eyebrow">부록 B</div>
+  <h2>참고 자료</h2>
+  <ul>
+    <li><a href="https://openai.com/index/harness-engineering/" target="_blank" rel="noopener">OpenAI — Harness engineering: leveraging Codex in an agent-first world (2026.02)</a></li>
+    <li><a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents" target="_blank" rel="noopener">Anthropic — Effective harnesses for long-running agents</a></li>
+    <li><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Anthropic — Effective context engineering for AI agents</a></li>
+    <li><a href="https://www.anthropic.com/engineering/writing-tools-for-agents" target="_blank" rel="noopener">Anthropic — Writing effective tools for agents</a></li>
+    <li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building effective agents</a></li>
+    <li><a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/" target="_blank" rel="noopener">Simon Willison — The lethal trifecta for AI agents</a></li>
+    <li><a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md — 에이전트 지침 파일 표준</a></li>
+    <li><a href="https://arxiv.org/abs/2609.00006" target="_blank" rel="noopener">Harness Engineering: Anatomy, Architecture, and Evolution of Coding Agents (arXiv, 11개 시스템 소스코드 분석)</a></li>
+  </ul>
+  <p class="foot">이 책은 2026년 11월 기준 공개 자료를 바탕으로 썼습니다. 분야가 빠르게 변하므로 원문을 함께 읽기를 권합니다. 학습 진도와 퀴즈 결과는 이 브라우저에만 저장됩니다.</p>
+</section>
+</main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("hb:" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("hb:" + k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  /* ---------- theme ---------- */
+  const root = document.documentElement;
+  const applyTheme = t => { if (t) root.setAttribute("data-theme", t); else root.removeAttribute("data-theme"); };
+  let theme = store.get("theme", null); applyTheme(theme);
+  const themeLabel = { null: "시스템", light: "라이트", dark: "다크" };
+  const themeBtn = $("#themeBtn");
+  const showTheme = () => { themeBtn.textContent = "테마: " + themeLabel[theme] + " (눌러서 전환)"; };
+  showTheme();
+  themeBtn.addEventListener("click", () => {
+    theme = theme === null ? "light" : theme === "light" ? "dark" : null;
+    applyTheme(theme); store.set("theme", theme); showTheme(); drawPk();
+  });
+
+  /* ---------- TOC: collapse on mobile, highlight active ---------- */
+  const tocd = $("#tocd");
+  if (window.matchMedia("(max-width: 960px)").matches) tocd.open = false;
+  const links = $$("#tocl a");
+  const byId = {}; links.forEach(a => byId[a.getAttribute("href").slice(1)] = a);
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) { links.forEach(l => l.classList.remove("active")); const a = byId[e.target.id]; if (a) a.classList.add("active"); } });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    $$("section.chapter").forEach(s => io.observe(s));
+  }
+  links.forEach(a => a.addEventListener("click", () => { if (window.matchMedia("(max-width: 960px)").matches) tocd.open = false; }));
+
+  /* ---------- progress ---------- */
+  let done = store.get("done", {});
+  function renderDone() {
+    $$(".done-btn").forEach(b => { const on = !!done[b.dataset.done]; b.setAttribute("aria-pressed", on); b.textContent = on ? "완료함 ✓" : "이 장을 마쳤어요"; });
+    $$(".toc .chk").forEach(c => c.textContent = done[c.dataset.c] ? "✓" : "");
+    $("#meter").textContent = Object.values(done).filter(Boolean).length + " / 11 완료";
+  }
+  $$(".done-btn").forEach(b => b.addEventListener("click", () => { done[b.dataset.done] = !done[b.dataset.done]; store.set("done", done); renderDone(); }));
+  renderDone();
+
+  /* ---------- code highlight + copy ---------- */
+  const KW = /\b(def|return|if|elif|else|for|while|in|not|and|or|import|from|class|try|except|raise|with|as|None|True|False|break|continue|lambda|pass|is)\b/;
+  const TOK = /(#[^\n]*)|("""[\s\S]*?"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|\b(def|return|if|elif|else|for|while|in|not|and|or|import|from|class|try|except|raise|with|as|None|True|False|break|continue|lambda|pass|is)\b/g;
+  $$("pre code").forEach(el => {
+    const lang = el.dataset.lang; if (lang !== "py" && lang !== "json") return;
+    const src = el.textContent; let out = "", last = 0, m;
+    TOK.lastIndex = 0;
+    while ((m = TOK.exec(src))) {
+      if (lang === "json" && !m[2]) continue;
+      out += esc(src.slice(last, m.index));
+      const cls = m[1] ? "tk-c" : m[2] ? "tk-s" : "tk-k";
+      out += '<span class="' + cls + '">' + esc(m[0]) + "</span>";
+      last = TOK.lastIndex;
+    }
+    el.innerHTML = out + esc(src.slice(last));
+  });
+  $$(".cp").forEach(btn => btn.addEventListener("click", () => {
+    const code = btn.closest(".code").querySelector("code");
+    const ok = () => { btn.textContent = "복사됨"; setTimeout(() => btn.textContent = "복사", 1400); };
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents(code); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "선택됨 · Ctrl+C"; };
+    try { navigator.clipboard.writeText(code.textContent).then(ok, fallback); } catch (e) { fallback(); }
+  }));
+
+  /* ---------- tabs ---------- */
+  $$("[data-tabs]").forEach(t => {
+    const tabs = $$("[role=tab]", t), panels = $$(".panel", t);
+    tabs.forEach((b, i) => b.addEventListener("click", () => {
+      tabs.forEach((x, j) => x.setAttribute("aria-selected", i === j));
+      panels.forEach((p, j) => p.hidden = i !== j);
+    }));
+  });
+
+  /* ---------- 2-A loop stepper ---------- */
+  const steps = [
+    { lane: "user", cls: "u", msg: 'user: "tests/test_parser.py가 실패해. 고쳐줘."', tok: 3100,
+      ex: "사용자 과제가 messages 배열의 첫 항목이 됩니다. 하네스는 시스템 프롬프트와 도구 정의를 붙여 모델을 호출합니다. 입력 토큰의 상당 부분은 이미 시스템 프롬프트와 도구 정의입니다." },
+    { lane: "model", cls: "a", msg: 'assistant: tool_use run_tests(target="tests/test_parser.py")', tok: 3180,
+      ex: "모델은 직접 아무것도 실행하지 못합니다. 실행하고 싶은 도구와 인자를 tool_use 블록으로 요청할 뿐입니다." },
+    { lane: "harness", cls: "t", msg: "tool_result: exit=1\nFAILED test_parse_date\n  expected 2026-11-05, got 2026-05-11", tok: 3420,
+      ex: "하네스가 샌드박스에서 pytest를 실행하고, 출력을 tool_use id와 짝지은 tool_result로 붙입니다. 실패 출력 자체가 모델에게는 가장 좋은 단서입니다." },
+    { lane: "model", cls: "a", msg: 'assistant: tool_use read_file(path="src/parser.py")', tok: 3500,
+      ex: "모델이 원인을 좁히기 위해 코드를 읽기로 결정합니다. 매 호출마다 지금까지의 대화 전체를 다시 읽는다는 점에 주의하세요." },
+    { lane: "harness", cls: "t", msg: 'tool_result: 41: return datetime.strptime(s, "%Y-%d-%m")\n[118 lines total]', tok: 5100,
+      ex: "파일 내용이 컨텍스트에 들어오면서 토큰이 크게 늘었습니다. 이래서 도구 출력의 범위 지정과 상한이 중요합니다." },
+    { lane: "model", cls: "a", msg: 'assistant: tool_use replace_in_file(old="%Y-%d-%m", new="%Y-%m-%d")', tok: 5190,
+      ex: "변경 도구 호출입니다. 실전 하네스는 여기서 권한 정책(7장)을 확인합니다. tests/ 아래를 고치려 했다면 차단됐을 것입니다." },
+    { lane: "harness", cls: "t", msg: "tool_result: OK", tok: 5220,
+      ex: "짧고 명확한 결과. 실패했다면 \"'old'가 2곳에서 일치함, 주변 줄을 더 포함하라\"처럼 고치는 방법을 담은 에러가 돌아갑니다." },
+    { lane: "model", cls: "a", msg: "assistant: tool_use run_tests()", tok: 5300,
+      ex: "좋은 에이전트는 고친 뒤 다시 검증합니다. 이 습관은 프롬프트로 유도할 수도 있지만, 하네스가 검증 게이트로 보장하는 편이 확실합니다." },
+    { lane: "harness", cls: "t", msg: "tool_result: exit=0\n12 passed in 0.84s", tok: 5420,
+      ex: "전체 테스트 통과. 센서가 성공을 확인했습니다." },
+    { lane: "model", cls: "a", msg: 'assistant (end_turn): "strptime 포맷의 월·일 순서가 바뀌어 있었습니다. %Y-%m-%d로 수정했고 12개 테스트가 모두 통과합니다."', tok: 5500,
+      ex: "tool_use가 없으므로 루프가 끝납니다. 검증 게이트가 있다면 하네스가 테스트를 한 번 더 직접 돌려 확인한 뒤에야 완료로 처리합니다. 누적 입력 토큰은 매 호출 입력의 합이므로, 실제 비용은 마지막 값보다 훨씬 큽니다." }
+  ];
+  let si = 0;
+  function renderLoop() {
+    const s = steps[si];
+    $$("#loopBench .lane").forEach(l => l.classList.toggle("on", l.dataset.lane === s.lane));
+    $("#loopMsgs").innerHTML = steps.slice(0, si + 1).map((x, i) => '<div class="msg ' + x.cls + (i === si ? " new" : "") + '">' + esc(x.msg) + "</div>").join("");
+    $("#loopMsgs").scrollTop = 1e6;
+    $("#loopExplain").textContent = (si + 1) + "/" + steps.length + " · " + s.ex;
+    const cum = steps.slice(0, si + 1).filter(x => x.lane !== "harness").reduce((a, x) => a + x.tok, 0);
+    $("#loopTok").textContent = "현재 컨텍스트 ≈ " + s.tok.toLocaleString() + " tok · 누적 입력 ≈ " + cum.toLocaleString() + " tok";
+    $("#loopPrev").disabled = si === 0; $("#loopNext").disabled = si === steps.length - 1;
+  }
+  $("#loopNext").addEventListener("click", () => { if (si < steps.length - 1) { si++; renderLoop(); } });
+  $("#loopPrev").addEventListener("click", () => { if (si > 0) { si--; renderLoop(); } });
+  $("#loopReset").addEventListener("click", () => { si = 0; renderLoop(); });
+  renderLoop();
+
+  /* ---------- 4-A context budget ---------- */
+  const segs = [
+    { k: "sys", label: "시스템 프롬프트", color: "var(--ink)" },
+    { k: "tools", label: "도구 정의", color: "var(--accent)" },
+    { k: "doc", label: "지침 파일", color: "color-mix(in srgb, var(--accent) 50%, var(--panel))" },
+    { k: "hist", label: "대화·도구 결과", color: "var(--signal)" }
+  ];
+  $("#cLegend").innerHTML = segs.map(s => '<span><i style="background:' + s.color + '"></i>' + s.label + "</span>").join("") + '<span><i style="background:var(--code);border:1px solid var(--rule)"></i>남은 공간</span>';
+  const fmtK = n => n >= 1000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1) + "K" : String(Math.round(n));
+  function calcCtx() {
+    const win = +$("#cWin").value, sys = +$("#cSys").value * 1000, tools = +$("#cTools").value * 400,
+      doc = +$("#cDoc").value * 12, turns = +$("#cTurns").value, out = +$("#cOut").value * 1000, tr = +$("#cTrunc").value;
+    const perTurn = Math.min(out, tr === 2 ? 2000 : tr === 1 ? 1000 : Infinity) + 250;
+    const hist = turns * perTurn;
+    const vals = { sys, tools, doc, hist }, total = sys + tools + doc + hist, pct = total / win;
+    $("#oWin").textContent = fmtK(win); $("#oSys").textContent = fmtK(sys); $("#oTools").textContent = $("#cTools").value + "개 · " + fmtK(tools);
+    $("#oDoc").textContent = $("#cDoc").value + "줄 · " + fmtK(doc); $("#oTurns").textContent = turns; $("#oOut").textContent = (+$("#cOut").value).toFixed(1) + "K";
+    $("#oTrunc").textContent = tr ? "적용" : "없음";
+    $("#cStack").innerHTML = segs.map(s => '<div style="width:' + Math.min(100, vals[s.k] / win * 100) + '%;background:' + s.color + '"></div>').join("");
+    const fixed = sys + tools + doc, st = $("#cStatus");
+    let msg, c;
+    if (pct > 1) { c = "r"; msg = "윈도우 초과 (" + Math.round(pct * 100) + "%). 이 상태로는 다음 호출이 실패합니다. 컴팩션, 도구 결과 상한, 서브에이전트 분리가 필요합니다."; }
+    else if (pct > 0.7) { c = "r"; msg = "사용률 " + Math.round(pct * 100) + "%. 품질 저하 위험 구간입니다. 오래된 도구 결과를 지우거나 컴팩션을 실행할 시점입니다."; }
+    else if (pct > 0.4) { c = "y"; msg = "사용률 " + Math.round(pct * 100) + "%. 아직 작동하지만 작업이 길어지면 곧 압박이 옵니다. 컴팩션 계획을 세워두세요."; }
+    else { c = "g"; msg = "사용률 " + Math.round(pct * 100) + "%. 여유롭습니다."; }
+    if (fixed / win > 0.15) msg += " 고정 비용(시스템+도구+지침)만 " + Math.round(fixed / win * 100) + "%입니다. 도구 수를 줄이거나 지침 파일을 목차로 바꾸면 매 호출이 가벼워집니다.";
+    if (tr === 0 && out > 4000) msg += " 도구 출력이 큽니다. 상한을 적용해 보세요.";
+    st.className = "status " + c; st.textContent = msg;
+  }
+  ["cWin", "cSys", "cTools", "cDoc", "cTurns", "cOut", "cTrunc"].forEach(id => $("#" + id).addEventListener("input", calcCtx));
+  calcCtx();
+
+  /* ---------- 6-A triage ---------- */
+  const lv = ["L0 다시 지시", "L1 문서화", "L2 도구·환경", "L3 기계적 강제", "L4 구조적 차단"];
+  const tri = [
+    { q: "에이전트가 디버깅용 print 문을 커밋에 자꾸 남긴다. AGENTS.md에 이미 금지라고 적혀 있다.", a: [3],
+      why: "알면서도 반복되는 실수이므로 문서를 더 늘리는 것은 효과가 약합니다. pre-commit 린트로 막고, 메시지에 \"logger.debug를 쓰라\"는 대안을 담으세요." },
+    { q: "UI 버그를 고쳤다고 보고하지만, 실제 화면에서는 여전히 깨져 있다.", a: [2],
+      why: "에이전트가 화면을 볼 수단이 없는 것이 원인입니다. 브라우저 조작·스크린숏 도구나 E2E 테스트 환경을 제공해 스스로 검증하게 하세요." },
+    { q: "domain 레이어 코드가 infra 모듈을 직접 import하는 일이 반복된다.", a: [3],
+      why: "아키텍처 규칙은 테스트나 커스텀 린터로 기계적으로 강제하는 대표 사례입니다. 위반 메시지에 올바른 패턴(포트/어댑터)을 안내하세요." },
+    { q: "에이전트가 디버깅 중 프로덕션 자격증명이 든 .env를 읽어 로그에 출력했다.", a: [4],
+      why: "한 번이라도 일어나면 안 되는 사고입니다. 비밀 파일을 샌드박스에 마운트하지 않거나 읽기를 권한 정책으로 거부해, 구조적으로 불가능하게 만드세요." },
+    { q: "새 팀 컨벤션: API 응답 필드는 snake_case. 에이전트는 이 규칙을 들어본 적이 없다.", a: [1, 3],
+      why: "몰라서 틀린 경우이므로 먼저 문서화(L1)가 맞습니다. 문서화 후에도 반복되면 스키마 검사(L3)로 올리세요. 처음부터 L3도 합리적인 선택입니다." },
+    { q: "이번 작업에서만 legacy/ 폴더를 건드리지 말아야 한다. 다음 주에 그 폴더를 리팩터링할 예정이다.", a: [0],
+      why: "일회성 제약에 영구적인 하네스 장치를 만들면 나중에 오히려 방해가 됩니다. 이번 과제 지시에 넣는 것이 적절합니다." }
+  ];
+  let triAns = {};
+  function renderTri() {
+    $("#triList").innerHTML = tri.map((t, i) => {
+      const pick = triAns[i];
+      let fb = "";
+      if (pick !== undefined) {
+        const good = t.a.includes(pick);
+        fb = '<div class="fb ' + (good ? "good" : Math.abs(pick - t.a[0]) === 1 ? "mid" : "bad") + '">' + (good ? "적절합니다. " : "권장: " + t.a.map(x => lv[x]).join(" 또는 ") + ". ") + esc(t.why) + "</div>";
+      }
+      return '<div class="item"><div class="q">' + (i + 1) + ". " + esc(t.q) + '</div><div class="seg">' +
+        lv.map((l, j) => '<button type="button" data-i="' + i + '" data-j="' + j + '" aria-pressed="' + (pick === j) + '">' + l + "</button>").join("") + "</div>" + fb + "</div>";
+    }).join("");
+    const n = Object.keys(triAns).length, ok = Object.entries(triAns).filter(([i, j]) => tri[i].a.includes(j)).length;
+    $("#triScore").textContent = n ? "적절한 선택 " + ok + " / " + n : "각 상황에 가장 적절한 수정 수준을 고르세요.";
+  }
+  $("#triList").addEventListener("click", e => { const b = e.target.closest("button[data-i]"); if (!b) return; triAns[b.dataset.i] = +b.dataset.j; renderTri(); });
+  renderTri();
+
+  /* ---------- 7-A policy ---------- */
+  const P = ["allow", "ask", "deny"], PL = { allow: "허용", ask: "확인", deny: "거부" };
+  const pol = [
+    { q: "/workspace 안의 소스 파일 읽기", r: "allow", why: "읽기 전용이고 샌드박스 안입니다. 여기에 확인을 요구하면 승인 피로만 쌓입니다." },
+    { q: "테스트 실행 (pytest)", r: "allow", why: "검증은 에이전트의 핵심 센서입니다. 막으면 눈을 가리는 것과 같습니다." },
+    { q: "/workspace 안의 소스 파일 수정", r: "allow", why: "샌드박스와 git이 있어 되돌릴 수 있습니다. 대신 tests/나 생성 코드는 별도 규칙으로 보호합니다." },
+    { q: "pip install로 새 패키지 설치", r: "ask", why: "공급망 위험과 의존성 증가가 있습니다. 허용 목록이 없다면 사람이 확인하는 편이 안전합니다." },
+    { q: ".env 파일 읽기", r: "deny", why: "비밀 정보 노출은 되돌릴 수 없습니다. 필요한 값은 사람에게 요청하게 하세요. 가장 좋은 건 아예 마운트하지 않는 것입니다." },
+    { q: "git push --force origin main", r: "deny", why: "공유 이력을 파괴할 수 있는 행동입니다. 새 브랜치로 push하고 PR을 열게 하세요." },
+    { q: "외부 URL로 HTTP POST 전송", r: "deny", why: "웹 문서를 읽는 에이전트에게 외부 전송까지 주면 치명적 삼요소가 완성됩니다. 데이터 유출 통로를 끊으세요." },
+    { q: "공개 웹 문서 읽기 (라이브러리 문서)", r: "allow", why: "유용하지만 신뢰할 수 없는 콘텐츠입니다. 허용하되 외부 전송을 막아 인젝션의 피해를 차단하는 것이 핵심입니다." },
+    { q: "스테이징 DB에 마이그레이션 실행", r: "ask", why: "공유 자원에 영향을 주고 되돌리기 어렵습니다. 사람 승인이 가장 가치 있는 지점입니다." },
+    { q: "/workspace 밖 경로 rm -rf", r: "deny", why: "폭발 반경이 샌드박스 경계를 넘습니다. 훅과 샌드박스 모두에서 막으세요." }
+  ];
+  let polAns = {}, graded = false;
+  function renderPol() {
+    $("#polList").innerHTML = pol.map((p, i) => {
+      const pick = polAns[i]; let fb = "";
+      if (graded && pick) {
+        const d = Math.abs(P.indexOf(pick) - P.indexOf(p.r)), danger = pick === "allow" && p.r === "deny";
+        fb = '<div class="fb ' + (d === 0 ? "good" : danger ? "bad" : "mid") + '">' + (d === 0 ? "일치. " : (danger ? "위험한 불일치. " : "") + "권장: " + PL[p.r] + ". ") + esc(p.why) + "</div>";
+      }
+      return '<div class="item"><div class="q">' + esc(p.q) + '</div><div class="seg">' + P.map(x => '<button type="button" data-i="' + i + '" data-v="' + x + '" aria-pressed="' + (pick === x) + '">' + PL[x] + "</button>").join("") + "</div>" + fb + "</div>";
+    }).join("");
+  }
+  $("#polList").addEventListener("click", e => { const b = e.target.closest("button[data-i]"); if (!b) return; polAns[b.dataset.i] = b.dataset.v; renderPol(); });
+  $("#polGrade").addEventListener("click", () => {
+    graded = true; renderPol();
+    const n = Object.keys(polAns).length, ok = pol.filter((p, i) => polAns[i] === p.r).length, bad = pol.filter((p, i) => polAns[i] === "allow" && p.r === "deny").length;
+    $("#polScore").textContent = n < pol.length ? "아직 " + (pol.length - n) + "개 미선택 · 일치 " + ok : "일치 " + ok + " / " + pol.length + (bad ? " · 위험한 허용 " + bad + "건" : " · 위험한 허용 없음");
+  });
+  $("#polReset").addEventListener("click", () => { polAns = {}; graded = false; $("#polScore").textContent = ""; renderPol(); });
+  renderPol();
+
+  /* ---------- 8-A pass@k ---------- */
+  function drawPk() {
+    const p = +$("#pkP").value, k = +$("#pkK").value;
+    $("#oP").textContent = p.toFixed(2); $("#oK").textContent = k;
+    const at = 1 - Math.pow(1 - p, k), all = Math.pow(p, k);
+    $("#pkAt").textContent = (at * 100).toFixed(1) + "%"; $("#pkAll").textContent = (all * 100).toFixed(1) + "%";
+    const W = 560, H = 200, L = 40, R = 20, T = 14, B = 30, x = i => L + (i - 1) * (W - L - R) / 9, y = v => T + (1 - v) * (H - T - B);
+    let s = "";
+    [0, 0.25, 0.5, 0.75, 1].forEach(v => { s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" style="stroke:var(--rule)"/><text class="sv-m" x="' + (L - 6) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + Math.round(v * 100) + "%</text>"; });
+    for (let i = 1; i <= 10; i++) s += '<text class="sv-m" x="' + x(i) + '" y="' + (H - 10) + '" text-anchor="middle">' + i + "</text>";
+    s += '<line x1="' + x(k) + '" x2="' + x(k) + '" y1="' + T + '" y2="' + (H - B) + '" style="stroke:var(--muted);stroke-dasharray:3 3"/>';
+    const path = f => { let d = ""; for (let i = 1; i <= 10; i++) d += (i === 1 ? "M" : "L") + x(i).toFixed(1) + " " + y(f(i)).toFixed(1); return d; };
+    s += '<path d="' + path(i => 1 - Math.pow(1 - p, i)) + '" style="fill:none;stroke:var(--accent);stroke-width:2.2"/>';
+    s += '<path d="' + path(i => Math.pow(p, i)) + '" style="fill:none;stroke:var(--signal);stroke-width:2.2"/>';
+    s += '<circle cx="' + x(k) + '" cy="' + y(at) + '" r="4.5" style="fill:var(--accent)"/><circle cx="' + x(k) + '" cy="' + y(all) + '" r="4.5" style="fill:var(--signal)"/>';
+    s += '<text class="sv-m" x="' + (W - R) + '" y="' + (y(1 - Math.pow(1 - p, 10)) + 14) + '" text-anchor="end" style="fill:var(--accent)">pass@k</text>';
+    s += '<text class="sv-m" x="' + (W - R) + '" y="' + (y(Math.pow(p, 10)) - 6) + '" text-anchor="end" style="fill:var(--signal)">pass^k</text>';
+    $("#pkSvg").innerHTML = s;
+    $("#pkNote").textContent = "1회 성공률 " + Math.round(p * 100) + "%인 에이전트를 " + k + "번 돌리면, 한 번이라도 성공할 확률은 " + (at * 100).toFixed(0) + "%지만 매번 성공할 확률은 " + (all * 100).toFixed(0) + "%입니다." + (p < 0.95 && k >= 5 ? " 무인 자동화에 맡기려면 1회 성공률 자체를 끌어올려야 합니다. 그 수단이 검증 게이트와 하네스 개선입니다." : "");
+  }
+  ["pkP", "pkK"].forEach(id => $("#" + id).addEventListener("input", drawPk));
+  drawPk();
+
+  /* ---------- 10-A maturity ---------- */
+  const mat = [
+    { l: 1, t: "코딩 에이전트를 리포에서 직접 실행한다 (복사·붙여넣기 채팅이 아님)" },
+    { l: 1, t: "에이전트가 테스트와 빌드를 스스로 실행할 수 있다" },
+    { l: 2, t: "짧은 지침 파일(AGENTS.md 등)이 있고 상세 문서로 연결된다" },
+    { l: 2, t: "실수가 나면 다시 지시하기보다 문서·도구·검사로 고친다" },
+    { l: 2, t: "에이전트가 샌드박스나 격리된 환경에서 실행된다" },
+    { l: 3, t: "아키텍처·컨벤션 위반을 잡는 커스텀 린터나 테스트가 있다 (고치는 법이 담긴 메시지 포함)" },
+    { l: 3, t: "위험 명령을 막는 훅이나 권한 정책이 코드로 존재한다" },
+    { l: 3, t: "에이전트 실행이 트레이스로 남고 재생할 수 있다" },
+    { l: 3, t: "실제 과제로 만든 평가 세트가 있고 하네스 변경 시 돌린다" },
+    { l: 4, t: "에이전트 간 리뷰로 사람 리뷰 부담을 대부분 대체했다" },
+    { l: 4, t: "주기적인 정리 에이전트가 코드 품질 일탈을 찾아 고친다" },
+    { l: 4, t: "모델 교체 시 제거 실험으로 하네스를 덜어낸다" }
+  ];
+  const lvName = ["L0 · 채팅 보조", "L1 · 에이전트 기본 사용", "L2 · 하네스 의식", "L3 · 공학적 하네스", "L4 · 에이전트 우선 조직"];
+  let matAns = store.get("mat", {});
+  function renderMat() {
+    $("#matList").innerHTML = mat.map((m, i) => '<label class="item" style="display:flex;gap:10px;align-items:flex-start;cursor:pointer"><input type="checkbox" id="mat' + i + '" data-i="' + i + '"' + (matAns[i] ? " checked" : "") + ' style="margin-top:6px;accent-color:var(--accent)"><span><span class="tokc">L' + m.l + "</span> " + esc(m.t) + "</span></label>").join("");
+    let level = 0;
+    for (let L = 1; L <= 4; L++) { if (mat.every((m, i) => m.l > L || matAns[i])) level = L; else break; }
+    const next = mat.map((m, i) => ({ m, i })).filter(o => !matAns[o.i] && o.m.l === level + 1);
+    $("#matOut").textContent = "현재 수준: " + lvName[level] + (next.length ? ". 다음 단계로 가려면: " + next.map(o => o.m.t).join(" / ") : ". 최고 수준입니다. 이제 하네스 자체의 자동 진화를 실험해 볼 차례입니다.");
+  }
+  $("#matList").addEventListener("change", e => { const c = e.target.closest("input[data-i]"); if (!c) return; matAns[c.dataset.i] = c.checked; store.set("mat", matAns); renderMat(); });
+  renderMat();
+
+  /* ---------- quizzes ---------- */
+  const Q = {
+    ch1: [
+      { q: "다음 중 하네스에 속하지 않는 것은?", o: ["에이전트 루프", "도구 실행과 결과 주입", "모델 가중치", "권한 정책"], a: 2, w: "하네스는 모델을 제외한 전부입니다. 가중치는 모델 그 자체입니다." },
+      { q: "에이전트가 같은 실수를 반복할 때 하네스 엔지니어의 첫 질문은?", o: ["어떻게 더 강하게 말할까?", "더 큰 모델로 바꿀까?", "어떤 능력이 빠졌고, 어떻게 보이게 하고 강제할까?", "대화를 새로 시작할까?"], a: 2, w: "재지시는 이번 세션만 고칩니다. 환경을 고치면 모든 미래 세션이 혜택을 봅니다." }
+    ],
+    ch2: [
+      { q: "도구 실행 중 예외가 발생하면 하네스는?", o: ["루프를 즉시 종료한다", "에러 내용을 is_error tool_result로 모델에게 돌려준다", "해당 tool_use를 조용히 무시한다", "성공할 때까지 같은 호출을 자동 재시도한다"], a: 1, w: "에러는 교정 신호입니다. 그리고 모든 tool_use는 짝이 되는 tool_result가 있어야 합니다." },
+      { q: "에이전트의 '성급한 승리 선언'을 막는 가장 확실한 방법은?", o: ["max_turns를 늘린다", "완료 시 하네스가 직접 테스트를 돌리는 검증 게이트", "temperature를 낮춘다", "시스템 프롬프트에 '꼼꼼히 하라'고 쓴다"], a: 1, w: "완료 판단을 모델의 자기 보고에만 맡기지 않는 것이 핵심입니다." }
+    ],
+    ch3: [
+      { q: "REST 엔드포인트 30개를 1:1로 감싼 도구 30개와, 실제 작업 단위로 묶은 도구 5개. 대체로 나은 쪽은?", o: ["30개: 세밀할수록 유연하다", "5개: 턴과 토큰을 아끼고 선택 오류가 줄어든다", "차이 없다", "도구는 하나(bash)만 줘야 한다"], a: 1, w: "도구가 많을수록 정의 토큰이 늘고 모델이 고를 선택지가 혼란스러워집니다." },
+      { q: "가장 좋은 도구 에러 메시지는?", o: ["Error 400", "Invalid input", "'since'는 타임존이 포함된 ISO 8601이어야 합니다. 받은 값: \"yesterday\". 예: 2026-11-04T09:00:00+09:00", "요청 처리 중 문제가 발생했습니다"], a: 2, w: "무엇이 틀렸고 어떻게 고치는지를 알려주는 메시지가 다음 시도를 성공시킵니다." }
+    ],
+    ch4: [
+      { q: "AGENTS.md 설계로 가장 바람직한 것은?", o: ["모든 규칙과 예시를 담은 2,000줄 문서", "짧은 목차와 명령, 상세 문서로의 링크", "비워두고 매번 프롬프트로 설명", "README를 그대로 복사"], a: 1, w: "지도를 주고 매뉴얼은 필요할 때 읽게 하는 점진적 공개입니다." },
+      { q: "스킬이 평소 컨텍스트 비용을 거의 쓰지 않는 이유는?", o: ["압축 저장되기 때문", "이름과 설명만 상주하고 본문은 필요할 때 로드되기 때문", "모델이 이미 학습했기 때문", "도구 정의보다 짧기 때문"], a: 1, w: "점진적 공개를 패키지로 만든 것이 스킬입니다." }
+    ],
+    ch5: [
+      { q: "컴팩션할 때 요약하지 말고 원문 그대로 유지해야 하는 것은?", o: ["모든 도구 출력", "원래 과제(첫 사용자 메시지)", "모델의 모든 사고 과정", "시스템 프롬프트의 예시"], a: 1, w: "요약은 표류합니다. 목표가 흐려지면 에이전트는 엉뚱한 것을 최적화합니다." },
+      { q: "장시간 작업에서 새 세션이 가장 먼저 할 일은?", o: ["바로 다음 기능 구현", "진행 파일과 git log를 읽고, 스모크 테스트로 현재 상태가 정상인지 확인", "모든 테스트를 새로 작성", "기능 목록을 다시 정리"], a: 1, w: "망가진 상태 위에 쌓으면 문제가 커집니다. 교대 근무자는 먼저 인수인계를 확인합니다." }
+    ],
+    ch6: [
+      { q: "커스텀 린터의 에러 메시지에 꼭 넣어야 할 것은?", o: ["위반 횟수 통계", "왜 규칙이 있는지와 구체적인 수정 방법", "규칙 작성자 이름", "경고 이모지"], a: 1, w: "에러 메시지가 필요한 순간에만 나타나는 문서, 즉 적시 컨텍스트 주입이 됩니다." },
+      { q: "코드 리뷰를 별도 에이전트에게 맡기는 주된 이유는?", o: ["더 싼 모델을 쓸 수 있어서", "깨끗한 컨텍스트로 작성자의 추론에 끌려가지 않고 검토하기 위해", "병렬로 돌리면 빨라서", "사람이 리뷰를 싫어해서"], a: 1, w: "같은 컨텍스트에서 자기 결과를 검토하면 자기 확신을 반복하기 쉽습니다." }
+    ],
+    ch7: [
+      { q: "치명적 삼요소(lethal trifecta)에 대한 가장 효과적인 방어는?", o: ["시스템 프롬프트에 '인젝션을 무시하라'고 쓴다", "세 요소 중 하나를 구조적으로 끊는다", "더 똑똑한 모델을 쓴다", "출력을 사람이 모두 읽는다"], a: 1, w: "모델의 판단에 기대지 않고 구조로 공격 경로를 제거합니다." },
+      { q: "모든 도구 호출에 사람 확인을 요구하면 생기는 일은?", o: ["가장 안전해진다", "승인 피로로 사람이 읽지 않고 승인하게 되어 실질적 검토가 사라진다", "에이전트가 더 똑똑해진다", "비용이 줄어든다"], a: 1, w: "사람 승인은 실수 비용이 가장 큰 지점에만 두어야 가치가 있습니다." }
+    ],
+    ch8: [
+      { q: "1회 성공률 p = 0.9인 에이전트의 pass^5는 약?", o: ["99%", "90%", "59%", "45%"], a: 2, w: "0.9의 5제곱 ≈ 0.59. 90%짜리 에이전트도 다섯 번 연속으로 믿기는 어렵습니다." },
+      { q: "시스템 프롬프트 변경이 개선인지 판단하는 올바른 방법은?", o: ["몇 번 써보고 느낌으로", "실제 과제 평가 세트를 여러 번 시행해 기준선과 비교", "모델에게 물어본다", "토큰 수가 줄었는지만 본다"], a: 1, w: "에이전트는 확률적이므로 반복 시행과 기준선 비교가 필요합니다." }
+    ],
+    ch9: [
+      { q: "서브에이전트의 가장 큰 이점은?", o: ["모델이 서로 대화해 창의성이 높아진다", "탐색 잡음을 격리하고 요약만 돌려받아 메인 컨텍스트를 깨끗하게 유지한다", "토큰 비용이 줄어든다", "디버깅이 쉬워진다"], a: 1, w: "멀티 에이전트는 대개 토큰을 더 씁니다. 대신 컨텍스트 격리를 얻습니다." },
+      { q: "멀티 에이전트가 가장 부적합한 작업은?", o: ["독립적인 모듈 여러 개 조사", "같은 파일들을 긴밀하게 함께 수정하는 리팩터링", "구현 후 독립 리뷰", "서로 다른 기능의 병렬 개발"], a: 1, w: "공유 상태에 강하게 결합된 작업은 동기화 비용이 이득을 넘어섭니다." }
+    ],
+    ch10: [
+      { q: "더 강한 모델로 업그레이드한 직후 해야 할 일은?", o: ["하네스에 지시를 더 추가", "구성요소를 하나씩 끄며 평가해 불필요해진 비계를 제거", "평가 세트 폐기", "검증 게이트 제거"], a: 1, w: "약한 모델을 위한 비계는 강한 모델을 묶습니다. 단, 제약과 검증은 남깁니다." },
+      { q: "에이전트가 작성하는 코드베이스에 엔트로피가 빨리 쌓이는 이유는?", o: ["모델이 무작위로 코드를 쓰기 때문", "에이전트가 기존 패턴을 좋든 나쁘든 복제하기 때문", "사람이 리뷰하지 않기 때문", "테스트가 없기 때문"], a: 1, w: "그래서 품질 등급 추적과 주기적인 정리 에이전트가 필요합니다." }
+    ],
+    ch11: [
+      { q: "미니 하네스가 tests/ 편집을 막는 이유는?", o: ["테스트 파일이 너무 커서", "테스트를 고쳐 통과시키는 꼼수(보상 해킹)를 막기 위해", "권한이 없어서", "성능 때문"], a: 1, w: "목표는 테스트 통과가 아니라 코드가 맞는 것입니다. 측정 수단을 조작할 수 없게 해야 합니다." },
+      { q: "도구 출력이 OUTPUT_CAP을 넘으면 cap()은?", o: ["에러를 반환한다", "앞부분과 함께 전체를 저장한 파일 경로와 페이지 넘기는 방법을 알려준다", "출력을 버린다", "모델에게 다시 요청하라고 한다"], a: 1, w: "정보를 잃지 않으면서 컨텍스트를 보호하는 오프로드 패턴입니다." }
+    ]
+  };
+  let qs = store.get("quiz", {});
+  $$(".quiz").forEach(box => {
+    const ch = box.dataset.quiz, items = Q[ch] || [];
+    items.forEach((it, qi) => {
+      const key = ch + "_" + qi, div = document.createElement("div");
+      div.className = "qq";
+      div.innerHTML = "<p>" + (qi + 1) + ". " + esc(it.q) + "</p>" + it.o.map((o, oi) => '<button type="button" class="opt" data-oi="' + oi + '">' + esc(o) + "</button>").join("") + '<div class="fb" hidden></div>';
+      box.appendChild(div);
+      const show = pick => {
+        $$(".opt", div).forEach((b, oi) => { b.classList.toggle("right", oi === it.a); b.classList.toggle("wrong", oi === pick && pick !== it.a); });
+        const fb = $(".fb", div); fb.hidden = false; fb.className = "fb " + (pick === it.a ? "good" : "bad");
+        fb.textContent = (pick === it.a ? "정답. " : "오답. ") + it.w;
+      };
+      div.addEventListener("click", e => { const b = e.target.closest(".opt"); if (!b) return; const pick = +b.dataset.oi; qs[key] = pick; store.set("quiz", qs); show(pick); });
+      if (qs[key] !== undefined) show(qs[key]);
+    });
+  });
+})();
+</script>
+
+</body></html>
