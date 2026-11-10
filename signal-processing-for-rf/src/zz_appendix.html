@@ -1,0 +1,74 @@
+<!-- ============ APPENDIX ============ -->
+<section class="chapter col" id="glossary">
+  <div class="eyebrow">부록 A</div>
+  <h2>용어집</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>용어</th><th>뜻</th><th>장</th></tr></thead>
+    <tbody>
+      <tr><td>dB, dBm, dBFS, dBc</td><td>비율의 로그 표기. 각각 순수 비율, 1 mW 기준, ADC 풀스케일 기준, 반송파 기준</td><td>1</td></tr>
+      <tr><td>LTI 시스템</td><td>선형이고 시불변인 시스템. 사인파를 같은 주파수의 사인파로 바꾼다</td><td>1, 4</td></tr>
+      <tr><td>샘플률 <var>f</var><sub>s</sub></td><td>초당 샘플 수. 복소 샘플이면 I/Q 쌍의 수</td><td>2</td></tr>
+      <tr><td>나이퀴스트 주파수</td><td><var>f</var><sub>s</sub>/2. 실수 샘플링에서 앨리어싱 없이 표현할 수 있는 최고 주파수</td><td>2</td></tr>
+      <tr><td>앨리어싱</td><td><var>f</var>와 <var>f</var> + <var>k f</var><sub>s</sub>가 샘플에서 구분되지 않아 주파수가 접혀 보이는 현상</td><td>2</td></tr>
+      <tr><td>나이퀴스트 존</td><td><var>f</var><sub>s</sub>/2 폭의 주파수 구간. 대역통과 샘플링은 한 존을 1존으로 접어 받는다</td><td>2</td></tr>
+      <tr><td>LO</td><td>국부 발진기(Local Oscillator). 믹서에서 주파수를 옮기는 기준 신호</td><td>1, 3</td></tr>
+      <tr><td>IQ, 복소 기저대역</td><td>RF 신호를 <var>s</var>(<var>t</var>) = <var>I</var> + <var>jQ</var>로 나타낸 것. RF = Re{<var>s</var> · <var>e</var><sup><var>j</var>2π<var>f</var><sub>c</sub><var>t</var></sup>}</td><td>3</td></tr>
+      <tr><td>음의 주파수</td><td>시계 방향으로 도는 복소 지수. IQ 스펙트럼에서는 LO보다 낮은 주파수</td><td>3</td></tr>
+      <tr><td>임펄스 응답</td><td>단위 임펄스를 넣었을 때의 출력. FIR에서는 계수(탭) 그 자체</td><td>4</td></tr>
+      <tr><td>컨볼루션</td><td><var>y</var>[<var>n</var>] = Σ <var>x</var>[<var>k</var>]<var>h</var>[<var>n</var>−<var>k</var>]. 주파수 영역에서는 곱셈</td><td>4</td></tr>
+      <tr><td>MAC</td><td>곱셈-누산(multiply-accumulate). 필터 연산량의 단위</td><td>4, 9</td></tr>
+      <tr><td>DFT / FFT</td><td>이산 푸리에 변환과 그 고속 알고리즘. <var>N</var>² 대신 약 (<var>N</var>/2)log<sub>2</sub><var>N</var></td><td>5</td></tr>
+      <tr><td>빈(bin)</td><td>DFT 출력 한 칸. 폭 <var>f</var><sub>s</sub>/<var>N</var></td><td>5</td></tr>
+      <tr><td>누설, 창함수</td><td>정수 주기가 아닌 신호의 에너지가 이웃 빈으로 번지는 현상과, 이를 줄이려 곱하는 끝이 가늘어지는 함수</td><td>5</td></tr>
+      <tr><td>ENBW, RBW</td><td>창의 등가 잡음 대역폭(빈 단위)과 분해능 대역폭(Hz). 잡음 바닥을 말할 때 함께 적는다</td><td>5</td></tr>
+      <tr><td>FIR / IIR</td><td>되먹임 없는 유한 임펄스 응답 필터 / 되먹임 있는 무한 임펄스 응답 필터</td><td>6</td></tr>
+      <tr><td>선형 위상, 군지연</td><td>모든 주파수가 같은 시간만큼 지연되는 성질. 대칭 FIR은 (<var>N</var>−1)/2 샘플</td><td>6</td></tr>
+      <tr><td>극점, 영점</td><td><var>H</var>(<var>z</var>)의 분모·분자가 0이 되는 점. 극점이 단위원 안에 있어야 안정</td><td>6</td></tr>
+      <tr><td>데시메이션 / 인터폴레이션</td><td>거른 뒤 샘플률을 <var>M</var>배 낮추기 / 0을 끼운 뒤 걸러 <var>L</var>배 높이기</td><td>7</td></tr>
+      <tr><td>폴리페이즈</td><td>필터를 <var>M</var>개의 부분 필터로 나눠 낮은 샘플률에서 계산하는 구조</td><td>7</td></tr>
+      <tr><td>CIC, 하프밴드</td><td>곱셈 없는 적분-미분 데시메이터 / 계수 절반이 0인 ↓2 필터</td><td>7</td></tr>
+      <tr><td>NCO, FTW</td><td>위상 누산기와 사인 표로 된 디지털 발진기 / 매 클록 더하는 주파수 튜닝 워드</td><td>8</td></tr>
+      <tr><td>DDC / DUC</td><td>디지털 다운·업 컨버터. NCO 믹싱 + 필터 + 샘플률 변환</td><td>8</td></tr>
+      <tr><td>IRR</td><td>이미지 제거비. IQ 불균형이 만든 거울상이 원신호보다 몇 dB 낮은가</td><td>8</td></tr>
+      <tr><td>Q<var>m</var>.<var>n</var></td><td>정수부 <var>m</var>비트(부호 포함), 소수부 <var>n</var>비트의 고정소수점 형식</td><td>9</td></tr>
+      <tr><td>SQNR</td><td>신호 대 양자화 잡음비. 풀스케일 사인파에서 6.02<var>b</var> + 1.76 dB</td><td>9</td></tr>
+      <tr><td>포화 / 랩어라운드</td><td>범위를 넘으면 최댓값에 고정 / 반대편 끝으로 넘어감</td><td>9</td></tr>
+      <tr><td>DSP48E1</td><td>Zynq-7000의 DSP 슬라이스. 25비트 전치 가산기, 25×18 곱셈기, 48비트 누산기</td><td>9</td></tr>
+      <tr><td>비트 정확 모델</td><td>하드웨어와 한 비트도 다르지 않게 정수로 계산하는 소프트웨어 모델</td><td>9</td></tr>
+      <tr><td>성상도, 심볼</td><td>변조에 쓰는 복소 평면 위의 점 배치와, 그중 한 점</td><td>10</td></tr>
+      <tr><td>RRC, 정합 필터</td><td>루트 상승 코사인 펄스. 송신과 수신에 하나씩 두면 ISI가 없고 수신 쪽은 SNR을 최대화한다</td><td>10</td></tr>
+      <tr><td>ISI</td><td>심볼 간 간섭. 이웃 심볼의 펄스 꼬리가 판정 시점에 겹치는 것</td><td>10</td></tr>
+      <tr><td><var>E</var><sub>s</sub>/<var>N</var><sub>0</sub>, <var>E</var><sub>b</sub>/<var>N</var><sub>0</sub></td><td>심볼·비트당 에너지 대 잡음 밀도. 차이는 10 log<sub>10</sub>(비트/심볼)</td><td>10</td></tr>
+      <tr><td>EVM</td><td>오차 벡터 크기. 받은 점과 이상적 점의 RMS 차이 비율. EVM² ≈ 1/SNR</td><td>10</td></tr>
+      <tr><td>ppm, CFO</td><td>백만분율 주파수 오차와, 그로 인한 반송파 주파수 오프셋</td><td>11</td></tr>
+      <tr><td>PLL, 코스타스 루프</td><td>위상 검출기 + 루프 필터 + NCO의 되먹임 루프. QPSK용은 코스타스 루프</td><td>11</td></tr>
+      <tr><td>가드너 검출기</td><td>심볼 사이 중간 샘플로 타이밍 오차를 재는 방식. 반송파 위상과 무관</td><td>11</td></tr>
+      <tr><td>AGC</td><td>자동 이득 제어. 신호 크기를 일정하게 맞춰 뒤 단계의 루프 이득을 안정시킨다</td><td>11</td></tr>
+      <tr><td>프리앰블</td><td>패킷 앞의 알려진 심볼열. 프레임 시작과 위상 모호성을 찾는 데 쓴다</td><td>11, 12</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="chapter col" id="refs">
+  <div class="eyebrow">부록 B</div>
+  <h2>참고 자료</h2>
+  <h4>하드웨어와 드라이버</h4>
+  <ul>
+    <li><a href="https://wiki.analog.com/university/tools/pluto/devs/specs" target="_blank" rel="noopener">Analog Devices Wiki — ADALM-PLUTO Detailed Specifications</a></li>
+    <li><a href="https://www.analog.com/ad9363" target="_blank" rel="noopener">Analog Devices — AD9363 RF Agile Transceiver 제품 페이지</a></li>
+    <li><a href="https://analogdevicesinc.github.io/documentation/solutions/reference-designs/fmcomms2/common/ad9361_ad9363_ad9364_general_description.html" target="_blank" rel="noopener">Analog Devices — AD9361, AD9364 and AD9363 개요 (수신·송신 체인, IQ 보정)</a></li>
+    <li><a href="https://wiki.analog.com/resources/eval/user-guides/ad9361" target="_blank" rel="noopener">Analog Devices Wiki — AD9361 사용자 가이드 (디지털 필터와 FIR 보상)</a></li>
+    <li><a href="https://analogdevicesinc.github.io/pyadi-iio/buffers/index.html" target="_blank" rel="noopener">pyadi-iio — 버퍼와 순환 송신 버퍼</a></li>
+    <li><a href="https://wiki.gnuradio.org/index.php/PlutoSDR_Sink" target="_blank" rel="noopener">GNU Radio Wiki — PlutoSDR Sink (샘플률 한계와 FIR 조건)</a></li>
+    <li><a href="https://docs.amd.com/r/en-US/ug953-vivado-7series-libraries/DSP48E1" target="_blank" rel="noopener">AMD UG953 — DSP48E1 프리미티브 (포트 폭과 기능). 상세 구조는 UG479 7 Series DSP48E1 Slice User Guide</a></li>
+    <li><a href="https://www.amd.com/content/dam/amd/en/documents/products/adaptive-socs-and-fpgas/soc/amd-rfsoc-product-brief.pdf" target="_blank" rel="noopener">AMD — Zynq UltraScale+ RFSoC Product Brief</a></li>
+  </ul>
+  <h4>더 읽을거리</h4>
+  <ul>
+    <li><a href="https://pysdr.org/content/pluto.html" target="_blank" rel="noopener">PySDR — PlutoSDR in Python</a>: Python으로 배우는 SDR 무료 온라인 교재. 이 책 다음으로 읽기 좋다</li>
+    <li>Richard G. Lyons, <em>Understanding Digital Signal Processing</em>: 수식보다 직관을 앞세운 DSP 입문서</li>
+    <li>Michael Rice, <em>Digital Communications: A Discrete-Time Approach</em>: 11장의 루프 이득 공식과 타이밍·위상 동기를 깊게 다룬다</li>
+    <li>fred harris, <em>Multirate Signal Processing for Communication Systems</em>: 폴리페이즈, 하프밴드, 채널라이저의 표준 참고서</li>
+  </ul>
+  <p class="foot">이 책은 2026년 11월 기준 공개 자료를 바탕으로 썼습니다. 하드웨어 사양은 제조사 문서가 최종 기준입니다. 모든 Python 예제는 책을 빌드할 때 실제로 실행해 결과를 그대로 실었고, Verilog 예제(NCO, 전치형 FIR)는 Icarus Verilog 시뮬레이션으로 정수 모델과 대조했습니다. 학습 진도와 퀴즈 결과는 이 브라우저에만 저장됩니다.</p>
+</section>

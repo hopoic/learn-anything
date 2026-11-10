@@ -1,0 +1,123 @@
+<!-- ============ CH5 ============ -->
+<section class="chapter col" id="ch5">
+  <div class="eyebrow">Part II · 핵심 도구 — 5장</div>
+  <h2>푸리에 변환과 FFT</h2>
+  <p class="goal">이 장을 마치면: DFT의 각 빈이 어떤 주파수인지 계산하고, 길이 <var>N</var>과 창함수를 목적에 맞게 고르며, 스펙트럼을 dBFS로 올바르게 정규화해 신호 크기와 잡음 바닥을 읽을 수 있습니다.</p>
+
+  <h3>DFT는 "이 회전이 들어 있나?"를 묻는 질문 N개다</h3>
+  <p>푸리에의 생각은 단순합니다. 어떤 신호든 여러 주파수의 사인파를 적당한 크기와 위상으로 더해 만들 수 있다는 것입니다. 그렇다면 신호가 주어졌을 때 "주파수 <var>f</var>의 성분이 얼마나 들어 있는가"를 재는 방법이 필요합니다. 3장의 회전하는 화살표로 생각하면 답이 보입니다. 신호에 반대 방향으로 도는 화살표 <var>e</var><sup>−<var>j</var>2π<var>fn</var></sup>을 곱하면, 신호 안에 주파수 <var>f</var>로 도는 성분이 있을 때 그 성분만 회전이 풀려 제자리에 멈춥니다. 멈춘 화살표는 더할수록 커지고, 계속 도는 나머지 성분은 더하면 서로 상쇄되어 0 근처에 머뭅니다.</p>
+  <div class="eq"><var>X</var>[<var>k</var>] = <span class="big">Σ</span><sub><var>n</var>=0</sub><sup><var>N</var>−1</sup> <var>x</var>[<var>n</var>] · <var>e</var><sup>−<var>j</var>2π<var>kn</var>/<var>N</var></sup>, &nbsp; <var>k</var> = 0, 1, …, <var>N</var>−1 <small>이산 푸리에 변환(DFT). <var>k</var>번째 탐침은 샘플당 <var>k</var>/<var>N</var> 사이클로 돈다</small></div>
+  <p>즉 DFT는 <var>N</var>개의 탐침 주파수 각각에 대해 "이 회전이 신호에 얼마나 들어 있나"를 계산한 결과입니다. <var>X</var>[<var>k</var>]의 크기는 그 성분의 세기, 각도는 위상입니다. 역변환(IDFT)으로 <var>N</var>개의 <var>X</var>[<var>k</var>]에서 원래 <var>x</var>[<var>n</var>]을 정확히 되돌릴 수 있으므로 정보는 하나도 사라지지 않습니다. 같은 신호를 다른 좌표계로 본 것뿐입니다.</p>
+
+  <h3>빈(bin)을 주파수로 읽는 법</h3>
+  <p><var>k</var>번째 결과를 빈이라고 부르고, 빈 하나의 폭이 주파수 해상도입니다.</p>
+  <div class="eq">Δ<var>f</var> = <span class="fr"><span><var>f</var><sub>s</sub></span><span><var>N</var></span></span> = <span class="fr"><span>1</span><span><var>T</var><sub>obs</sub></span></span> <small>해상도는 관측 시간 <var>T</var><sub>obs</sub> = <var>N</var>/<var>f</var><sub>s</sub>의 역수. 더 가까운 두 주파수를 구분하려면 더 오래 봐야 한다</small></div>
+  <div class="tbl"><table>
+    <thead><tr><th>빈 번호 <var>k</var></th><th>주파수</th><th>복소 IQ 신호에서의 의미</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td>0 Hz</td><td>LO 주파수 그 자체 (DC)</td></tr>
+      <tr><td>1 … <var>N</var>/2 − 1</td><td><var>k</var> · <var>f</var><sub>s</sub>/<var>N</var></td><td>LO보다 높은 주파수</td></tr>
+      <tr><td><var>N</var>/2</td><td>±<var>f</var><sub>s</sub>/2</td><td>나이퀴스트 경계</td></tr>
+      <tr><td><var>N</var>/2 + 1 … <var>N</var> − 1</td><td>(<var>k</var> − <var>N</var>) · <var>f</var><sub>s</sub>/<var>N</var></td><td>LO보다 낮은 주파수 (음의 주파수)</td></tr>
+    </tbody>
+  </table></div>
+  <p>FFT 출력은 0 Hz부터 시작해 양의 주파수, 그다음 음의 주파수 순서로 나옵니다. 화면에 −<var>f</var><sub>s</sub>/2 … +<var>f</var><sub>s</sub>/2 순서로 그리려면 앞뒤 절반을 맞바꾸는 <code>fftshift</code>가 필요합니다. 예를 들어 PlutoSDR을 2 MSPS로 두고 <var>N</var> = 4096 FFT를 하면 빈 폭은 약 488 Hz, 한 번의 FFT가 보는 시간은 약 2 ms입니다.</p>
+
+  <h3>FFT는 같은 답을 훨씬 빨리 낸다</h3>
+  <p>DFT를 식 그대로 계산하면 빈 <var>N</var>개 × 샘플 <var>N</var>개로 <var>N</var>²번의 복소 곱셈이 필요합니다. FFT(고속 푸리에 변환)는 짝수 번째와 홀수 번째 샘플로 나눠 각각 절반 크기의 DFT를 하고 합치는 일을 재귀적으로 반복해, 약 (<var>N</var>/2) log<sub>2</sub><var>N</var>번으로 줄입니다. <var>N</var> = 1024라면 1,048,576번 대신 5,120번, 200배 이상 빠릅니다. 결과는 DFT와 완전히 같습니다. FFT는 근사가 아니라 계산 순서를 바꾼 것입니다.</p>
+  <py file="fft_from_scratch.py" check>
+import numpy as np
+
+def fft(x):
+    """Radix-2 decimation-in-time FFT. len(x) must be a power of two."""
+    n = len(x)
+    if n == 1:
+        return x.astype(complex)
+    even, odd = fft(x[0::2]), fft(x[1::2])           # two half-size DFTs
+    tw = np.exp(-2j * np.pi * np.arange(n // 2) / n) * odd   # twiddle factors
+    return np.concatenate([even + tw, even - tw])    # the "butterfly"
+
+x = np.random.default_rng(0).standard_normal(1024) + 0j
+print("matches numpy:", np.allclose(fft(x), np.fft.fft(x)))
+N = 1024
+print(f"direct DFT {N * N:,} mults vs FFT {N // 2 * int(np.log2(N)):,} mults")
+  </py>
+  <p>FPGA에서는 FFT를 직접 짜기보다 AMD의 FFT LogiCORE IP를 쓰는 경우가 많습니다. 매 클록 샘플 하나를 받아 연속으로 변환하는 파이프라인 구조부터 자원을 아끼는 버스트 구조까지 고를 수 있습니다. 어떤 구조든 알아야 할 것은 같습니다. 길이 <var>N</var>, 고정소수점 스케일링(단계마다 비트가 늘어나므로, 9장), 출력 순서(비트 역순인지 자연 순서인지)입니다.</p>
+
+  <h3>누설과 창함수: 끝을 부드럽게 접는다</h3>
+  <p>DFT는 암묵적으로 <var>N</var>개 샘플이 무한히 반복된다고 가정합니다. 신호가 관측 구간 안에 정수 번 반복되면 이음매가 매끄럽고, 톤은 빈 하나에 깔끔하게 담깁니다. 그렇지 않으면 이음매에서 파형이 뚝 끊기고, 그 불연속이 모든 주파수로 에너지를 흘려보냅니다. 이것이 <strong>스펙트럼 누설(leakage)</strong>입니다. 현실의 신호는 빈 정중앙에 떨어지는 일이 거의 없으므로 누설은 항상 있다고 보아야 합니다.</p>
+  <p>해결책은 샘플에 양 끝이 0으로 내려가는 <strong>창함수(window)</strong>를 곱해 이음매를 없애는 것입니다. 대가는 주엽(main lobe)이 넓어져 가까운 두 주파수를 구분하는 능력이 떨어진다는 점입니다. 사이드로브를 낮출수록 주엽이 넓어지는, 피할 수 없는 맞바꿈입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>창함수</th><th>최대 사이드로브</th><th>주엽 폭 (0점 사이)</th><th>코히어런트 이득</th><th>ENBW</th><th>쓰임새</th></tr></thead>
+    <tbody>
+      <tr><td>사각 (창 없음)</td><td>−13 dB</td><td>2 빈</td><td>1.00</td><td>1.00 빈</td><td>정수 주기가 보장될 때, 과도 신호</td></tr>
+      <tr><td>Hann</td><td>−31 dB</td><td>4 빈</td><td>0.50</td><td>1.50 빈</td><td>범용 기본값</td></tr>
+      <tr><td>Hamming</td><td>−43 dB</td><td>4 빈</td><td>0.54</td><td>1.36 빈</td><td>가까운 톤 구분, 필터 설계</td></tr>
+      <tr><td>Blackman</td><td>−58 dB</td><td>6 빈</td><td>0.42</td><td>1.73 빈</td><td>큰 신호 옆의 약한 신호 찾기</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="bench" id="spBench">
+    <header><b>실습 벤치 5-A · 스펙트럼 분석기</b><span>FFT · WINDOW · LEAKAGE</span></header>
+    <div class="body">
+      <div class="ctls">
+        <div class="ctl"><label for="spF1">톤 1 위치 (<var>N</var>=256 기준 빈 번호)</label><output id="oSpF1"></output><input type="range" id="spF1" min="10" max="40" step="0.05" value="20.5"></div>
+        <div class="ctl"><label for="spD">톤 2 간격 (<var>N</var>=256 기준 빈)</label><output id="oSpD"></output><input type="range" id="spD" min="1" max="30" step="0.5" value="8"></div>
+        <div class="ctl"><label for="spA2">톤 2 세기 (dBc)</label><output id="oSpA2"></output><input type="range" id="spA2" min="-90" max="0" step="1" value="-50"></div>
+        <div class="ctl"><label for="spNoise">잡음 (샘플당 dBFS)</label><output id="oSpNoise"></output><input type="range" id="spNoise" min="-140" max="-30" step="1" value="-110"></div>
+        <div class="ctl"><label for="spN">FFT 길이 <var>N</var> (주파수는 그대로, 빈만 바뀜)</label><span></span>
+          <select id="spN"><option>128</option><option selected>256</option><option>512</option><option>1024</option><option>2048</option></select></div>
+        <div class="ctl"><label for="spWin">창함수</label><span></span>
+          <select id="spWin"><option value="rect">사각 (창 없음)</option><option value="hann">Hann</option><option value="hamming">Hamming</option><option value="blackman" selected>Blackman</option></select></div>
+      </div>
+      <svg class="plot" id="spSvg" viewBox="0 0 600 260" role="img" aria-label="dBFS 단위 크기 스펙트럼"></svg>
+      <div class="status g" id="spNote" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>처음 설정에서 창을 "사각"으로 바꿔 보세요. 톤 1이 빈 사이(20.5)에 있어서 누설이 −50 dBc 톤 2를 완전히 덮습니다. 톤 1을 정확히 20.00으로 옮기면 누설이 사라지고 톤 2가 드러납니다. 다시 Blackman으로 돌리면 어느 위치에서든 톤 2가 보입니다. 이번에는 톤 2 간격을 1.5빈까지 좁혀 보세요. Blackman의 넓은 주엽 때문에 두 톤이 하나로 뭉치고, Hamming이나 더 큰 <var>N</var>이 필요해집니다.</p>
+
+  <h3>dBFS로 읽기: 잡음 바닥은 N에 따라 움직인다</h3>
+  <p>FFT 결과의 크기는 <var>N</var>과 창함수에 따라 달라집니다. 풀스케일 복소 톤이 0 dBFS로 읽히게 하려면 <var>N</var> × (창의 코히어런트 이득)으로 나눠야 합니다. 그러면 톤의 높이는 <var>N</var>과 상관없이 일정해집니다.</p>
+  <p>잡음은 다르게 행동합니다. 잡음 전력은 모든 빈에 고르게 나뉘므로 빈 하나에 담기는 잡음은 <var>N</var>이 두 배가 될 때마다 절반, 즉 3 dB씩 내려갑니다. 이것을 FFT의 처리 이득이라고 하고 크기는 10 log<sub>10</sub>(<var>N</var>)입니다. 벤치에서 <var>N</var>을 바꾸면 톤은 그대로인데 잡음 바닥만 오르내리는 것을 볼 수 있습니다. 그래서 "잡음 바닥이 −100 dBFS"라는 말은 빈 폭(정확히는 분해능 대역폭 RBW = ENBW × <var>f</var><sub>s</sub>/<var>N</var>)을 함께 말하지 않으면 의미가 없습니다.</p>
+  <py file="spectrum_dbfs.py" check>
+import numpy as np
+
+def spectrum_dbfs(x, window=np.hanning):
+    """Magnitude spectrum in dBFS: a full-scale complex tone reads 0 dBFS."""
+    w = window(len(x))
+    X = np.fft.fftshift(np.fft.fft(x * w)) / np.sum(w)   # divide by N * coherent gain
+    return 20 * np.log10(np.abs(X) + 1e-15)
+
+rng = np.random.default_rng(1)
+fs = 2e6
+for N in (1024, 4096):
+    n = np.arange(N)
+    tone = 0.5 * np.exp(2j * np.pi * 250e3 / fs * n)                  # -6 dBFS
+    noise = 10 ** (-60 / 20) / np.sqrt(2) * (rng.standard_normal(N) + 1j * rng.standard_normal(N))
+    S = spectrum_dbfs(tone + noise)
+    f = np.fft.fftshift(np.fft.fftfreq(N, 1 / fs))
+    away = np.abs(f - 250e3) > 50e3                                  # exclude the tone's own bins
+    floor = 10 * np.log10(np.mean(10 ** (S[away] / 10)))             # average noise per bin
+    print(f"N={N:5d}: tone {S.max():6.1f} dBFS, noise floor {floor:6.1f} dBFS/bin, RBW {1.5 * fs / N:6.0f} Hz")
+  </py>
+
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>제로 패딩은 해상도를 올리지 않는다</strong>: 샘플 뒤에 0을 붙여 <var>N</var>을 키우면 빈 간격은 촘촘해지지만, 두 톤을 구분하는 능력은 실제 관측 시간 <var>T</var><sub>obs</sub>로 정해집니다. 제로 패딩은 같은 곡선을 더 촘촘하게 보간해 그릴 뿐입니다.</li>
+      <li><strong>스캘럽 손실</strong>: 톤이 빈 사이에 떨어지면 피크가 실제보다 낮게 읽힙니다. 최악의 경우 사각 창은 약 3.9 dB, Hann은 약 1.4 dB입니다. 진폭을 정밀하게 재야 하면 플랫톱(flat-top) 창을 씁니다.</li>
+      <li><strong>한 번의 FFT를 믿지 말 것</strong>: 잡음 스펙트럼은 FFT마다 요동칩니다. 여러 번의 FFT 전력을 평균(Welch 방법)하면 잡음 바닥이 매끄러워져 약한 신호가 잘 보입니다.</li>
+    </ul>
+  </div>
+
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>빈 <var>k</var>의 주파수는 <var>k f</var><sub>s</sub>/<var>N</var>. 해상도는 관측 시간의 역수다.</li>
+      <li>누설은 항상 있다. 창함수는 사이드로브를 낮추는 대신 주엽을 넓힌다.</li>
+      <li>dBFS 정규화는 <var>N</var> × 코히어런트 이득으로. 잡음 바닥은 <var>N</var>이 두 배가 되면 3 dB 내려간다.</li>
+    </ul>
+  </div>
+  <p>이제 신호를 주파수로 볼 수 있습니다. 다음 장에서는 그 주파수 축 위에서 원하는 부분만 남기고 나머지를 깎아 내는 도구, 디지털 필터를 설계합니다. 4장의 "컨볼루션 = 주파수 곱셈"이 설계의 출발점입니다.</p>
+
+  <div class="quiz" data-quiz="ch5"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch5" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

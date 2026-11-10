@@ -1,0 +1,154 @@
+<!-- ============ CH1 ============ -->
+<section class="chapter col" id="ch1">
+  <div class="eyebrow">Part I · 신호의 언어 — 1장</div>
+  <h2>신호처리의 지도: 수신기는 숫자 공장이다</h2>
+  <p class="goal">이 장을 마치면: RF 수신 체인의 블록 이름을 대고 각 블록이 어떤 신호처리 개념인지 말할 수 있으며, dB·dBm·dBFS를 머릿속에서 바로 환산하고, Zynq의 PL과 PS가 체인의 어느 부분을 맡는지 설명할 수 있습니다.</p>
+
+  <h3>신호는 시간에 따라 변하는 숫자다</h3>
+  <p>신호(signal)는 시간에 따라 변하는 어떤 양입니다. 안테나 단자의 전압, 마이크의 음압, 가속도 센서의 출력이 모두 신호입니다. 신호를 분류하는 축은 두 개입니다. 시간이 연속인가 띄엄띄엄인가, 그리고 값이 연속인가 정해진 단계만 가질 수 있는가.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>값이 연속</th><th>값이 이산 (양자화)</th></tr></thead>
+    <tbody>
+      <tr><td><strong>시간 연속</strong></td><td>아날로그 신호 <var>x</var>(<var>t</var>) — 안테나 전압</td><td>비교기 출력, PWM</td></tr>
+      <tr><td><strong>시간 이산</strong></td><td>이산 시간 신호 <var>x</var>[<var>n</var>] — 수학적 이상형</td><td>디지털 신호 — ADC가 내놓는 12비트 정수열</td></tr>
+    </tbody>
+  </table></div>
+  <p>이 책에서는 괄호 모양으로 둘을 구분합니다. <var>x</var>(<var>t</var>)는 연속 시간, <var>x</var>[<var>n</var>]은 <var>n</var>번째 샘플입니다. 신호처리 이론의 대부분은 "시간 이산, 값 연속"을 가정하고 전개되고, 값이 이산이라서 생기는 문제(양자화 잡음, 오버플로)는 9장에서 따로 다룹니다. FPGA를 다루는 사람에게 이 구분은 실무적으로 중요합니다. 알고리즘은 실수(real number)로 설계하고, 구현은 정수로 하기 때문입니다.</p>
+
+  <h3>시스템은 신호를 받아 신호를 내놓는 함수다</h3>
+  <p>필터, 믹서, 증폭기, 복조기처럼 신호를 받아 다른 신호를 내놓는 것을 모두 <strong>시스템</strong>이라고 부릅니다. 그중 신호처리가 특별히 아끼는 부류가 <strong>선형 시불변(LTI, Linear Time-Invariant)</strong> 시스템입니다.</p>
+  <ul>
+    <li><strong>선형</strong>: 입력을 두 배 하면 출력도 두 배, 두 입력을 더해 넣으면 각각의 출력을 더한 것이 나옵니다. 중첩의 원리가 성립합니다.</li>
+    <li><strong>시불변</strong>: 오늘 넣든 내일 넣든 같은 입력에는 같은 출력이 (그만큼 늦게) 나옵니다. 계수가 시간에 따라 바뀌지 않습니다.</li>
+  </ul>
+  <p>LTI가 중요한 이유는 하나로 요약됩니다. <strong>LTI 시스템에 사인파를 넣으면 같은 주파수의 사인파가 나온다.</strong> 크기와 위상만 바뀝니다. 그래서 어떤 신호든 사인파들의 합으로 쪼갤 수 있다면(5장의 푸리에 변환), 시스템은 "주파수마다 크기와 위상을 얼마나 바꾸는가"라는 표 하나로 완전히 기술됩니다. 이 표가 주파수 응답이고, 필터 설계(6장)는 이 표를 원하는 모양으로 만드는 일입니다. 반대로 믹서는 일부러 LTI가 아니게 만든 시스템입니다. 주파수를 옮기는 것이 목적이니까요(8장).</p>
+
+  <h3>RF 수신 체인 한 장으로 보기</h3>
+  <p>이 책 전체가 다루는 것은 아래 그림의 왼쪽 끝에서 오른쪽 끝까지 신호가 흘러가는 길입니다. 기준 하드웨어는 ADALM-PLUTO(PlutoSDR)로 잡았습니다. AD9363 트랜시버 하나와 Zynq Z-7010이 들어 있는, USB로 전원을 받는 교육용 SDR이라 가장 적은 비용으로 이 책의 모든 개념을 실제 전파로 확인할 수 있습니다.</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 720 270" role="img" aria-label="RF 수신 체인: 안테나, LNA, IQ 믹서와 LO, 저역통과 필터, ADC, 디지털 데시메이션 필터까지가 AD9363, 그 뒤 DDC와 동기·복조가 Zynq PL, Linux와 응용이 Zynq PS">
+      <rect class="sv-r1" x="4" y="26" width="378" height="170" rx="8"/>
+      <text class="sv-t" x="16" y="46">AD9363 트랜시버 (아날로그 + 앞단 디지털)</text>
+      <rect class="sv-r2" x="392" y="26" width="206" height="170" rx="8"/>
+      <text class="sv-t" x="404" y="46">Zynq PL (FPGA 로직)</text>
+      <rect class="sv-r3" x="608" y="26" width="108" height="170" rx="8"/>
+      <text class="sv-t" x="618" y="46">Zynq PS (ARM)</text>
+      <!-- antenna -->
+      <path class="sv-ln" d="M22 116V72M10 72h24M22 72l-10-14M22 72l10-14"/>
+      <path class="sv-ln" d="M22 116h22" marker-end="url(#arw)"/>
+      <rect class="sv-r0" x="46" y="96" width="44" height="40" rx="4"/><text class="sv-t" x="68" y="121" text-anchor="middle">LNA</text>
+      <path class="sv-ln" d="M90 116h16" marker-end="url(#arw)"/>
+      <circle class="sv-r0" cx="124" cy="116" r="16"/><text class="sv-t" x="124" y="121" text-anchor="middle">×</text>
+      <rect class="sv-r0" x="102" y="152" width="44" height="26" rx="4"/><text class="sv-m" x="124" y="169" text-anchor="middle">LO</text>
+      <path class="sv-ln" d="M124 152v-18" marker-end="url(#arw)"/>
+      <path class="sv-ln" d="M140 116h14" marker-end="url(#arw)"/>
+      <rect class="sv-r0" x="156" y="96" width="46" height="40" rx="4"/><text class="sv-t" x="179" y="121" text-anchor="middle">LPF</text>
+      <path class="sv-ln" d="M202 116h12" marker-end="url(#arw)"/>
+      <rect class="sv-r0" x="216" y="96" width="46" height="40" rx="4"/><text class="sv-t" x="239" y="121" text-anchor="middle">ADC</text>
+      <path class="sv-ln" d="M262 116h12" marker-end="url(#arw)"/>
+      <rect class="sv-r0" x="276" y="96" width="96" height="40" rx="4"/><text class="sv-t" x="324" y="121" text-anchor="middle">HB·FIR ↓M</text>
+      <text class="sv-m" x="124" y="90" text-anchor="middle">IQ 믹서</text>
+      <text class="sv-m" x="324" y="90" text-anchor="middle">데시메이션</text>
+      <path class="sv-ac" d="M372 116h28" marker-end="url(#arwa)"/>
+      <text class="sv-m" x="386" y="108" text-anchor="middle">I/Q</text>
+      <rect class="sv-r0" x="404" y="62" width="88" height="34" rx="4"/><text class="sv-t" x="448" y="84" text-anchor="middle">DDC·필터</text>
+      <rect class="sv-r0" x="502" y="62" width="88" height="34" rx="4"/><text class="sv-t" x="546" y="84" text-anchor="middle">동기·복조</text>
+      <rect class="sv-r0" x="404" y="110" width="88" height="34" rx="4"/><text class="sv-t" x="448" y="132" text-anchor="middle">FFT·검출</text>
+      <rect class="sv-r0" x="502" y="110" width="88" height="34" rx="4"/><text class="sv-t" x="546" y="132" text-anchor="middle">AXI DMA</text>
+      <text class="sv-m" x="497" y="170" text-anchor="middle">샘플마다, 클록마다</text>
+      <path class="sv-ac" d="M590 127h22" marker-end="url(#arwa)"/>
+      <rect class="sv-r0" x="618" y="62" width="88" height="34" rx="4"/><text class="sv-t" x="662" y="84" text-anchor="middle">Linux·IIO</text>
+      <rect class="sv-r0" x="618" y="110" width="88" height="34" rx="4"/><text class="sv-t" x="662" y="132" text-anchor="middle">프로토콜·앱</text>
+      <text class="sv-m" x="662" y="170" text-anchor="middle">패킷마다</text>
+      <!-- chapter map -->
+      <text class="sv-m" x="68" y="222" text-anchor="middle">1장 dB</text>
+      <text class="sv-m" x="124" y="222" text-anchor="middle">3·8장 IQ</text>
+      <text class="sv-m" x="209" y="222" text-anchor="middle">2장 샘플링</text>
+      <text class="sv-m" x="324" y="222" text-anchor="middle">6·7장 필터</text>
+      <text class="sv-m" x="497" y="222" text-anchor="middle">5·8·10·11장</text>
+      <text class="sv-m" x="662" y="222" text-anchor="middle">9장 분할</text>
+      <text class="sv-m" x="360" y="252" text-anchor="middle">9장: 이 모든 숫자를 몇 비트로 표현할 것인가</text>
+    </svg>
+    <figcaption>그림 1-1. 직접 변환(direct conversion) 수신 체인과 이 책의 장 구성. 왼쪽으로 갈수록 빠르고 단순한 연산, 오른쪽으로 갈수록 느리고 복잡한 판단이다.</figcaption>
+  </figure>
+
+  <div class="tbl"><table>
+    <thead><tr><th>블록</th><th>하는 일</th><th>신호처리 개념</th><th>장</th></tr></thead>
+    <tbody>
+      <tr><td>LNA</td><td>약한 신호를 잡음을 적게 더하며 증폭</td><td>이득, 잡음 지수, dB</td><td>1</td></tr>
+      <tr><td>IQ 믹서 + LO</td><td>반송파 주파수를 0 Hz 근처로 옮김</td><td>복소 기저대역, 주파수 이동</td><td>3, 8</td></tr>
+      <tr><td>LPF + ADC</td><td>앨리어싱을 막고 시간·값을 이산화</td><td>나이퀴스트, 양자화</td><td>2, 9</td></tr>
+      <tr><td>HB·FIR 데시메이션</td><td>샘플률을 필요한 만큼 낮춤</td><td>다중 레이트, FIR</td><td>6, 7</td></tr>
+      <tr><td>DDC·필터 (PL)</td><td>광대역 캡처에서 원하는 채널만 골라냄</td><td>NCO, 복소 믹싱</td><td>8</td></tr>
+      <tr><td>동기·복조 (PL/PS)</td><td>주파수·타이밍·위상을 맞춰 심볼을 비트로</td><td>정합 필터, PLL, 성상도</td><td>10, 11</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>신호처리 체인은 처리량이 고정된 데이터 파이프라인입니다. 샘플률은 처리량(throughput)이고, 필터 탭 수는 샘플당 연산량이며, 데시메이션은 다음 단계로 넘기는 데이터율을 줄이는 압축입니다. FPGA에서는 "클록마다 샘플 하나가 들어온다"가 기본 계약이고, 그 계약을 지키는 한 지연(latency)은 늘어나도 괜찮습니다. 반대로 PS 쪽 소프트웨어는 샘플이 아니라 버퍼와 패킷 단위로 생각합니다. 이 경계를 어디에 긋느냐가 9장의 주제입니다.</p>
+  </div>
+
+  <h3>dB 감각: 신호처리의 공용 단위</h3>
+  <p>RF와 신호처리에서는 거의 모든 크기를 데시벨로 말합니다. 곱셈이 덧셈이 되고, 10<sup>−12</sup> 같은 숫자가 −120처럼 다룰 만한 숫자가 되기 때문입니다. 규칙은 단 하나입니다. <strong>전력의 비는 10 log<sub>10</sub>, 진폭(전압)의 비는 20 log<sub>10</sub></strong>. 전력은 진폭의 제곱이므로 두 식은 같은 dB 값을 냅니다.</p>
+  <div class="eq">dB = 10 log<sub>10</sub> <span class="fr"><span><var>P</var><sub>2</sub></span><span><var>P</var><sub>1</sub></span></span> = 20 log<sub>10</sub> <span class="fr"><span><var>A</var><sub>2</sub></span><span><var>A</var><sub>1</sub></span></span></div>
+  <div class="tbl"><table>
+    <thead><tr><th>외워 둘 값</th><th>전력 비</th><th>진폭 비</th></tr></thead>
+    <tbody>
+      <tr><td>+3 dB</td><td>약 2배</td><td>약 1.41배</td></tr>
+      <tr><td>+6 dB</td><td>약 4배</td><td>약 2배 (ADC 1비트 = 약 6 dB)</td></tr>
+      <tr><td>+10 dB</td><td>10배</td><td>약 3.16배</td></tr>
+      <tr><td>+20 dB</td><td>100배</td><td>10배</td></tr>
+      <tr><td>−40 dB</td><td>1/10,000</td><td>1/100 (EVM 1%)</td></tr>
+    </tbody>
+  </table></div>
+  <p>dB는 원래 비율이라 단위가 없습니다. 기준을 붙이면 절대량이 됩니다.</p>
+  <ul>
+    <li><strong>dBm</strong>: 1 mW 기준 전력. 0 dBm = 1 mW, 30 dBm = 1 W, −100 dBm = 0.1 pW. 수신기 감도와 송신 출력이 이 단위입니다.</li>
+    <li><strong>dBFS</strong>: ADC 풀스케일(full scale) 기준. 0 dBFS가 ADC가 표현할 수 있는 최대 크기이고, 디지털 영역의 신호는 전부 음수 dBFS로 표시됩니다. 스펙트럼 분석(5장)과 고정소수점(9장)의 기본 단위입니다.</li>
+    <li><strong>dBc</strong>: 반송파(carrier) 기준. "스퓨리어스가 −60 dBc"는 주 신호보다 60 dB 낮다는 뜻입니다.</li>
+  </ul>
+  <p>체인 전체의 이득은 각 단의 dB를 더하면 됩니다. LNA +15 dB, 믹서 −6 dB, 기저대역 증폭 +40 dB라면 합계 +49 dB입니다. −90 dBm의 신호가 −41 dBm으로 ADC에 도착합니다. 이 계산이 암산으로 되기 시작하면 RF 문서가 읽히기 시작합니다.</p>
+
+  <py file="db_basics.py" check>
+import numpy as np
+
+def db_power(ratio):  return 10 * np.log10(ratio)
+def db_amp(ratio):    return 20 * np.log10(ratio)
+def dbm_to_mw(dbm):   return 10 ** (dbm / 10)
+
+print(f"power x2      -> {db_power(2):5.2f} dB")
+print(f"amplitude x2  -> {db_amp(2):5.2f} dB")
+print(f"-90 dBm       -> {dbm_to_mw(-90):.1e} mW")
+# Cascade gain is a sum in dB: LNA, mixer loss, baseband amplifier
+print(f"chain gain    -> {15 - 6 + 40} dB, so -90 dBm arrives at {-90 + 15 - 6 + 40} dBm")
+  </py>
+
+  <h3>이 책의 기준 하드웨어</h3>
+  <p>PlutoSDR의 공식 사양은 다음과 같습니다. 숫자 하나하나가 뒤의 장에서 설계 제약으로 다시 등장합니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>항목</th><th>사양</th><th>관련 장</th></tr></thead>
+    <tbody>
+      <tr><td>RF 트랜시버</td><td>AD9363, 송수신 각 1채널, 튜닝 범위 325 MHz–3.8 GHz</td><td>3, 8</td></tr>
+      <tr><td>채널 대역폭</td><td>200 kHz–20 MHz</td><td>2, 7</td></tr>
+      <tr><td>ADC/DAC</td><td>12비트, 출력 데이터율 약 65.1 kSPS–61.44 MSPS</td><td>2, 9</td></tr>
+      <tr><td>FPGA</td><td>Zynq XC7Z010: 로직 셀 28k, DSP 슬라이스 80, 블록 RAM 2.1 Mb</td><td>9</td></tr>
+      <tr><td>프로세서</td><td>싱글 코어 Cortex-A9 667 MHz, Linux + IIO 드라이버</td><td>9, 12</td></tr>
+      <tr><td>호스트 연결</td><td>USB 2.0. 위키 기준 약 4 MSPS까지 샘플 손실 없이 스트리밍</td><td>9</td></tr>
+      <tr><td>주파수 정확도</td><td>±25 ppm</td><td>11</td></tr>
+    </tbody>
+  </table></div>
+  <p>마지막 두 줄을 기억해 두세요. 61.44 MSPS로 받을 수 있지만 USB로는 4 MSPS 정도밖에 못 보낸다는 사실이 "FPGA 안에서 샘플률을 줄여야 하는" 이유이고(7·9장), ±25 ppm은 2.4 GHz에서 최대 60 kHz의 주파수 오차라서 수신기가 반드시 주파수를 추적해야 하는 이유입니다(11장). 더 큰 플랫폼으로 가면 Zynq UltraScale+ RFSoC처럼 기가샘플급 RF-ADC를 칩 안에 넣고 믹서 없이 RF를 바로 샘플링하는 구조도 있습니다. 원리는 이 책과 같고, 2장의 나이퀴스트 존과 8장의 DDC가 그 구조를 이해하는 열쇠입니다.</p>
+
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>LTI 시스템은 사인파를 사인파로 바꾼다. 그래서 주파수 응답 하나로 완전히 기술된다.</li>
+      <li>수신 체인은 "주파수를 내리고 → 샘플링하고 → 거르고 → 샘플률을 줄이고 → 동기를 맞춰 → 판정"하는 파이프라인이다.</li>
+      <li>dB는 전력이면 10 log, 진폭이면 20 log. dBm은 1 mW 기준, dBFS는 ADC 풀스케일 기준이다.</li>
+    </ul>
+  </div>
+  <p>다음 장에서는 이 체인의 한가운데, 연속 신호가 숫자열로 바뀌는 순간인 샘플링을 들여다봅니다. 거기서 신호처리 전체를 관통하는 이상한 성질 하나, "디지털 세계에서 주파수는 한 바퀴 돌면 제자리로 온다"를 만나게 됩니다.</p>
+
+  <div class="quiz" data-quiz="ch1"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch1" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

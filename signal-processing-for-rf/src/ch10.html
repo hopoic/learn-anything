@@ -1,0 +1,116 @@
+<!-- ============ CH10 ============ -->
+<section class="chapter col" id="ch10">
+  <div class="eyebrow">Part IV · 고급 + 실전 — 10장</div>
+  <h2>디지털 변조와 펄스 성형</h2>
+  <p class="goal">이 장을 마치면: 비트를 BPSK·QPSK·16-QAM 심볼로 매핑하고, 펄스 성형과 정합 필터가 대역폭과 ISI를 어떻게 다루는지 설명하며, Es/N0·Eb/N0·EVM·BER 사이를 환산하고, 성상도의 모양만 보고 수신기의 문제를 진단할 수 있습니다.</p>
+
+  <h3>비트를 평면 위의 점으로</h3>
+  <p>3장에서 IQ 신호 하나는 매 순간 복소 평면의 한 점이었습니다. 디지털 변조는 이 평면에 미리 정해 둔 점 몇 개를 찍어 두고, 보내려는 비트에 따라 그중 하나를 고르는 일입니다. 이 점들의 배치를 <strong>성상도(constellation)</strong>, 고른 점 하나를 <strong>심볼</strong>이라고 부릅니다. 점이 <var>M</var>개면 심볼 하나가 log<sub>2</sub><var>M</var>비트를 나릅니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>변조</th><th>점 개수</th><th>비트/심볼</th><th>특징</th></tr></thead>
+    <tbody>
+      <tr><td>BPSK</td><td>2 (±1)</td><td>1</td><td>가장 튼튼함. 실수축만 사용</td></tr>
+      <tr><td>QPSK</td><td>4 (네 사분면)</td><td>2</td><td>BPSK와 비트당 성능이 같으면서 두 배 효율. I와 Q가 각각 BPSK</td></tr>
+      <tr><td>16-QAM</td><td>16 (4×4 격자)</td><td>4</td><td>같은 평균 전력에서 점 사이가 좁아 SNR이 더 필요</td></tr>
+      <tr><td>64-QAM</td><td>64 (8×8)</td><td>6</td><td>Wi-Fi, LTE의 고속 모드</td></tr>
+    </tbody>
+  </table></div>
+  <p>비트 배정에는 그레이 코드(Gray code)를 씁니다. 이웃한 점끼리는 한 비트만 다르게 배정해 두면, 잡음 때문에 옆 점으로 잘못 판정해도 비트 오류는 하나뿐입니다. 비트율과 심볼률의 관계는 <var>R</var><sub>b</sub> = <var>R</var><sub>s</sub> · log<sub>2</sub><var>M</var>입니다. 1 Msym/s의 QPSK는 2 Mbps입니다.</p>
+
+  <h3>펄스 성형: 점과 점 사이를 어떻게 잇나</h3>
+  <p>심볼을 한 샘플씩 찍고 그 사이를 그냥 유지하면(직사각형 펄스) 파형에 급격한 계단이 생기고, 스펙트럼은 sinc 모양으로 멀리까지 퍼져 옆 채널을 침범합니다. 그래서 심볼마다 부드러운 펄스 모양을 입혀 대역폭을 제한하는데, 이것을 <strong>펄스 성형(pulse shaping)</strong>이라고 합니다. 구현은 7장의 인터폴레이션 그대로입니다. 심볼 사이에 0을 끼우고(심볼당 샘플 수 sps만큼) 성형 필터를 통과시킵니다.</p>
+  <p>펄스를 아무렇게나 고를 수는 없습니다. 이웃 심볼의 펄스 꼬리가 현재 심볼의 판정 시점에 겹치면 심볼 간 간섭(ISI)이 생깁니다. 나이퀴스트가 찾은 조건은 "펄스가 다른 모든 심볼의 판정 시점에서 정확히 0일 것"이고, 이를 만족하면서 대역폭을 조절할 수 있는 것이 <strong>상승 코사인(raised cosine)</strong> 펄스입니다. 롤오프 계수 β(0~1)가 대역폭과 꼬리 길이를 맞바꿉니다.</p>
+  <div class="eq">점유 대역폭 = <var>R</var><sub>s</sub> (1 + β) <small>RF에서의 폭. β = 0.35인 1 Msym/s 신호는 1.35 MHz를 쓴다. β가 작을수록 좁지만 꼬리가 길어 타이밍 오차에 민감하다</small></div>
+  <p>실제로는 상승 코사인을 반으로 나눈 <strong>루트 상승 코사인(RRC)</strong> 필터를 송신기와 수신기에 하나씩 둡니다. 두 RRC를 이으면 상승 코사인이 되어 ISI가 없고, 동시에 수신 RRC는 송신 펄스와 같은 모양이라 <strong>정합 필터(matched filter)</strong>가 됩니다. 정합 필터는 백색 잡음 속에서 판정 시점의 SNR을 최대로 만드는 필터로, 직관적으로는 "기다리는 모양과 가장 닮은 것을 찾는 상관기"입니다. 송신 성형과 수신 잡음 제거를 한 쌍의 필터로 동시에 해결하는 셈입니다.</p>
+  <py file="pulse_shaping.py" check>
+import numpy as np
+from math import erfc, sqrt
+from mini_rx import rrc, qpsk_map, qpsk_demap   # book code: signal-processing-for-rf/code/
+
+SPS = 4
+h = rrc(beta=0.35, sps=SPS, span=8)
+rng = np.random.default_rng(10)
+
+def run(ebn0_db, nsym=100_000):
+    bits = rng.integers(0, 2, 2 * nsym)
+    up = np.zeros(nsym * SPS, complex); up[::SPS] = qpsk_map(bits)
+    tx = np.convolve(up, h)                                   # TX pulse shaping
+    n0 = 10 ** (-(ebn0_db + 10 * np.log10(2)) / 10)           # Es/N0 = Eb/N0 + 3 dB for QPSK
+    rx = tx + np.sqrt(n0 / 2) * (rng.standard_normal(len(tx)) + 1j * rng.standard_normal(len(tx)))
+    y = np.convolve(rx, h)                                    # RX matched filter
+    d = len(h) - 1                                            # total delay of RRC + RRC
+    sym = y[d: d + nsym * SPS: SPS]                           # sample at the eye opening
+    return np.mean(qpsk_demap(sym) != bits)
+
+print(f"{'Eb/N0':>6} {'simulated':>10} {'theory':>10}")
+for e in (2, 4, 6, 8):
+    print(f"{e:4d} dB {run(e):10.2e} {0.5 * erfc(sqrt(10 ** (e / 10))):10.2e}")
+  </py>
+  <p>시뮬레이션이 이론 곡선 <var>P</var><sub>b</sub> = ½ erfc(√(<var>E</var><sub>b</sub>/<var>N</var><sub>0</sub>))와 겹칩니다. RRC 두 개로 ISI 없이 정합 필터링이 되었다는 증거입니다. 펄스 성형을 잘못하면(예: 수신 RRC 생략, 판정 시점 어긋남) 이 곡선에서 바로 벗어납니다.</p>
+
+  <h3>품질을 재는 숫자들</h3>
+  <ul>
+    <li><strong><var>E</var><sub>s</sub>/<var>N</var><sub>0</sub>와 <var>E</var><sub>b</sub>/<var>N</var><sub>0</sub></strong>: 심볼(비트) 하나의 에너지 대 잡음 전력 밀도. <var>E</var><sub>b</sub>/<var>N</var><sub>0</sub> = <var>E</var><sub>s</sub>/<var>N</var><sub>0</sub> − 10 log<sub>10</sub>(log<sub>2</sub><var>M</var>). QPSK는 3 dB 차이입니다. 변조 방식끼리 공정하게 비교할 때는 <var>E</var><sub>b</sub>/<var>N</var><sub>0</sub>를 씁니다.</li>
+    <li><strong>EVM(Error Vector Magnitude)</strong>: 받은 점과 이상적인 점 사이 오차 벡터의 RMS를 기준 점의 RMS로 나눈 값. %나 dB(20 log<sub>10</sub>)로 씁니다. 잡음이 주원인이면 EVM<sup>2</sup> ≈ 1 / SNR이므로 EVM −20 dB(10%) ≈ SNR 20 dB입니다. 송신기·수신기 품질을 한 숫자로 말할 때 씁니다.</li>
+    <li><strong>BER/SER</strong>: 비트(심볼) 오류율. 최종 성능이지만 재는 데 많은 비트가 필요합니다. 10<sup>−6</sup>을 확인하려면 수백만 비트를 보내야 합니다.</li>
+  </ul>
+
+  <div class="bench" id="moBench">
+    <header><b>실습 벤치 10-A · 성상도 진단실</b><span>CONSTELLATION · EVM</span></header>
+    <div class="body">
+      <div class="ctls">
+        <div class="ctl"><label for="moMod">변조 방식</label><span></span>
+          <select id="moMod"><option value="2">BPSK</option><option value="4" selected>QPSK</option><option value="16">16-QAM</option></select></div>
+        <div class="ctl"><label for="moSnr"><var>E</var><sub>s</sub>/<var>N</var><sub>0</sub> (dB)</label><output id="oMoSnr"></output><input type="range" id="moSnr" min="0" max="35" step="0.5" value="20"></div>
+        <div class="ctl"><label for="moPh">위상 오프셋 (°)</label><output id="oMoPh"></output><input type="range" id="moPh" min="-45" max="45" step="1" value="0"></div>
+        <div class="ctl"><label for="moCfo">주파수 오프셋 (심볼당 회전, 사이클)</label><output id="oMoCfo"></output><input type="range" id="moCfo" min="0" max="0.003" step="0.0001" value="0"></div>
+        <div class="ctl"><label for="moIq">IQ 이득 불균형 (%)</label><output id="oMoIq"></output><input type="range" id="moIq" min="0" max="30" step="1" value="0"></div>
+        <div class="ctl"><label for="moDc">DC 오프셋 (풀스케일 대비)</label><output id="oMoDc"></output><input type="range" id="moDc" min="0" max="0.4" step="0.01" value="0"></div>
+      </div>
+      <svg class="plot" id="moSvg" viewBox="0 0 600 340" role="img" aria-label="수신 심볼 성상도"></svg>
+      <div class="readout">
+        <div><small>EVM</small><b id="moEvm"></b></div>
+        <div><small>심볼 오류 (600개 중)</small><b id="moSer"></b></div>
+        <div><small>진단</small><b id="moDiag"></b></div>
+      </div>
+    </div>
+  </div>
+  <p>슬라이더를 하나씩만 움직여 각 결함의 "모양"을 익히세요. 잡음은 점을 구름으로, 위상 오프셋은 성상도 전체를 회전으로, 주파수 오프셋은 점을 원호로 늘어뜨리고(시간이 지날수록 더 돌아가므로), IQ 불균형은 정사각형을 직사각형으로, DC 오프셋은 중심을 밀어냅니다. 같은 <var>E</var><sub>s</sub>/<var>N</var><sub>0</sub>에서 BPSK → QPSK → 16-QAM으로 바꾸면 점 사이 거리가 좁아져 같은 잡음에도 오류가 늘어나는 것도 보입니다.</p>
+
+  <div class="tbl"><table>
+    <thead><tr><th>성상도에서 보이는 모양</th><th>원인</th><th>고치는 곳</th></tr></thead>
+    <tbody>
+      <tr><td>점마다 둥근 구름</td><td>열잡음, 낮은 SNR</td><td>이득, 안테나, 필터 대역폭</td></tr>
+      <tr><td>전체가 일정 각도 회전</td><td>반송파 위상 오프셋</td><td>위상 복구 (11장)</td></tr>
+      <tr><td>점이 원을 따라 번짐, 링 모양</td><td>주파수 오프셋 (CFO)</td><td>주파수 추정·추적 (11장)</td></tr>
+      <tr><td>정사각형이 직사각형·평행사변형</td><td>IQ 이득·위상 불균형</td><td>IQ 보정 (8장)</td></tr>
+      <tr><td>중심이 원점에서 벗어남</td><td>DC 오프셋, LO 누설</td><td>DC 제거, 오프셋 튜닝 (8장)</td></tr>
+      <tr><td>점 하나가 여러 작은 덩어리로</td><td>ISI: 타이밍 오차, 정합 필터 누락, 다중 경로</td><td>타이밍 복구 (11장), 등화기</td></tr>
+      <tr><td>바깥 점들이 안쪽으로 눌림</td><td>PA 또는 ADC 포화</td><td>송신 출력·수신 이득 낮추기 (9장)</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>성상도는 RF 신호용 로직 분석기입니다. 디지털 버스를 디버깅할 때 오실로스코프로 눈(eye) 패턴부터 보듯, 수신기를 디버깅할 때는 성상도와 EVM부터 봅니다. 그리고 숫자로 남기세요. "그림이 좀 지저분하다"가 아니라 "EVM −18 dB, 회전 속도 0.002 사이클/심볼"이라고 기록해야 수정 전후를 비교할 수 있습니다.</p>
+  </div>
+
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>SNR 정의 혼동</strong>: 샘플당 SNR, <var>E</var><sub>s</sub>/<var>N</var><sub>0</sub>, <var>E</var><sub>b</sub>/<var>N</var><sub>0</sub>는 서로 다릅니다. sps = 4로 오버샘플링하면 샘플당 SNR은 <var>E</var><sub>s</sub>/<var>N</var><sub>0</sub>보다 약 6 dB 낮습니다. 시뮬레이션 잡음을 넣을 때 무엇을 기준으로 했는지 반드시 적으세요.</li>
+      <li><strong>필터 지연 계산</strong>: RRC 두 개의 지연은 필터 길이 − 1 샘플입니다. 이걸 틀리면 판정 시점이 어긋나 ISI가 생기고, BER 곡선이 이론에서 멀어집니다.</li>
+      <li><strong>그레이 코드 생략</strong>: 자연 이진 순서로 배정하면 이웃 점 오판정이 2비트 오류가 되어 BER이 나빠집니다.</li>
+    </ul>
+  </div>
+
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>심볼 = 성상도의 점. <var>R</var><sub>b</sub> = <var>R</var><sub>s</sub> log<sub>2</sub><var>M</var>. 그레이 코드로 배정한다.</li>
+      <li>RRC 송신 + RRC 수신 = ISI 없는 상승 코사인 + 정합 필터. 대역폭 <var>R</var><sub>s</sub>(1+β).</li>
+      <li>EVM² ≈ 1/SNR. 성상도의 모양이 결함의 종류를 알려 준다.</li>
+    </ul>
+  </div>
+  <p>벤치에서 본 회전, 링, 덩어리는 실제 수신기에서는 항상 동시에 일어납니다. 송신기와 수신기는 서로 다른 수정 발진기로 움직이기 때문입니다. 다음 장에서는 이 차이를 수신기 스스로 측정하고 따라가게 만드는 동기화를 다룹니다.</p>
+
+  <div class="quiz" data-quiz="ch10"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch10" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

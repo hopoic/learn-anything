@@ -1,0 +1,125 @@
+<!-- ============ CH7 ============ -->
+<section class="chapter col" id="ch7">
+  <div class="eyebrow">Part III · RF 수신 체인 실무 — 7장</div>
+  <h2>데시메이션과 인터폴레이션</h2>
+  <p class="goal">이 장을 마치면: 앨리어싱 없이 샘플률을 낮추고 올리는 절차를 설명하고, 폴리페이즈 구조로 연산량을 <var>M</var>배 줄이며, CIC와 하프밴드 필터를 언제 쓰는지 판단하고, AD9361 계열 트랜시버의 수신 디지털 체인과 PlutoSDR의 샘플률 제약을 읽을 수 있습니다.</p>
+
+  <h3>데시메이션: 거르고 나서 버린다</h3>
+  <p>61.44 MSPS로 받았는데 관심 신호의 대역폭이 200 kHz라면 샘플 대부분은 쓸모없는 대역을 담고 있습니다. 샘플률을 <var>M</var>배 낮추는 것을 데시메이션(decimation)이라고 합니다. <var>M</var>개 중 하나만 남기면 되지만, 2장의 마지막 경고를 떠올리세요. 샘플을 솎아 내는 것은 <var>f</var><sub>s</sub>/<var>M</var>으로 다시 샘플링하는 것과 같아서, 새 나이퀴스트 범위 밖의 모든 것이 안쪽으로 접혀 들어옵니다.</p>
+  <div class="eq"><var>x</var>[<var>n</var>] → <span class="term">LPF (차단 ≈ <var>f</var><sub>s</sub>/2<var>M</var>)</span> → <span class="term">↓<var>M</var> (<var>M</var>개 중 1개)</span> → <var>y</var>[<var>m</var>] at <var>f</var><sub>s</sub>/<var>M</var></div>
+  <p>그래서 데시메이션은 항상 "거르고 나서 버리기"입니다. 거르기를 잘하면 보너스도 있습니다. 관심 대역 밖의 잡음을 함께 걸러 내므로, 신호가 좁은 대역에 있고 잡음이 원래 대역 전체에 퍼져 있었다면 데시메이션 후의 SNR은 그대로이면서 데이터율은 <var>M</var>배 줄어듭니다. 원래 대역 전체로 따진 SNR과 비교하면 10 log<sub>10</sub><var>M</var> dB의 처리 이득을 얻은 셈입니다.</p>
+  <p>필터 사양을 정할 때 알아 두면 좋은 요령이 하나 있습니다. 출력에서 실제로 쓰는 대역이 <var>f</var><sub>p</sub>까지라면, 저지대역은 <var>f</var><sub>s</sub>/2<var>M</var>이 아니라 <var>f</var><sub>s</sub>/<var>M</var> − <var>f</var><sub>p</sub>부터 시작해도 됩니다. 그 사이의 성분은 접혀서 쓰지 않는 전이대역 위로 떨어지기 때문입니다. 전이폭이 넓어지는 만큼 탭 수가 줄어듭니다.</p>
+
+  <h3>인터폴레이션: 0을 끼우고 거른다</h3>
+  <p>반대로 샘플률을 <var>L</var>배 올리려면 샘플 사이에 0을 <var>L</var>−1개씩 끼웁니다. 그러면 원래 스펙트럼이 새 샘플률 안에서 <var>L</var>번 반복된 모양(이미지)이 생기는데, 저역통과 필터로 첫 번째 것만 남기면 매끄럽게 보간된 신호가 됩니다. 0을 끼우면서 평균 크기가 1/<var>L</var>로 줄었으므로 필터 이득을 <var>L</var>로 잡습니다. 송신 체인의 DUC(디지털 업컨버터)와 DAC 앞단이 이 구조이고, 12장의 송신기도 0을 끼운 뒤 펄스 성형 필터를 통과시키는 인터폴레이션입니다.</p>
+
+  <h3>폴리페이즈: 버릴 출력은 계산하지 않는다</h3>
+  <p>데시메이션을 곧이곧대로 구현하면 필터가 원래 샘플률로 모든 출력을 계산하고, 그중 <var>M</var>−1개를 버립니다. 낭비입니다. 컨볼루션 식을 들여다보면 남길 출력만 계산할 수 있습니다. 계수를 <var>M</var>개의 묶음으로 나눠, <var>p</var>번째 부분 필터가 <var>h</var>[<var>p</var>], <var>h</var>[<var>p</var>+<var>M</var>], <var>h</var>[<var>p</var>+2<var>M</var>], …을 맡게 하면, 각 부분 필터는 입력의 <var>p</var>번째 위상 샘플만 받아 낮은 샘플률로 동작합니다. 이것이 <strong>폴리페이즈(polyphase) 분해</strong>입니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 220" role="img" aria-label="폴리페이즈 데시메이터: 입력이 회전 스위치로 M개 갈래에 차례로 분배되고 각 갈래의 부분 필터 출력이 더해져 출력이 된다">
+      <text class="sv-t" x="10" y="114">x[n]</text>
+      <text class="sv-m" x="10" y="132">fs</text>
+      <path class="sv-ln" d="M48 110h44"/>
+      <circle class="sv-r0" cx="104" cy="110" r="12"/>
+      <path class="sv-ac" d="M104 110L132 50" />
+      <text class="sv-m" x="104" y="160" text-anchor="middle">순환 분배</text>
+      <path class="sv-ln" d="M140 46h50M140 92h50M140 176h50" marker-end="url(#arw)"/>
+      <text class="sv-m" x="160" y="138">⋮</text>
+      <rect class="sv-r2" x="192" y="30" width="150" height="32" rx="4"/><text class="sv-t" x="267" y="51" text-anchor="middle">h[0], h[M], h[2M]…</text>
+      <rect class="sv-r2" x="192" y="76" width="150" height="32" rx="4"/><text class="sv-t" x="267" y="97" text-anchor="middle">h[1], h[M+1]…</text>
+      <rect class="sv-r2" x="192" y="160" width="150" height="32" rx="4"/><text class="sv-t" x="267" y="181" text-anchor="middle">h[M−1], h[2M−1]…</text>
+      <text class="sv-m" x="267" y="140" text-anchor="middle">각 갈래는 fs/M으로 동작</text>
+      <path class="sv-ln" d="M342 46H430V96M342 92h70M342 176H430V124" marker-end="url(#arw)"/>
+      <circle class="sv-r0" cx="430" cy="110" r="14"/><text class="sv-t" x="430" y="115" text-anchor="middle">+</text>
+      <path class="sv-ac" d="M444 110h60" marker-end="url(#arwa)"/>
+      <text class="sv-t" x="512" y="114">y[m]</text>
+      <text class="sv-m" x="512" y="132">fs / M</text>
+    </svg>
+    <figcaption>그림 7-1. 폴리페이즈 데시메이터. 곱셈 횟수는 출력 하나당 탭 수로 같지만, 모든 연산이 낮은 샘플률에서 일어나므로 초당 연산량이 <var>M</var>분의 1이 된다.</figcaption>
+  </figure>
+  <py file="polyphase.py" check>
+import numpy as np
+from scipy import signal
+
+M = 4
+h = signal.firwin(48, 0.8 / M)                 # anti-alias filter for decimate-by-4
+x = np.random.default_rng(3).standard_normal(4000)
+
+# Naive: filter at the input rate, then keep every M-th output
+naive = np.convolve(x, h)[::M]
+
+# Polyphase: sub-filter p sees input phase p; all work happens at fs/M
+L = len(x) // M + len(h) // M + 1
+xp = np.zeros(L * M); xp[:len(x)] = x
+y = np.zeros(L)
+for p in range(M):
+    hp = h[p::M]                               # p-th polyphase component
+    xph = np.concatenate([np.zeros(1), xp[M - p::M]]) if p else xp[0::M]
+    y += np.convolve(xph[:L], hp)[:L]
+
+n = min(len(naive), len(y)) - 20
+print("identical output:", np.allclose(naive[:n], y[:n]))
+print(f"MACs per input sample: naive {len(h)}, polyphase {len(h) / M:.0f}")
+  </py>
+
+  <h3>하드웨어가 좋아하는 필터: CIC와 하프밴드</h3>
+  <p>큰 데시메이션 비율을 FIR 하나로 처리하면 전이폭이 좁아 탭 수가 폭발합니다. 그래서 실제 체인은 값싼 단계 여러 개로 나눠 조금씩 줄입니다. 그때 자주 쓰는 두 가지가 있습니다.</p>
+  <ul>
+    <li><strong>CIC(Cascaded Integrator-Comb) 필터</strong>: 높은 샘플률에서 적분기(누산기) <var>N</var>개, ↓<var>R</var>, 낮은 샘플률에서 미분기(comb) <var>N</var>개. <strong>곱셈기가 하나도 없고</strong> 덧셈과 레지스터뿐이라 수십~수백 배 데시메이션의 첫 단계로 이상적입니다. 대가는 두 가지입니다. 응답이 sinc<sup><var>N</var></sup> 모양이라 통과대역 끝이 처지므로(droop) 뒤에 보상 FIR이 필요하고, 적분기에서 비트가 <var>N</var> log<sub>2</sub>(<var>R</var>·<var>D</var>)만큼 늘어나므로(<var>D</var>는 comb 지연, 보통 1) 레지스터를 넉넉히 잡아야 합니다. 2의 보수 산술에서는 적분기가 중간에 오버플로해도 최종 결과가 맞게 나온다는 재미있는 성질이 있습니다.</li>
+    <li><strong>하프밴드(half-band) 필터</strong>: 차단 주파수가 정확히 <var>f</var><sub>s</sub>/4인 대칭 FIR. 응답이 <var>f</var><sub>s</sub>/4를 중심으로 점대칭이 되도록 설계하면 가운데를 뺀 계수의 <strong>절반이 정확히 0</strong>이 됩니다. 대칭까지 활용하면 같은 길이의 일반 FIR보다 곱셈이 약 4분의 1입니다. ↓2 단계를 여러 개 이어 붙이는 구조에 딱 맞습니다.</li>
+  </ul>
+  <div class="tbl"><table>
+    <thead><tr><th>단계</th><th>장점</th><th>약점</th><th>전형적 위치</th></tr></thead>
+    <tbody>
+      <tr><td>CIC</td><td>곱셈 0, 임의의 큰 <var>R</var></td><td>통과대역 처짐, 비트 성장, 저지대역 약함</td><td>가장 높은 샘플률의 첫 단계</td></tr>
+      <tr><td>하프밴드 ↓2</td><td>곱셈 약 ¼, 날카로움 적당</td><td>비율이 2로 고정</td><td>중간 단계 여러 개</td></tr>
+      <tr><td>범용 FIR</td><td>원하는 모양 무엇이든, 처짐 보상</td><td>탭 수 많음</td><td>가장 낮은 샘플률의 마지막 단계</td></tr>
+    </tbody>
+  </table></div>
+  <p>원칙은 하나입니다. <strong>비싼 필터일수록 낮은 샘플률에 둔다.</strong> 날카로운 필터는 탭이 많지만, 샘플률이 이미 충분히 낮아진 마지막 단계에 두면 초당 연산량은 작습니다.</p>
+
+  <h3>AD9361 계열의 수신 디지털 체인 읽기</h3>
+  <p>AD9363을 포함한 AD936x 트랜시버는 ADC 뒤에 정확히 이 원칙대로 만든 데시메이션 체인을 내장하고 있습니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 660 170" role="img" aria-label="AD936x 수신 디지털 체인: ADC, HB3 또는 DEC3, HB2, HB1, 128탭 프로그래머블 FIR, 출력">
+      <rect class="sv-r0" x="8" y="50" width="66" height="44" rx="4"/><text class="sv-t" x="41" y="77" text-anchor="middle">ADC</text>
+      <path class="sv-ln" d="M74 72h20" marker-end="url(#arw)"/>
+      <rect class="sv-r2" x="96" y="50" width="96" height="44" rx="4"/><text class="sv-t" x="144" y="70" text-anchor="middle">HB3 / DEC3</text><text class="sv-m" x="144" y="86" text-anchor="middle">÷1, ÷2, ÷3</text>
+      <path class="sv-ln" d="M192 72h20" marker-end="url(#arw)"/>
+      <rect class="sv-r2" x="214" y="50" width="86" height="44" rx="4"/><text class="sv-t" x="257" y="70" text-anchor="middle">HB2</text><text class="sv-m" x="257" y="86" text-anchor="middle">÷1, ÷2</text>
+      <path class="sv-ln" d="M300 72h20" marker-end="url(#arw)"/>
+      <rect class="sv-r2" x="322" y="50" width="86" height="44" rx="4"/><text class="sv-t" x="365" y="70" text-anchor="middle">HB1</text><text class="sv-m" x="365" y="86" text-anchor="middle">÷1, ÷2</text>
+      <path class="sv-ln" d="M408 72h20" marker-end="url(#arw)"/>
+      <rect class="sv-r3" x="430" y="50" width="120" height="44" rx="4"/><text class="sv-t" x="490" y="70" text-anchor="middle">FIR 128탭</text><text class="sv-m" x="490" y="86" text-anchor="middle">÷1, ÷2, ÷4</text>
+      <path class="sv-ac" d="M550 72h30" marker-end="url(#arwa)"/>
+      <text class="sv-t" x="586" y="77">출력</text>
+      <text class="sv-m" x="41" y="118" text-anchor="middle">25–640 MSPS</text>
+      <text class="sv-m" x="300" y="118" text-anchor="middle">고정 계수 하프밴드: 최대 3×2×2 = 12</text>
+      <text class="sv-m" x="490" y="118" text-anchor="middle">계수를 사용자가 적재</text>
+      <text class="sv-m" x="330" y="150" text-anchor="middle">전체 데시메이션 최대 3 × 2 × 2 × 4 = 48</text>
+    </svg>
+    <figcaption>그림 7-2. AD936x 수신 디지털 체인(ADI 자료 기준 구성). 각 단계는 건너뛸 수 있고, 마지막 FIR은 저역통과와 함께 앞단 아날로그 필터와 하프밴드의 처짐을 보상하는 역할도 한다.</figcaption>
+  </figure>
+  <p>이 그림에서 PlutoSDR의 이상해 보이던 숫자들이 풀립니다. ADC가 내려갈 수 있는 최저 속도를 25 MSPS로 보고, 하프밴드만으로 최대 12배를 줄이면 25 / 12 ≈ 2.083 MSPS입니다. GNU Radio 문서가 "2.083 MSPS 아래에서는 FIR 필터를 적재하거나 auto로 두어야 한다"고 안내하는 이유입니다. FIR의 ÷4까지 쓰면 25 / 48 ≈ 520.8 kSPS가 되는데, 이것이 같은 문서에 적힌 샘플률 하한입니다. Pluto 사양의 최저 데이터율 65.1 kSPS는 여기서 정확히 8배 더 낮은 값이고, 그 마지막 단계는 FPGA 쪽 데시메이션이 맡습니다. 트랜시버 안에서 할 수 있는 만큼 줄이고, 나머지는 PL에서 직접 줄이는 구조입니다. 여러분이 만들 데시메이터도 바로 그 자리에 들어갑니다.</p>
+  <p>프로그래머블 FIR의 계수는 ADI가 제공하는 필터 설계 도구(AD9361 Filter Design Wizard)나 드라이버의 자동 설계로 만듭니다. ADI 문서가 강조하듯 이 FIR은 단순한 저역통과가 아니라, 앞단 아날로그 필터와 하프밴드들이 통과대역에 남긴 크기·위상 왜곡을 되돌리는 보상기이기도 합니다.</p>
+
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>버리고 나서 거르기</strong>: 순서를 바꾸면 앨리어싱이 이미 일어난 뒤입니다. 어떤 최적화를 하든 "필터 → ↓<var>M</var>"과 수학적으로 같은지 확인하세요. 폴리페이즈는 같습니다.</li>
+      <li><strong>단계별 지연 누적</strong>: 각 필터의 군지연이 서로 다른 샘플률에서 쌓입니다. 송수신 왕복 지연이나 타임스탬프가 중요하면 단계마다 계산해 합산하세요.</li>
+      <li><strong>CIC 이득</strong>: CIC의 직류 이득은 (<var>RD</var>)<sup><var>N</var></sup>입니다. <var>R</var> = 64, <var>N</var> = 4면 2<sup>24</sup>배. 출력 비트를 그만큼 잘라 내야 합니다.</li>
+    </ul>
+  </div>
+
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>데시메이션은 반드시 거르고 나서 버린다. 인터폴레이션은 0을 끼우고 이미지를 거른다.</li>
+      <li>폴리페이즈는 같은 결과를 <var>M</var>분의 1의 초당 연산으로 낸다.</li>
+      <li>CIC → 하프밴드 → FIR 순서로, 비싼 필터일수록 낮은 샘플률에 둔다.</li>
+    </ul>
+  </div>
+  <p>데시메이션은 대역의 한가운데(0 Hz 주변)만 남깁니다. 그런데 관심 채널이 광대역 캡처의 가장자리에 있다면? 먼저 그 채널을 0 Hz로 옮겨 와야 합니다. 다음 장에서 그 일을 하는 NCO와 DDC를 만듭니다.</p>
+
+  <div class="quiz" data-quiz="ch7"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch7" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

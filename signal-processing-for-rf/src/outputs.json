@@ -1,0 +1,18 @@
+{
+ "ch01.html:db_basics.py": "power x2      ->  3.01 dB\namplitude x2  ->  6.02 dB\n-90 dBm       -> 1.0e-09 mW\nchain gain    -> 49 dB, so -90 dBm arrives at -41 dBm\n",
+ "ch02.html:alias.py": " 1300 Hz equals 300 Hz at fs=1 kHz: True\n  700 Hz equals 300 Hz at fs=1 kHz: True\n 1700 Hz equals 300 Hz at fs=1 kHz: True\nalias of 2310 Hz: 310.0 Hz\nf = fs/2, phase 90 deg: [ 0. -0.  0. -0.  0. -0.]\n",
+ "ch03.html:iq_spectrum.py": "complex  peaks at [-200.] kHz, height 1.00\nreal     peaks at [-200.  200.] kHz, height 0.50\n",
+ "ch04.html:freq_response.py": "moving avg [1/4]*4   |H| at DC=1.00  fs/4=0.00  fs/2=0.00\ndifference [1,-1]    |H| at DC=0.00  fs/4=1.41  fs/2=2.00\n[1,2,3] * [1,1] = [1 3 5 3]\n",
+ "ch05.html:fft_from_scratch.py": "matches numpy: True\ndirect DFT 1,048,576 mults vs FFT 5,120 mults\n",
+ "ch05.html:spectrum_dbfs.py": "N= 1024: tone   -6.0 dBFS, noise floor  -88.1 dBFS/bin, RBW   2930 Hz\nN= 4096: tone   -6.0 dBFS, noise floor  -94.3 dBFS/bin, RBW    732 Hz\n",
+ "ch06.html:fir_design.py": "rule of thumb (optimal design): 55 taps\nremez (equiripple)   :  57 taps -> 62.1 dB\nfirwin + blackman    : 101 taps -> 60.2 dB\nfirwin + hamming     : 101 taps -> 56.2 dB (window-limited)\nsymmetric: True\n",
+ "ch07.html:polyphase.py": "identical output: True\nMACs per input sample: naive 48, polyphase 12\n",
+ "ch08.html:ddc.py": "output rate 250 kSPS, strongest component at +3.02 kHz\nworst other component: -54.0 dB relative to station B\n",
+ "ch08.html:iq_imbalance.py": "gain 1%, phase 1.0 deg: measured 39.9 dB, approx 40.0 dB\ngain 5%, phase 3.0 deg: measured 28.8 dB, approx 28.8 dB\n",
+ "ch09.html:fixed_point_fir.py": "coef 16-bit: accumulator needs 27 bits, output SQNR  80.6 dB\ncoef 12-bit: accumulator needs 23 bits, output SQNR  72.0 dB\ncoef  8-bit: accumulator needs 19 bits, output SQNR  41.0 dB\nideal 12-bit ADC SQNR for this level: 73.1 dB\n",
+ "ch10.html:pulse_shaping.py": " Eb/N0  simulated     theory\n   2 dB   3.73e-02   3.75e-02\n   4 dB   1.26e-02   1.25e-02\n   6 dB   2.34e-03   2.39e-03\n   8 dB   1.45e-04   1.91e-04\n",
+ "ch11.html:costas_demo.py": "BnTs=0.003: not locked within 1500 symbols\nBnTs=0.010: locked after  170 symbols, phase jitter 0.91 deg\nBnTs=0.020: locked after   28 symbols, phase jitter 1.28 deg\nBnTs=0.080: locked after    4 symbols, phase jitter 2.99 deg\n",
+ "ch12.html:mini_rx.py": "coarse CFO estimate : +0.00400 cycles/sample (true +0.00400)\nsymbols / bit errors: 4000 / 0  (BER 0.0e+00)\nEVM                 : -14.4 dB\n",
+ "ch12.html:acceptance.py": "Es/N0 12 dB: frame failures 0/20, BER 4.2e-05  PASS\nEs/N0  9 dB: frame failures 0/20, BER 3.1e-03  (margin check)\n",
+ "ch12.html:export_coeffs.py": "// 33 taps, Q1.17, sum = 240730 (1.837)\nconst coef_t H[N] = {\n    0.00093079, 0.00608063, 0.00437164, -0.00435638, -0.01161957, -0.00674438, 0.01168823, 0.02982330,\n    0.02606964, -0.01007080, -0.06168365, -0.08608246, -0.03865051, 0.09440613, 0.27735901, 0.43679047,\n    0.50000000, 0.43679047, 0.27735901, 0.09440613, -0.03865051, -0.08608246, -0.06168365, -0.01007080,\n    0.02606964, 0.02982330, 0.01168823, -0.00674438, -0.01161957, -0.00435638, 0.00437164, 0.00608063,\n    0.00093079,\n};\n"
+}

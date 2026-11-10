@@ -1,0 +1,133 @@
+<!-- ============ CH11 ============ -->
+<section class="chapter col" id="ch11">
+  <div class="eyebrow">Part IV · 고급 + 실전 — 11장</div>
+  <h2>동기화: 주파수·타이밍·위상 복구</h2>
+  <p class="goal">이 장을 마치면: 수신기가 맞춰야 할 오차의 종류와 크기를 ppm에서 계산하고, 동기화 블록의 순서를 근거와 함께 설계하며, 4제곱 방식의 거친 주파수 추정과 코스타스 루프(PLL), 가드너 타이밍 복구의 원리를 설명하고, 루프 대역폭을 목적에 맞게 고를 수 있습니다.</p>
+
+  <h3>두 개의 시계가 만드는 오차들</h3>
+  <p>송신기와 수신기는 각자의 수정 발진기로 LO와 샘플 클록을 만듭니다. 두 발진기는 절대 똑같지 않습니다. PlutoSDR의 주파수 정확도 사양은 ±25 ppm인데, 2.4 GHz에서 25 ppm은 60 kHz입니다. 송신기가 +25 ppm, 수신기가 −25 ppm이면 상대 오차는 120 kHz가 됩니다. 심볼률 1 Msym/s라면 매 심볼 0.12 사이클, 즉 43°씩 성상도가 돌아갑니다. 10장의 벤치에서 본 링 모양은 극히 일부에 불과합니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>오차</th><th>원인</th><th>증상</th><th>복구 블록</th></tr></thead>
+    <tbody>
+      <tr><td>크기</td><td>거리, 안테나, 페이딩</td><td>점들이 너무 크거나 작음</td><td>AGC</td></tr>
+      <tr><td>주파수 오프셋 (CFO)</td><td>LO 발진기 차이 (ppm), 도플러</td><td>성상도가 계속 회전</td><td>거친 CFO 추정 + PLL</td></tr>
+      <tr><td>타이밍 오프셋과 드리프트</td><td>미지의 전파 지연, 샘플 클록 차이</td><td>판정 시점이 눈의 가운데에서 벗어남 → ISI</td><td>타이밍 복구</td></tr>
+      <tr><td>위상 오프셋</td><td>미지의 경로 길이</td><td>성상도가 일정 각도 기울어짐</td><td>PLL (코스타스 루프)</td></tr>
+      <tr><td>프레임 위치와 위상 모호성</td><td>어디가 패킷의 시작인지 모름, QPSK의 90° 대칭</td><td>비트가 통째로 어긋나거나 뒤바뀜</td><td>프리앰블 상관</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>순서가 설계다</h3>
+  <figure class="fig">
+    <svg viewBox="0 0 680 150" role="img" aria-label="동기화 체인: AGC, 거친 주파수 보정, 정합 필터, 타이밍 복구, 코스타스 루프, 프레임 동기, 판정">
+      <g>
+        <rect class="sv-r1" x="6" y="40" width="70" height="44" rx="4"/><text class="sv-t" x="41" y="67" text-anchor="middle">AGC</text>
+        <rect class="sv-r2" x="96" y="40" width="88" height="44" rx="4"/><text class="sv-t" x="140" y="60" text-anchor="middle">거친 CFO</text><text class="sv-m" x="140" y="76" text-anchor="middle">x⁴ + FFT</text>
+        <rect class="sv-r1" x="204" y="40" width="80" height="44" rx="4"/><text class="sv-t" x="244" y="60" text-anchor="middle">정합 필터</text><text class="sv-m" x="244" y="76" text-anchor="middle">RRC</text>
+        <rect class="sv-r3" x="304" y="40" width="94" height="44" rx="4"/><text class="sv-t" x="351" y="60" text-anchor="middle">타이밍 복구</text><text class="sv-m" x="351" y="76" text-anchor="middle">Gardner</text>
+        <rect class="sv-r3" x="418" y="40" width="88" height="44" rx="4"/><text class="sv-t" x="462" y="60" text-anchor="middle">위상 추적</text><text class="sv-m" x="462" y="76" text-anchor="middle">Costas</text>
+        <rect class="sv-r2" x="526" y="40" width="80" height="44" rx="4"/><text class="sv-t" x="566" y="60" text-anchor="middle">프레임 동기</text><text class="sv-m" x="566" y="76" text-anchor="middle">프리앰블</text>
+        <rect class="sv-r0" x="626" y="40" width="48" height="44" rx="4"/><text class="sv-t" x="650" y="67" text-anchor="middle">비트</text>
+      </g>
+      <path class="sv-ln" d="M76 62h18M184 62h18M284 62h18M398 62h18M506 62h18M606 62h18" marker-end="url(#arw)"/>
+      <text class="sv-m" x="140" y="110" text-anchor="middle">샘플률 (sps = 4)</text>
+      <text class="sv-m" x="351" y="110" text-anchor="middle">→ 심볼률로 바뀜</text>
+      <text class="sv-m" x="514" y="110" text-anchor="middle">심볼률 (sps = 1)</text>
+      <text class="sv-m" x="340" y="136" text-anchor="middle">12장의 mini_rx.py가 정확히 이 순서로 구현되어 있다</text>
+    </svg>
+    <figcaption>그림 11-1. QPSK 수신기의 동기화 체인. 큰 오차를 먼저 대충, 작은 오차를 나중에 정밀하게 잡는다.</figcaption>
+  </figure>
+  <p>이 순서에는 이유가 있습니다. <strong>AGC가 먼저</strong>인 이유는 뒤의 모든 오차 검출기의 출력이 신호 크기에 비례하기 때문입니다. 크기가 들쭉날쭉하면 같은 루프 이득이 어떤 때는 너무 세고 어떤 때는 너무 약합니다. <strong>거친 CFO가 정합 필터보다 먼저</strong>인 이유는, 주파수 오차가 크면 신호가 정합 필터 통과대역에서 비켜나 에너지를 잃고, PLL의 끌어당김 범위(pull-in range)도 넘기 때문입니다. <strong>타이밍이 위상보다 먼저</strong>인 이유는 위상 검출기가 눈의 정중앙 샘플을 필요로 하고, 가드너 검출기는 반송파 위상과 상관없이 동작하기 때문입니다. <strong>프레임 동기가 마지막</strong>인 이유는 깨끗한 심볼이 있어야 상관 피크가 선명하기 때문입니다.</p>
+
+  <h3>거친 주파수 추정: 4제곱으로 변조를 지운다</h3>
+  <p>QPSK 심볼은 네 각도 45°, 135°, 225°, 315° 중 하나입니다. 이를 4제곱하면 각도가 4배가 되어 모두 180°, 즉 −1이 됩니다. 변조가 사라지는 것입니다. 그런데 신호에 주파수 오프셋 Δ<var>f</var>가 있으면 4제곱한 신호는 4Δ<var>f</var>로 도는 순수한 톤이 됩니다. FFT로 그 톤의 위치를 찾아 4로 나누면 Δ<var>f</var>가 나옵니다.</p>
+  <div class="eq">Δ<var>f</var>̂ = <span class="fr"><span>1</span><span>4</span></span> · argmax<sub><var>f</var></sub> | FFT{ <var>x</var>[<var>n</var>]<sup>4</sup> } | <small>모호함 없이 잴 수 있는 범위: |4Δ<var>f</var>| &lt; <var>f</var><sub>s</sub>/2, 즉 |Δ<var>f</var>| &lt; <var>f</var><sub>s</sub>/8</small></div>
+  <p>단순하고 데이터에 의존하지 않지만, 4제곱이 잡음도 함께 키우므로 낮은 SNR에서는 긴 FFT가 필요하고, 정밀도는 FFT 빈 폭의 4분의 1 정도입니다. 남은 작은 오차는 다음 단계의 PLL이 따라잡습니다. 패킷 통신에서는 반복되는 프리앰블 두 개의 위상 차이로 오프셋을 재는 방법도 많이 씁니다.</p>
+
+  <h3>PLL: 위상 검출기, 루프 필터, NCO</h3>
+  <p>위상 고정 루프(PLL)는 세 부품의 되먹임 루프입니다. 위상 검출기가 "지금 얼마나 어긋났나"를 재고, 루프 필터가 그 값을 다듬고, 8장의 NCO가 그만큼 회전을 되돌립니다. QPSK용 PLL을 <strong>코스타스 루프</strong>라고 부르고, 위상 검출기는 판정한 심볼과 받은 심볼의 각도 차이를 근사합니다.</p>
+  <div class="eq"><var>e</var> = sign(<var>I</var>) · <var>Q</var> − sign(<var>Q</var>) · <var>I</var> <small>보정된 심볼 <var>z</var> = <var>I</var> + <var>jQ</var>가 가장 가까운 이상적인 점보다 반시계로 앞서 있으면 양수, 뒤처져 있으면 음수</small></div>
+  <p>루프 필터는 비례-적분(PI) 구조입니다. 비례항(<var>k</var><sub>p</sub>)이 위상을 즉시 당기고, 적분항(<var>k</var><sub>i</sub>)이 남은 오차를 누적해 주파수 오프셋 자체를 학습합니다. 적분기가 있는 2차 루프는 일정한 주파수 오프셋을 위상 오차 없이 따라갑니다. 두 이득은 정규화 루프 대역폭 <var>B</var><sub>n</sub><var>T</var><sub>s</sub>와 감쇠비 ζ(보통 0.707)로 정합니다.</p>
+  <div class="eq">θ = <span class="fr"><span><var>B</var><sub>n</sub><var>T</var><sub>s</sub></span><span>ζ + 1/(4ζ)</span></span>, &nbsp; <var>k</var><sub>p</sub> = <span class="fr"><span>4ζθ</span><span>1 + 2ζθ + θ²</span></span>, &nbsp; <var>k</var><sub>i</sub> = <span class="fr"><span>4θ²</span><span>1 + 2ζθ + θ²</span></span> <small>위상 검출기 이득이 1일 때. 다르면 그 이득으로 나눈다</small></div>
+  <py file="costas_demo.py" check>
+import numpy as np
+from mini_rx import costas, qpsk_map
+
+rng = np.random.default_rng(4)
+nsym = 1500
+s = qpsk_map(rng.integers(0, 2, 2 * nsym))
+k = np.arange(nsym)
+esn0 = 15
+noise = np.sqrt(10 ** (-esn0 / 10) / 2) * (rng.standard_normal(nsym) + 1j * rng.standard_normal(nsym))
+r = s * np.exp(1j * (2 * np.pi * 0.004 * k + 0.7)) + noise     # CFO 0.004 cycles/symbol, phase 0.7 rad
+
+true_phase = 2 * np.pi * 0.004 * k + 0.7
+for bn in (0.003, 0.01, 0.02, 0.08):
+    z = costas(r, bn_ts=bn)
+    est = np.angle(r * np.conj(z))                                  # the loop's phase estimate
+    err = (est - true_phase + np.pi / 4) % (np.pi / 2) - np.pi / 4  # wrap; ignore 90-degree ambiguity
+    locked = np.abs(err) < 0.2
+    lock_at = next((i for i in range(nsym - 100) if locked[i:i + 100].all()), None)
+    if lock_at is None:
+        print(f"BnTs={bn:5.3f}: not locked within {nsym} symbols")
+    else:
+        print(f"BnTs={bn:5.3f}: locked after {lock_at:4d} symbols, "
+              f"phase jitter {np.degrees(np.std(err[-500:])):.2f} deg")
+  </py>
+  <p>결과가 루프 설계의 핵심 맞바꿈을 그대로 보여 줍니다. 대역폭이 넓으면 빨리 잠기지만 잡음까지 따라가서 지터가 크고, 좁으면 지터는 작지만 잠기는 데 오래 걸리거나 큰 오프셋을 아예 못 따라갑니다. 벤치로 직접 감을 잡아 보세요.</p>
+
+  <div class="bench" id="csBench">
+    <header><b>실습 벤치 11-A · 코스타스 루프 튜닝</b><span>CARRIER RECOVERY</span></header>
+    <div class="body">
+      <div class="ctls">
+        <div class="ctl"><label for="csCfo">주파수 오프셋 (사이클/심볼)</label><output id="oCsCfo"></output><input type="range" id="csCfo" min="0" max="0.03" step="0.0005" value="0.004"></div>
+        <div class="ctl"><label for="csBw">루프 대역폭 <var>B</var><sub>n</sub><var>T</var><sub>s</sub></label><output id="oCsBw"></output><input type="range" id="csBw" min="0" max="100" step="1" value="50"></div>
+        <div class="ctl"><label for="csSnr"><var>E</var><sub>s</sub>/<var>N</var><sub>0</sub> (dB)</label><output id="oCsSnr"></output><input type="range" id="csSnr" min="4" max="30" step="0.5" value="15"></div>
+      </div>
+      <svg class="plot" id="csSvg" viewBox="0 0 600 220" role="img" aria-label="심볼 순서에 따른 잔여 위상 오차"></svg>
+      <div class="pair">
+        <figure><svg class="plot" id="csBefore" viewBox="0 0 280 280" role="img" aria-label="루프 이전 성상도"></svg><figcaption>루프 이전 (마지막 300심볼)</figcaption></figure>
+        <figure><svg class="plot" id="csAfter" viewBox="0 0 280 280" role="img" aria-label="루프 이후 성상도"></svg><figcaption>루프 이후 (마지막 300심볼)</figcaption></figure>
+      </div>
+      <div class="readout">
+        <div><small>잠금까지</small><b id="csLock"></b></div>
+        <div><small>정상 상태 지터</small><b id="csJit"></b></div>
+        <div><small>상태</small><b id="csState"></b></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>타이밍 복구: 눈의 한가운데를 찾아서</h3>
+  <p>정합 필터를 지난 신호는 심볼당 여러 샘플(sps)로 되어 있고, 그중 정확히 눈이 가장 크게 열린 순간의 값을 골라야 합니다. 그런데 그 순간은 대개 샘플 사이에 있고, 송수신 클록 차이 때문에 천천히 흘러갑니다. 현대 SDR은 ADC 클록을 건드리지 않고, 샘플 사이 값을 보간기(interpolator)로 계산해 원하는 순간의 값을 만듭니다. 12장 코드는 4점 3차 보간을 씁니다.</p>
+  <p>"언제가 한가운데인가"를 재는 대표적인 검출기가 <strong>가드너(Gardner) 타이밍 오차 검출기</strong>입니다. 심볼 사이의 중간 샘플을 함께 봅니다.</p>
+  <div class="eq"><var>e</var>[<var>k</var>] = Re{ ( <var>y</var>[<var>k</var>−1] − <var>y</var>[<var>k</var>] ) · <var>y</var>*[<var>k</var>−½] } <small><var>y</var>[<var>k</var>]: 이번 심볼 판정 시점, <var>y</var>[<var>k</var>−1]: 이전 심볼, <var>y</var>[<var>k</var>−½]: 둘 사이 중간</small></div>
+  <p>두 심볼의 부호가 다르면 그 사이 어딘가에서 파형이 0을 지납니다. 정확히 가운데서 샘플링하고 있다면 중간 샘플이 바로 그 0 지점이라 오차가 0입니다. 너무 일찍 혹은 늦게 샘플링하면 중간 샘플이 0에서 벗어나고, 그 부호가 어느 쪽으로 옮겨야 하는지 알려 줍니다. 판정이 필요 없고 반송파 위상에도 영향을 받지 않아서, 코스타스 루프보다 앞에 둘 수 있습니다. 이 오차를 PLL과 똑같은 PI 루프 필터로 다듬어 다음 판정 시점을 앞당기거나 늦춥니다.</p>
+  <p>되먹임 루프에는 약점이 하나 있습니다. 정확히 반 심볼 어긋난 지점에서는 검출기 출력이 거의 0이라 루프가 한참 머뭇거립니다(hang-up). 그래서 루프를 시작하기 전에 피드포워드 추정으로 출발점을 잡아 주면 좋습니다. 정합 필터 출력의 크기 제곱 |<var>y</var>|²은 심볼 중심에서 커지므로 심볼률 주기의 성분을 갖는데, 5장의 DFT로 그 한 주파수 성분의 위상만 구하면 눈의 중심 위치가 나옵니다(Oerder-Meyr 방식). 12장 수신기가 이렇게 출발점을 잡고 가드너로 추적합니다.</p>
+
+  <h3>프레임 동기와 90° 모호성</h3>
+  <p>코스타스 루프는 성상도를 90°만큼 돌려도 똑같아 보이는 QPSK의 대칭 때문에, 네 각도 중 어디에든 잠길 수 있습니다. 그러면 비트가 체계적으로 뒤바뀝니다. 해결책은 둘입니다. 송신기가 패킷 앞에 수신기도 아는 심볼열(프리앰블)을 넣고, 수신기는 그것과의 상관 피크 위치로 패킷의 시작을, 피크의 위상으로 회전 각도를 알아냅니다. 이때 가장 큰 피크보다 처음 나타난 충분히 강한 피크를 고르는 편이 안전합니다. 데이터가 우연히 프리앰블과 비슷하면 뒤쪽에 비슷한 크기의 피크가 하나 더 생길 수 있기 때문입니다. 또는 비트를 절대 위상이 아니라 이전 심볼과의 위상 차이에 싣는 차분 부호화를 씁니다. 12장 수신기는 프리앰블 방식을 씁니다.</p>
+
+  <div class="call sys"><span class="lab">제어 엔지니어의 눈으로</span>
+    <p>PLL은 PI 제어기입니다. 위상 검출기는 센서, 루프 필터는 제어기, NCO는 적분 특성을 가진 액추에이터입니다. 루프 대역폭은 응답 속도, 감쇠비는 오버슈트입니다. 모터 속도 제어기를 튜닝해 본 경험이 그대로 통하고, 불안정해지는 방식도 같습니다. 이득이 너무 크면 진동하고, 지연(파이프라인 레지스터)이 루프 안에 많으면 위상 여유가 줄어듭니다. FPGA에서 루프를 구현할 때 파이프라인을 마음껏 넣을 수 없는 이유입니다.</p>
+  </div>
+
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>단위 혼동</strong>: 주파수 오프셋을 샘플당 사이클로 쟀는지 심볼당 사이클로 쟀는지에 따라 sps배 차이가 납니다. 거친 CFO는 샘플률에서, 코스타스 루프는 심볼률에서 동작합니다.</li>
+      <li><strong>사이클 슬립</strong>: SNR이 낮으면 잡음이 루프를 옆 잠금점(90° 옆)으로 밀어 넘깁니다. 그 순간부터 비트가 뒤바뀝니다. 긴 패킷에는 프리앰블 외에 중간 중간 파일럿 심볼을 넣어 확인합니다.</li>
+      <li><strong>ppm은 양쪽에 있다</strong>: 송신기와 수신기의 오차가 더해집니다. 설계는 최악의 합으로 합니다.</li>
+    </ul>
+  </div>
+
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>ppm × 반송파 주파수 = 주파수 오프셋. 2.4 GHz에서 25 ppm은 60 kHz.</li>
+      <li>AGC → 거친 CFO → 정합 필터 → 타이밍 → 위상 → 프레임. 큰 오차부터 거칠게.</li>
+      <li>PLL = 검출기 + PI 루프 필터 + NCO. 대역폭은 잠금 속도와 지터의 맞바꿈이다.</li>
+    </ul>
+  </div>
+  <p>이제 모든 부품이 준비되었습니다. 마지막 장에서는 이 책의 모든 장을 한 파일에 조립해, 손상된 채널을 통과한 QPSK 신호에서 비트를 오류 없이 꺼내는 수신기를 완성하고, 그것을 PlutoSDR과 FPGA로 옮기는 길을 그립니다.</p>
+
+  <div class="quiz" data-quiz="ch11"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch11" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

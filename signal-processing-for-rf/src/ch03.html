@@ -1,0 +1,116 @@
+<!-- ============ CH3 ============ -->
+<section class="chapter col" id="ch3">
+  <div class="eyebrow">Part I · 신호의 언어 — 3장</div>
+  <h2>복소수와 IQ: 음의 주파수의 정체</h2>
+  <p class="goal">이 장을 마치면: 오일러 공식으로 사인파를 회전하는 화살표로 바꿔 생각할 수 있고, 음의 주파수가 무엇인지 설명하며, RF 신호가 I/Q 복소 기저대역으로 표현되는 원리와 복소 샘플링이 실수 샘플링보다 유리한 이유를 말할 수 있습니다.</p>
+
+  <h3>회전하는 화살표, e<sup><var>j</var>θ</sup></h3>
+  <p>복소수 <var>z</var> = <var>a</var> + <var>jb</var>는 평면 위의 점, 또는 원점에서 그 점까지의 화살표입니다(전기공학에서는 전류 <var>i</var>와 헷갈리지 않게 허수 단위로 <var>j</var>를 씁니다). 같은 화살표를 길이 <var>r</var>와 각도 θ로도 쓸 수 있고, 이 둘을 잇는 것이 오일러 공식입니다.</p>
+  <div class="eq"><var>e</var><sup><var>j</var>θ</sup> = cos θ + <var>j</var> sin θ &nbsp;&nbsp;⇒&nbsp;&nbsp; <var>z</var> = <var>r e</var><sup><var>j</var>θ</sup> = <var>r</var> cos θ + <var>j r</var> sin θ</div>
+  <p>이 표기의 힘은 곱셈에서 나옵니다. 두 복소수를 곱하면 <strong>길이는 곱해지고 각도는 더해집니다</strong>. <var>r</var><sub>1</sub><var>e</var><sup><var>j</var>θ<sub>1</sub></sup> · <var>r</var><sub>2</sub><var>e</var><sup><var>j</var>θ<sub>2</sub></sup> = <var>r</var><sub>1</sub><var>r</var><sub>2</sub><var>e</var><sup><var>j</var>(θ<sub>1</sub>+θ<sub>2</sub>)</sup>. 길이 1짜리 복소수를 곱하는 것은 곧 회전입니다. 신호처리에서 주파수를 옮기는 일(8장), 위상을 보정하는 일(11장)이 전부 이 곱셈 한 번입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>연산</th><th>식</th><th>기하학적 의미</th></tr></thead>
+    <tbody>
+      <tr><td>덧셈</td><td>(<var>a</var>+<var>jb</var>) + (<var>c</var>+<var>jd</var>)</td><td>화살표 이어 붙이기</td></tr>
+      <tr><td>곱셈</td><td>(<var>ac</var>−<var>bd</var>) + <var>j</var>(<var>ad</var>+<var>bc</var>)</td><td>길이 곱, 각도 합 (실수 곱셈 4번, 덧셈 2번)</td></tr>
+      <tr><td>켤레 <var>z</var>*</td><td><var>a</var> − <var>jb</var></td><td>실수축 대칭. 회전 방향을 뒤집음</td></tr>
+      <tr><td>크기²</td><td>|<var>z</var>|² = <var>z z</var>* = <var>a</var>² + <var>b</var>²</td><td>순간 전력</td></tr>
+      <tr><td>각도</td><td>atan2(<var>b</var>, <var>a</var>)</td><td>순간 위상</td></tr>
+    </tbody>
+  </table></div>
+  <p>이제 각도가 시간에 비례해 늘어나게 해 봅시다. θ = 2π<var>ft</var>라면 <var>e</var><sup><var>j</var>2π<var>ft</var></sup>는 1초에 <var>f</var>바퀴씩 반시계 방향으로 도는 화살표입니다. 그렇다면 <var>f</var>가 음수일 때는? 시계 방향으로 돕니다. <strong>음의 주파수란 회전 방향이 반대인 것</strong>, 그 이상도 이하도 아닙니다.</p>
+
+  <h3>실수 코사인은 반대로 도는 두 화살표의 합이다</h3>
+  <p>오일러 공식을 두 번 쓰면 코사인을 복소 지수로 풀 수 있습니다.</p>
+  <div class="eq">cos(2π<var>ft</var>) = <span class="fr"><span><var>e</var><sup><var>j</var>2π<var>ft</var></sup> + <var>e</var><sup>−<var>j</var>2π<var>ft</var></sup></span><span>2</span></span></div>
+  <p>반시계로 도는 반 길이 화살표와 시계로 도는 반 길이 화살표를 더하면, 허수 성분은 서로 상쇄되고 실수축 위에서 왕복하는 점만 남습니다. 그것이 코사인입니다. 그래서 실수 신호의 스펙트럼에는 언제나 +<var>f</var>와 −<var>f</var>에 같은 크기의 선이 짝으로 나타나고, 양쪽 절반이 같은 정보를 중복해서 담습니다. 2장에서 실수 샘플링에 2<var>B</var>가 필요했던 이유, −<var>f</var>와 <var>f</var>가 구분되지 않았던 이유가 이것입니다.</p>
+
+  <div class="bench" id="phBench">
+    <header><b>실습 벤치 3-A · 회전하는 페이저</b><span>PHASOR &amp; IQ</span></header>
+    <div class="body">
+      <div class="ctls">
+        <div class="ctl"><label for="phF">주파수 <var>f</var> (화면 기준 회전/초)</label><output id="oPhF"></output><input type="range" id="phF" min="-2" max="2" step="0.05" value="0.5"></div>
+        <div class="ctl"><span>신호 종류</span><span></span><div class="seg" id="phMode" style="grid-column:1/-1"><button type="button" data-v="c" aria-pressed="true">복소 e<sup>j2πft</sup> (I+jQ)</button><button type="button" data-v="r" aria-pressed="false">실수 cos (I만)</button></div></div>
+      </div>
+      <svg class="plot" id="phSvg" viewBox="0 0 600 230" role="img" aria-label="왼쪽은 복소 평면의 회전 화살표, 가운데는 I와 Q 시간 파형, 오른쪽은 스펙트럼"></svg>
+      <div class="row" style="justify-content:space-between"><button class="btn pri" id="phPlay" type="button" aria-pressed="false">재생</button><span class="tokc" id="phNote"></span></div>
+    </div>
+  </div>
+  <p>복소 모드에서 <var>f</var>의 부호를 바꾸면 화살표의 회전 방향과 스펙트럼 선의 위치가 함께 바뀝니다. I 파형(파랑)만 보면 +<var>f</var>와 −<var>f</var>가 똑같지만 Q 파형(주황)은 부호가 뒤집힙니다. 실수 모드로 바꾸면 반대로 도는 두 화살표가 나타나고 스펙트럼이 좌우 대칭이 됩니다. 이때는 <var>f</var>의 부호를 바꿔도 아무것도 달라지지 않습니다.</p>
+
+  <h3>I와 Q: 두 방향에서 봐야 회전이 보인다</h3>
+  <p>돌아가는 화살표를 옆에서만(코사인 투영) 보면 왼쪽으로 도는지 오른쪽으로 도는지 알 수 없습니다. 90° 돌린 위치에서 한 번 더 보면(사인 투영) 방향이 드러납니다. 이 두 투영이 <strong>I(In-phase, 동상)</strong>와 <strong>Q(Quadrature, 직교)</strong>입니다.</p>
+  <p>반송파 주파수 <var>f</var><sub>c</sub>에 실린 RF 신호는 진폭과 위상이 천천히 변하는 사인파입니다. 이 변화를 두 개의 기저대역 신호 <var>I</var>(<var>t</var>), <var>Q</var>(<var>t</var>)로 쓰면 다음과 같습니다.</p>
+  <div class="eq"><var>x</var><sub>RF</sub>(<var>t</var>) = <var>I</var>(<var>t</var>) cos(2π<var>f</var><sub>c</sub><var>t</var>) − <var>Q</var>(<var>t</var>) sin(2π<var>f</var><sub>c</sub><var>t</var>) = Re{ <var>s</var>(<var>t</var>) · <var>e</var><sup><var>j</var>2π<var>f</var><sub>c</sub><var>t</var></sup> }, &nbsp; <var>s</var>(<var>t</var>) = <var>I</var>(<var>t</var>) + <var>j Q</var>(<var>t</var>)</div>
+  <p><var>s</var>(<var>t</var>)를 <strong>복소 기저대역(complex baseband)</strong> 신호, 또는 복소 포락선이라고 부릅니다. 반송파는 단지 <var>s</var>(<var>t</var>)를 <var>f</var><sub>c</sub>만큼 회전시켜 옮겨 놓은 것일 뿐이고, 정보는 전부 <var>s</var>(<var>t</var>)에 있습니다. 수신기가 할 일은 그 회전을 되돌리는 것입니다.</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 640 220" role="img" aria-label="IQ 복조기: RF 입력이 두 갈래로 나뉘어 각각 cos와 마이너스 sin 국부 발진 신호와 곱해지고 저역통과 필터를 거쳐 I와 Q가 된다">
+      <text class="sv-t" x="14" y="114">RF 입력</text>
+      <path class="sv-ln" d="M74 110h40M114 110V56h88M114 110v54h88" marker-end="url(#arw)"/>
+      <circle class="sv-r0" cx="220" cy="56" r="16"/><text class="sv-t" x="220" y="61" text-anchor="middle">×</text>
+      <circle class="sv-r0" cx="220" cy="164" r="16"/><text class="sv-t" x="220" y="169" text-anchor="middle">×</text>
+      <rect class="sv-af" x="180" y="94" width="80" height="32" rx="4"/><text class="sv-t" x="220" y="115" text-anchor="middle">LO <tspan font-style="italic">f</tspan>c</text>
+      <path class="sv-ln" d="M220 94V74" marker-end="url(#arw)"/><path class="sv-ln" d="M220 126v20" marker-end="url(#arw)"/>
+      <text class="sv-m" x="232" y="86">cos(2π<tspan font-style="italic">f</tspan>c t)</text>
+      <text class="sv-m" x="232" y="142">−sin(2π<tspan font-style="italic">f</tspan>c t)</text>
+      <path class="sv-ln" d="M236 56h60" marker-end="url(#arw)"/><path class="sv-ln" d="M236 164h60" marker-end="url(#arw)"/>
+      <rect class="sv-r0" x="298" y="38" width="64" height="36" rx="4"/><text class="sv-t" x="330" y="61" text-anchor="middle">LPF</text>
+      <rect class="sv-r0" x="298" y="146" width="64" height="36" rx="4"/><text class="sv-t" x="330" y="169" text-anchor="middle">LPF</text>
+      <path class="sv-ln" d="M362 56h40" marker-end="url(#arw)"/><path class="sv-ln" d="M362 164h40" marker-end="url(#arw)"/>
+      <rect class="sv-r0" x="404" y="38" width="56" height="36" rx="4"/><text class="sv-t" x="432" y="61" text-anchor="middle">ADC</text>
+      <rect class="sv-r0" x="404" y="146" width="56" height="36" rx="4"/><text class="sv-t" x="432" y="169" text-anchor="middle">ADC</text>
+      <path class="sv-ac" d="M460 56h40" marker-end="url(#arwa)"/><path class="sv-ac" d="M460 164h40" marker-end="url(#arwa)"/>
+      <text class="sv-t" x="508" y="61">I[n]</text><text class="sv-t" x="508" y="169">Q[n]</text>
+      <path class="sv-ln" d="M545 56c30 0 30 54 0 54M545 164c30 0 30-54 0-54"/>
+      <text class="sv-t" x="582" y="106">s[n] =</text><text class="sv-t" x="572" y="124">I + jQ</text>
+      <text class="sv-m" x="330" y="208" text-anchor="middle">곱셈이 만든 2fc 성분을 LPF가 제거하고 기저대역만 남긴다</text>
+    </svg>
+    <figcaption>그림 3-1. 직교(IQ) 복조기. AD9363 안의 아날로그 앞단이 바로 이 구조이며, ADC 두 개가 I와 Q를 각각 샘플링한다.</figcaption>
+  </figure>
+  <p>왜 이렇게 하면 <var>I</var>와 <var>Q</var>가 나올까요? 곱셈의 삼각함수 공식 cos<var>A</var> cos<var>B</var> = ½[cos(<var>A</var>−<var>B</var>) + cos(<var>A</var>+<var>B</var>)]를 쓰면 위쪽 경로는 ½<var>I</var>(<var>t</var>)와 2<var>f</var><sub>c</sub> 근처의 성분으로 나뉩니다. LPF가 2<var>f</var><sub>c</sub> 성분을 지우면 ½<var>I</var>(<var>t</var>)만 남습니다. 아래쪽도 같은 방식으로 ½<var>Q</var>(<var>t</var>)가 나옵니다. 복소수로 한 줄에 쓰면 더 간단합니다. 수신 신호에 <var>e</var><sup>−<var>j</var>2π<var>f</var><sub>c</sub><var>t</var></sup>를 곱해 반송파의 회전을 되감고, 저역통과로 거르면 <var>s</var>(<var>t</var>)가 남습니다. 송신기는 정확히 반대로, <var>s</var>(<var>t</var>)에 <var>e</var><sup>+<var>j</var>2π<var>f</var><sub>c</sub><var>t</var></sup>를 곱하고 실수부를 내보냅니다.</p>
+
+  <h3>복소 샘플링: <var>f</var><sub>s</sub> 하나로 대역폭 <var>B</var> = <var>f</var><sub>s</sub>를 본다</h3>
+  <p>복소 기저대역 신호에는 +<var>f</var>와 −<var>f</var>를 구분할 정보가 있습니다. 그래서 스펙트럼의 양쪽 절반이 서로 다른 내용을 담을 수 있고, 샘플률 <var>f</var><sub>s</sub>로 −<var>f</var><sub>s</sub>/2 ~ +<var>f</var><sub>s</sub>/2, 즉 폭 <var>f</var><sub>s</sub>의 대역을 앨리어싱 없이 볼 수 있습니다. 숫자 개수로 따지면 복소 샘플 하나가 실수 두 개이므로 데이터량은 실수 샘플링과 같지만, 대역을 반송파 주위 양쪽으로 쓸 수 있다는 것이 결정적인 차이입니다.</p>
+  <p>예를 들어 PlutoSDR의 LO를 2.44 GHz에, 샘플률을 20 MSPS에 두면 2.43–2.45 GHz가 한 번에 보입니다. FFT에서 음의 주파수 칸은 LO보다 낮은 주파수, 양의 칸은 높은 주파수입니다. 이 "LO가 0 Hz가 된다"는 감각이 SDR 작업의 출발점입니다.</p>
+
+  <py file="iq_spectrum.py" check>
+import numpy as np
+
+fs, N = 1_000_000, 1000          # 1 MSPS, 1 kHz FFT bins
+n = np.arange(N)
+f0 = -200_000                    # 200 kHz below the LO
+
+complex_tone = np.exp(2j * np.pi * f0 / fs * n)       # what an IQ receiver delivers
+real_tone = np.cos(2 * np.pi * f0 / fs * n)           # what a single real ADC delivers
+
+freqs = np.fft.fftshift(np.fft.fftfreq(N, 1 / fs))
+for name, x in (("complex", complex_tone), ("real", real_tone)):
+    X = np.abs(np.fft.fftshift(np.fft.fft(x))) / N
+    peaks = freqs[X > 0.1]
+    print(f"{name:8s} peaks at {peaks / 1e3} kHz, height {X.max():.2f}")
+  </py>
+
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>메모리에서 IQ 샘플은 정수 두 개짜리 구조체입니다. PlutoSDR의 12비트 ADC 값은 보통 16비트 정수 두 개(I, Q)로 담겨 32비트 워드 하나가 복소 샘플 하나가 되고, DMA와 AXI-Stream도 이 단위로 움직입니다. pyadi-iio는 이것을 numpy 복소 배열로 돌려줍니다. 한 가지 주의할 점은 I와 Q의 비트 위치나 순서, 부호 확장 방식이 인터페이스마다 다를 수 있다는 것입니다. 새 데이터 경로를 만들면 알려진 주파수의 톤을 넣고 스펙트럼 피크가 올바른 부호 쪽에 나타나는지부터 확인하세요. I와 Q가 뒤바뀌면 스펙트럼이 좌우로 뒤집힙니다.</p>
+  </div>
+
+  <div class="call warn"><span class="lab">흔한 함정: 현실의 IQ는 완벽하지 않다</span>
+    <ul>
+      <li><strong>DC 오프셋</strong>: LO가 새어 들어와 스펙트럼 한가운데(0 Hz)에 뾰족한 선이 생깁니다. 관심 신호를 일부러 0 Hz에서 비켜 두는 이유입니다(8장).</li>
+      <li><strong>IQ 불균형</strong>: I와 Q 경로의 이득이 조금 다르거나 위상이 정확히 90°가 아니면, +<var>f</var>의 신호가 −<var>f</var>에 희미한 거울상(image)을 만듭니다. AD936x는 이를 줄이는 직교 보정 기능을 내장하고 있고, ADI 문서는 실수 신호만 받을 때는 이 추적 보정을 꺼야 한다고 안내합니다.</li>
+    </ul>
+  </div>
+
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li><var>e</var><sup><var>j</var>2π<var>ft</var></sup>는 회전하는 화살표다. 음의 주파수는 반대 방향 회전이다.</li>
+      <li>실수 신호는 ±<var>f</var> 쌍으로만 존재한다. I와 Q를 함께 가져야 방향(부호)이 보인다.</li>
+      <li>RF 신호 = Re{<var>s</var>(<var>t</var>) <var>e</var><sup><var>j</var>2π<var>f</var><sub>c</sub><var>t</var></sup>}. 수신기는 회전을 되감아 <var>s</var>(<var>t</var>)를 꺼낸다.</li>
+    </ul>
+  </div>
+  <p>Part I을 마쳤습니다. 이제 신호를 숫자열로, 그것도 복소 숫자열로 다룰 수 있습니다. Part II에서는 이 숫자열을 가공하는 기본 연산 세 가지, 컨볼루션·푸리에 변환·필터를 차례로 익힙니다. 첫 번째는 모든 필터의 정체인 컨볼루션입니다.</p>
+
+  <div class="quiz" data-quiz="ch3"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch3" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

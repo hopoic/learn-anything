@@ -1,0 +1,119 @@
+<!-- ============ CH4 ============ -->
+<section class="chapter col" id="ch4">
+  <div class="eyebrow">Part II · 핵심 도구 — 4장</div>
+  <h2>LTI 시스템과 컨볼루션</h2>
+  <p class="goal">이 장을 마치면: 임펄스 응답으로 LTI 시스템을 기술하고, 컨볼루션을 손으로 계산할 수 있으며, 탭 수와 샘플률로 필요한 연산량(MAC/s)을 추정하고, 임펄스 응답에서 주파수 응답을 구할 수 있습니다.</p>
+
+  <h3>임펄스 하나로 시스템 전체를 안다</h3>
+  <p>가장 단순한 신호를 생각해 봅시다. <var>n</var> = 0에서만 1이고 나머지는 모두 0인 <strong>단위 임펄스</strong> δ[<var>n</var>]입니다. 어떤 LTI 시스템에 δ[<var>n</var>]을 넣었을 때 나오는 출력을 <strong>임펄스 응답</strong> <var>h</var>[<var>n</var>]이라고 부릅니다. 놀랍게도 이것 하나만 알면 그 시스템이 어떤 입력에 어떻게 반응할지 전부 계산할 수 있습니다.</p>
+  <p>이유는 1장의 두 성질에 있습니다. 아무 신호나 크기가 다른 임펄스들을 시간축에 줄 세운 것으로 볼 수 있습니다. <var>x</var>[<var>n</var>] = Σ<sub><var>k</var></sub> <var>x</var>[<var>k</var>] δ[<var>n</var> − <var>k</var>]. 시불변이므로 <var>k</var>만큼 늦은 임펄스에는 <var>k</var>만큼 늦은 <var>h</var>가 나오고, 선형이므로 크기를 곱하고 전부 더하면 됩니다.</p>
+  <div class="eq"><var>y</var>[<var>n</var>] = <span class="big">Σ</span><sub><var>k</var></sub> <var>x</var>[<var>k</var>] · <var>h</var>[<var>n</var> − <var>k</var>] = (<var>x</var> ∗ <var>h</var>)[<var>n</var>] <small>이산 컨볼루션(convolution). 교환 법칙이 성립해 <var>x</var> ∗ <var>h</var> = <var>h</var> ∗ <var>x</var></small></div>
+  <p>FIR 필터에서는 이 <var>h</var>[<var>n</var>]이 곧 필터 계수, 흔히 탭(tap)이라 부르는 숫자들입니다. "64탭 FIR"은 임펄스 응답이 64샘플 길이인 필터라는 뜻입니다.</p>
+
+  <h3>뒤집고, 밀고, 곱하고, 더한다</h3>
+  <p>식을 손으로 계산하는 절차는 네 단계입니다. <var>h</var>를 좌우로 <strong>뒤집고</strong>(<var>h</var>[−<var>k</var>]), 출력 위치 <var>n</var>만큼 <strong>밀고</strong>(<var>h</var>[<var>n</var>−<var>k</var>]), 겹치는 자리끼리 <strong>곱하고</strong>, 전부 <strong>더하면</strong> <var>y</var>[<var>n</var>] 하나가 나옵니다. <var>x</var> = [1, 2, 3], <var>h</var> = [1, 1]로 해 보겠습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th><var>n</var></th><th>겹치는 곱</th><th><var>y</var>[<var>n</var>]</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td><var>x</var>[0]<var>h</var>[0] = 1·1</td><td>1</td></tr>
+      <tr><td>1</td><td><var>x</var>[0]<var>h</var>[1] + <var>x</var>[1]<var>h</var>[0] = 1 + 2</td><td>3</td></tr>
+      <tr><td>2</td><td><var>x</var>[1]<var>h</var>[1] + <var>x</var>[2]<var>h</var>[0] = 2 + 3</td><td>5</td></tr>
+      <tr><td>3</td><td><var>x</var>[2]<var>h</var>[1] = 3</td><td>3</td></tr>
+    </tbody>
+  </table></div>
+  <p>길이 <var>L</var>인 입력과 길이 <var>M</var>인 임펄스 응답의 컨볼루션은 길이 <var>L</var> + <var>M</var> − 1입니다. 처음 <var>M</var>−1개와 마지막 <var>M</var>−1개 출력은 필터가 입력과 "반만 겹친" 과도 구간입니다.</p>
+
+  <div class="bench" id="cvBench">
+    <header><b>실습 벤치 4-A · 컨볼루션 한 칸씩</b><span>CONVOLUTION STEPPER</span></header>
+    <div class="body">
+      <div class="ctls">
+        <div class="ctl"><label for="cvH">임펄스 응답 <var>h</var>[<var>n</var>]</label><span></span>
+          <select id="cvH">
+            <option value="ma">이동 평균 4탭 [¼ ¼ ¼ ¼] — 저역통과</option>
+            <option value="diff">차분 [1 −1] — 고역통과</option>
+            <option value="echo">에코 [1 0 0 0.6] — 지연된 메아리</option>
+          </select></div>
+        <div class="ctl"><label for="cvN">출력 위치 <var>n</var></label><output id="oCvN"></output><input type="range" id="cvN" min="0" max="12" step="1" value="3"></div>
+      </div>
+      <svg class="plot" id="cvSvg" viewBox="0 0 600 300" role="img" aria-label="위에서부터 입력 x, 뒤집어 민 h, 곱, 출력 y"></svg>
+      <p class="explain" id="cvEq" aria-live="polite"></p>
+      <div class="row"><button class="btn" id="cvPrev" type="button">이전 n</button><button class="btn pri" id="cvNext" type="button">다음 n</button></div>
+    </div>
+  </div>
+  <p>이동 평균을 고르고 <var>n</var>을 천천히 늘려 보세요. 입력의 계단이 완만한 경사로 바뀝니다. 고주파(급격한 변화)가 깎였다는 뜻입니다. 차분은 정반대로, 입력이 일정한 구간에서는 0이 되고 변하는 순간에만 값이 나옵니다. 저주파를 지우고 고주파만 남기는 것입니다.</p>
+
+  <h3>컨볼루션은 MAC의 반복이다</h3>
+  <p>구현 관점에서 컨볼루션은 곱셈-누산(MAC, multiply-accumulate)의 반복입니다. 출력 하나마다 탭 수만큼 곱하고 더합니다. 임베디드 개발자라면 아래 코드가 낯설지 않을 것입니다. MCU에서 센서 값을 다듬던 이동 평균이 바로 FIR 필터입니다.</p>
+  <c file="fir.c">
+#include <stdint.h>
+#define NTAPS 32
+
+/* Direct-form FIR with a circular delay line.
+ * Q15 coefficients and samples, 64-bit accumulator to avoid overflow. */
+typedef struct {
+    int16_t h[NTAPS];      /* impulse response = filter taps */
+    int16_t z[NTAPS];      /* delay line: last NTAPS input samples */
+    unsigned pos;
+} fir_t;
+
+int16_t fir_step(fir_t *f, int16_t x)
+{
+    f->z[f->pos] = x;
+    int64_t acc = 0;
+    unsigned idx = f->pos;
+    for (unsigned k = 0; k < NTAPS; k++) {          /* y[n] = sum h[k] * x[n-k] */
+        acc += (int32_t)f->h[k] * f->z[idx];
+        idx = (idx == 0) ? NTAPS - 1 : idx - 1;
+    }
+    f->pos = (f->pos + 1) % NTAPS;
+    acc += 1 << 14;                                  /* round, then Q30 -> Q15 */
+    acc >>= 15;
+    if (acc > INT16_MAX) acc = INT16_MAX;            /* saturate instead of wrapping */
+    if (acc < INT16_MIN) acc = INT16_MIN;
+    return (int16_t)acc;
+}
+  </c>
+  <p>필요한 연산량은 <strong>탭 수 × 샘플률</strong>입니다. 실수 계수 64탭 필터를 20 MSPS 복소 신호(I와 Q 각각)에 적용하면 2 × 64 × 20 M = 2.56 GMAC/s가 필요합니다. 667 MHz CPU 코어가 매 사이클 MAC 하나를 해내도 0.67 GMAC/s이니 턱없이 부족합니다. 반면 FPGA의 DSP 슬라이스는 클록마다 MAC 하나씩을 병렬로 해냅니다. 예를 들어 200 MHz로 돌린다면 Z-7010의 80개 슬라이스로 이론상 초당 160억 번입니다. 이 차이가 "샘플 단위 연산은 PL로"라는 원칙의 근거이고, 9장에서 구체적인 매핑 방법을 다룹니다.</p>
+
+  <h3>사인파를 넣으면 사인파가 나온다: 주파수 응답</h3>
+  <p>1장에서 LTI 시스템은 사인파를 같은 주파수의 사인파로 바꾼다고 했습니다. 이제 증명할 수 있습니다. 복소 사인파 <var>x</var>[<var>n</var>] = <var>e</var><sup><var>j</var>ω<var>n</var></sup>를 컨볼루션 식에 넣어 보세요.</p>
+  <div class="eq"><var>y</var>[<var>n</var>] = <span class="big">Σ</span><sub><var>k</var></sub> <var>h</var>[<var>k</var>] <var>e</var><sup><var>j</var>ω(<var>n</var>−<var>k</var>)</sup> = <var>e</var><sup><var>j</var>ω<var>n</var></sup> · <span class="big">Σ</span><sub><var>k</var></sub> <var>h</var>[<var>k</var>] <var>e</var><sup>−<var>j</var>ω<var>k</var></sup> = <var>H</var>(<var>e</var><sup><var>j</var>ω</sup>) · <var>x</var>[<var>n</var>]</div>
+  <p>출력은 입력에 복소수 하나 <var>H</var>(<var>e</var><sup><var>j</var>ω</sup>)를 곱한 것입니다. 이 복소수의 크기 |<var>H</var>|가 그 주파수에서의 이득, 각도 ∠<var>H</var>가 위상 변화입니다. ω를 0(직류)부터 π(나이퀴스트, <var>f</var><sub>s</sub>/2)까지 훑으며 <var>H</var>를 그린 것이 <strong>주파수 응답</strong>입니다. 임펄스 응답에 복소 사인파를 곱해 더한 이 식은 5장의 푸리에 변환과 정확히 같은 모양입니다. 즉 <strong>주파수 응답은 임펄스 응답의 푸리에 변환</strong>입니다.</p>
+  <py file="freq_response.py" check>
+import numpy as np
+
+filters = {
+    "moving avg [1/4]*4": np.ones(4) / 4,
+    "difference [1,-1]":  np.array([1.0, -1.0]),
+}
+nfft = 512
+for name, h in filters.items():
+    H = np.fft.fft(h, nfft)                          # H(e^jw) sampled on 0..fs
+    gain = lambda frac: abs(H[int(frac * nfft)])     # frac = f / fs
+    print(f"{name:20s} |H| at DC={gain(0):.2f}  fs/4={gain(0.25):.2f}  fs/2={gain(0.5):.2f}")
+
+# Convolution by hand vs numpy
+print("[1,2,3] * [1,1] =", np.convolve([1, 2, 3], [1, 1]))
+  </py>
+  <p>이동 평균은 직류를 그대로 통과시키고(이득 1) <var>f</var><sub>s</sub>/4와 <var>f</var><sub>s</sub>/2에서 완전히 막습니다(이득 0). 저역통과 필터입니다. 차분은 직류를 막고 <var>f</var><sub>s</sub>/2에서 이득 2인 고역통과 필터입니다. 그리고 다음 장의 핵심 결론 하나를 미리 말해 두면, <strong>시간 영역의 컨볼루션은 주파수 영역의 곱셈</strong>입니다. 필터를 통과한 신호의 스펙트럼은 입력 스펙트럼에 |<var>H</var>|를 곱한 것입니다.</p>
+
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>가장자리 처리</strong>: <code>np.convolve</code>의 기본값은 길이 <var>L</var>+<var>M</var>−1인 <code>full</code>입니다. 블록 단위로 처리할 때 각 블록의 과도 구간을 무시하면 블록 경계마다 잡음이 생깁니다. 지연선(앞 코드의 <code>z</code>)을 블록 사이에 유지하거나 overlap-save 방식을 쓰세요.</li>
+      <li><strong>지연</strong>: 대칭 계수 <var>M</var>탭 FIR은 (<var>M</var>−1)/2 샘플만큼 신호를 늦춥니다. I와 Q, 또는 두 신호 경로를 다시 합칠 때 지연을 맞추지 않으면 위상이 어긋납니다.</li>
+      <li><strong>누산기 오버플로</strong>: 16비트 곱을 여러 개 더하면 비트 수가 늘어납니다. 위 C 코드가 64비트 누산기와 포화(saturation)를 쓰는 이유이며, 9장에서 필요한 비트 수를 정확히 계산합니다.</li>
+    </ul>
+  </div>
+
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>LTI 시스템 = 임펄스 응답 <var>h</var>[<var>n</var>]. 출력은 <var>x</var> ∗ <var>h</var>.</li>
+      <li>컨볼루션 = 뒤집고, 밀고, 곱하고, 더하기. 구현은 MAC의 반복이고 비용은 탭 수 × 샘플률.</li>
+      <li>주파수 응답 <var>H</var>(<var>e</var><sup><var>j</var>ω</sup>)는 <var>h</var>의 푸리에 변환. 시간의 컨볼루션은 주파수의 곱.</li>
+    </ul>
+  </div>
+  <p>임펄스 응답에 복소 사인파를 곱해 더하는 식이 두 번이나 등장했습니다. 다음 장에서는 이 식 자체를 주인공으로 삼아, 신호 속에 어떤 주파수가 얼마나 들어 있는지 재는 도구인 DFT와 FFT를 다룹니다.</p>
+
+  <div class="quiz" data-quiz="ch4"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch4" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

@@ -1,0 +1,184 @@
+<!-- ============ CH12 ============ -->
+<section class="chapter col" id="ch12">
+  <div class="eyebrow">Part IV · 고급 + 실전 — 12장</div>
+  <h2>실전: 미니 QPSK 수신기 만들기</h2>
+  <p class="goal">이 장을 마치면: 펄스 성형부터 프레임 동기까지 갖춘 QPSK 송수신기를 직접 돌려 보고 정량적 합격 기준으로 검증하며, 같은 코드를 PlutoSDR 루프백에 연결하고, 수신 체인의 첫 블록을 Zynq PL로 옮기는 계획을 세울 수 있습니다.</p>
+
+  <h3>사양: 무엇을 만들고 어떻게 합격을 판정하나</h3>
+  <p>지금까지의 모든 장을 한 파일로 조립합니다. 의존성은 numpy 하나이고, 채널은 처음에는 시뮬레이션으로, 다음에는 진짜 RF로 바꿉니다. 수신기는 송신기의 상태를 전혀 모른다고 가정합니다. 주파수, 위상, 지연, 크기 모두 모릅니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>항목</th><th>사양</th><th>관련 장</th></tr></thead>
+    <tbody>
+      <tr><td>변조</td><td>QPSK, 그레이 매핑</td><td>10</td></tr>
+      <tr><td>펄스 성형</td><td>RRC, β = 0.35, 길이 8심볼, sps = 4</td><td>6, 7, 10</td></tr>
+      <tr><td>프레임</td><td>동기용 교번 심볼 64개 + 프리앰블 32개 + 데이터</td><td>11</td></tr>
+      <tr><td>채널 손상</td><td>CFO ±0.01 사이클/샘플, 임의의 분수 지연, 임의의 위상, 크기 0.1–5배, AWGN</td><td>2, 3, 8, 11</td></tr>
+      <tr><td>합격 기준</td><td><var>E</var><sub>s</sub>/<var>N</var><sub>0</sub> = 12 dB에서 무작위 시험 20회 모두 프레임 동기 성공, 전체 BER &lt; 10<sup>−3</sup></td><td>10</td></tr>
+    </tbody>
+  </table></div>
+  <figure class="fig">
+    <svg viewBox="0 0 680 200" role="img" aria-label="미니 QPSK 시스템: 비트, QPSK 매핑, 0 삽입과 RRC, 채널 손상, 수신 AGC, 거친 CFO, RRC 정합 필터, 가드너, 코스타스, 프레임 동기, 비트">
+      <text class="sv-t" x="10" y="26">송신 transmit()</text>
+      <rect class="sv-r1" x="10" y="36" width="90" height="38" rx="4"/><text class="sv-t" x="55" y="60" text-anchor="middle">비트 → QPSK</text>
+      <rect class="sv-r1" x="120" y="36" width="110" height="38" rx="4"/><text class="sv-t" x="175" y="60" text-anchor="middle">↑4 + RRC</text>
+      <path class="sv-ln" d="M100 55h18M230 55h18" marker-end="url(#arw)"/>
+      <rect class="sv-sf" x="250" y="36" width="170" height="38" rx="4"/><text class="sv-t" x="335" y="53" text-anchor="middle">channel() 또는 PlutoSDR</text><text class="sv-m" x="335" y="68" text-anchor="middle">CFO · 위상 · 지연 · 크기 · 잡음</text>
+      <path class="sv-ln" d="M420 55h20V130H40v18" marker-end="url(#arw)"/>
+      <text class="sv-t" x="10" y="122">수신 receive()</text>
+      <rect class="sv-r2" x="10" y="150" width="70" height="38" rx="4"/><text class="sv-t" x="45" y="174" text-anchor="middle">AGC</text>
+      <rect class="sv-r2" x="96" y="150" width="88" height="38" rx="4"/><text class="sv-t" x="140" y="174" text-anchor="middle">x⁴ CFO</text>
+      <rect class="sv-r2" x="200" y="150" width="88" height="38" rx="4"/><text class="sv-t" x="244" y="174" text-anchor="middle">RRC 정합</text>
+      <rect class="sv-r3" x="304" y="150" width="88" height="38" rx="4"/><text class="sv-t" x="348" y="174" text-anchor="middle">Gardner</text>
+      <rect class="sv-r3" x="408" y="150" width="88" height="38" rx="4"/><text class="sv-t" x="452" y="174" text-anchor="middle">Costas</text>
+      <rect class="sv-r2" x="512" y="150" width="88" height="38" rx="4"/><text class="sv-t" x="556" y="174" text-anchor="middle">프레임 동기</text>
+      <path class="sv-ln" d="M80 169h14M184 169h14M288 169h14M392 169h14M496 169h14" marker-end="url(#arw)"/>
+      <path class="sv-ac" d="M600 169h30" marker-end="url(#arwa)"/><text class="sv-t" x="636" y="174">비트</text>
+    </svg>
+    <figcaption>그림 12-1. 미니 QPSK 시스템. 아래 줄의 블록 하나하나가 함수 하나다.</figcaption>
+  </figure>
+
+  <h3>단계 1: 수신기 전체 코드</h3>
+  <p>아래가 완성된 송수신기 전체입니다. 150줄 남짓에 이 책의 3·6·7·8·10·11장이 모두 들어 있습니다. 파일은 저장소의 <a href="code/mini_rx.py" target="_blank" rel="noopener">code/mini_rx.py</a>로도 받을 수 있고, 이 책의 다른 예제들도 이 파일을 불러 씁니다.</p>
+  <py file="mini_rx.py" src="../code/mini_rx.py" check></py>
+  <p>결과를 읽어 봅시다. 거친 CFO 추정이 4제곱 FFT로 참값을 정확히 찾았고, 4000심볼에서 오류가 없으며, EVM은 <var>E</var><sub>s</sub>/<var>N</var><sub>0</sub> = 15 dB에서 기대할 수 있는 약 −15 dB 근처입니다(10장의 EVM² ≈ 1/SNR). 함수와 장의 대응은 다음과 같습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>함수</th><th>하는 일</th><th>장</th></tr></thead>
+    <tbody>
+      <tr><td><code>rrc()</code></td><td>단위 에너지 RRC 계수</td><td>6, 10</td></tr>
+      <tr><td><code>qpsk_map()</code> / <code>qpsk_demap()</code></td><td>그레이 매핑과 판정</td><td>10</td></tr>
+      <tr><td><code>transmit()</code></td><td>0 삽입 + 성형 필터 = 인터폴레이션</td><td>7, 10</td></tr>
+      <tr><td><code>channel()</code></td><td>분수 지연(윈도 sinc 보간), CFO 회전, AWGN</td><td>2, 3, 6</td></tr>
+      <tr><td><code>agc()</code></td><td>블록 단위 전력 정규화</td><td>11</td></tr>
+      <tr><td><code>coarse_cfo()</code></td><td>4제곱 + FFT 피크 → 복소 회전으로 보정</td><td>5, 8, 11</td></tr>
+      <tr><td><code>timing_estimate()</code></td><td>|<var>y</var>|²의 심볼률 성분 위상으로 눈의 중심을 미리 추정 (피드포워드)</td><td>5, 11</td></tr>
+      <tr><td><code>interp()</code> / <code>gardner()</code></td><td>3차 보간기 + 타이밍 오차 검출 + PI 루프</td><td>11</td></tr>
+      <tr><td><code>loop_gains()</code> / <code>costas()</code></td><td>2차 루프 이득 계산, 위상·주파수 추적</td><td>11</td></tr>
+      <tr><td><code>frame_sync()</code></td><td>프리앰블 상관의 첫 강한 피크 → 시작 위치 + 90° 모호성 해결</td><td>11</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>단계 2: 합격 시험은 한 번이 아니라 여러 번</h3>
+  <p>한 번 성공한 수신기는 아직 믿을 수 없습니다. 지연, CFO, 위상, 크기를 매번 무작위로 바꿔 가며 합격 기준을 기계적으로 확인합니다. 하네스 엔지니어링 교본에서 말한 "검증 게이트"를 신호처리에 적용한 것입니다.</p>
+  <py file="acceptance.py" check>
+import numpy as np
+import mini_rx as m
+
+def trial(seed, esn0_db, nbits=6000):
+    rng = np.random.default_rng(seed)
+    bits = rng.integers(0, 2, nbits)
+    rx = m.channel(m.transmit(bits), esn0_db,
+                   cfo=rng.uniform(-0.01, 0.01), phase=rng.uniform(-np.pi, np.pi),
+                   delay=rng.uniform(0, 80), gain=rng.uniform(0.1, 5), rng=rng)
+    sym, _ = m.receive(rx)
+    got = m.qpsk_demap(sym)[:nbits]
+    n = len(got)
+    return int(np.sum(got != bits[:n])), n
+
+for esn0 in (12, 9):
+    results = [trial(s, esn0) for s in range(20)]
+    frame_fail = sum(e / n > 0.05 for e, n in results)
+    errs = sum(e for e, n in results if e / n <= 0.05)
+    total = sum(n for e, n in results if e / n <= 0.05)
+    ber = errs / total
+    verdict = "PASS" if esn0 != 12 or (frame_fail == 0 and ber < 1e-3) else "FAIL"
+    print(f"Es/N0 {esn0:2d} dB: frame failures {frame_fail}/20, BER {ber:.1e}  {verdict if esn0 == 12 else '(margin check)'}")
+  </py>
+  <p>이 시험은 실제로 버그 두 개를 잡아냈습니다. 첫째, 초기 타이밍이 반 심볼 어긋난 채 시작하면 가드너 루프가 오차 검출기의 이득이 0에 가까운 지점에서 수백 심볼 동안 머뭇거리다가 그사이 한 심볼을 건너뛰었습니다. 그래서 루프를 시작하기 전에 |<var>y</var>|²의 심볼률 성분 위상으로 눈의 중심을 한 번에 추정하는 피드포워드 단계(<code>timing_estimate()</code>)를 넣었습니다. 둘째, 특정 시드에서 데이터의 첫 32심볼이 우연히 프리앰블과 같아 상관 피크가 두 개 생겼고, 더 큰 쪽을 고르다 32심볼 늦게 프레임을 잡았습니다. 그래서 "가장 큰 피크"가 아니라 "처음 나타난 강한 피크"를 고르도록 바꿨습니다. 둘 다 한두 번 돌려서는 절대 보이지 않는 문제입니다.</p>
+  <p>수정 후 12 dB에서 합격입니다. 9 dB 결과는 여유(margin)를 보기 위한 것으로, BER이 이론값보다 조금 나쁜 것은 루프가 잠기는 동안의 오류와 루프 지터 때문입니다. 이 차이를 구현 손실(implementation loss)이라고 부르고, 좋은 수신기는 1 dB 안쪽으로 줄입니다. 루프 대역폭을 바꿔 가며 이 숫자를 개선해 보는 것이 첫 번째 연습입니다.</p>
+
+  <h3>단계 3: 진짜 전파로, PlutoSDR 루프백</h3>
+  <p>이제 <code>channel()</code>을 PlutoSDR로 바꿉니다. 처음에는 안테나 대신 <strong>SMA 케이블과 30 dB 정도의 감쇠기</strong>로 TX와 RX를 직접 잇는 것을 권합니다. 수신단 과입력을 막고, 전파를 밖으로 내보내지 않으며, 결과가 재현 가능합니다. 2.4 GHz ISM 대역이라도 무선 출력과 용도에는 각 나라의 전파 규정이 적용된다는 점을 기억하세요.</p>
+  <py file="pluto_loopback.py">
+import numpy as np
+import adi                                   # pip install pyadi-iio
+from mini_rx import transmit, receive, qpsk_demap
+
+fs = 1_000_000
+sdr = adi.Pluto("ip:192.168.2.1")
+sdr.sample_rate = fs
+sdr.tx_lo = 2_440_000_000
+sdr.rx_lo = 2_440_000_000                    # try tx_lo + 5000 later: a known 0.005 cycles/sample CFO
+sdr.tx_rf_bandwidth = fs
+sdr.rx_rf_bandwidth = fs
+sdr.tx_hardwaregain_chan0 = -30              # dB, keep it low for cabled loopback
+sdr.gain_control_mode_chan0 = "slow_attack"  # hardware AGC (chapter 11)
+
+rng = np.random.default_rng(1)
+bits = rng.integers(0, 2, 2 * 2000)
+frame = transmit(bits)
+frame = frame / np.max(np.abs(frame)) * 0.5 * 2 ** 14   # Pluto TX expects roughly +/-2^14 full scale
+
+sdr.tx_cyclic_buffer = True                  # repeat the frame forever
+sdr.tx(frame)
+sdr.rx_buffer_size = 3 * len(frame)          # at least two whole frames per capture
+for _ in range(5):
+    sdr.rx()                                 # flush stale buffers
+r = sdr.rx()
+
+sym, f_est = receive(r)
+got = qpsk_demap(sym)[: len(bits)]
+n = len(got)
+print(f"CFO estimate {f_est * fs:+.0f} Hz, bit errors {np.sum(got != bits[:n])} / {n}")
+sdr.tx_destroy_buffer()
+  </py>
+  <p>같은 칩의 TX와 RX는 같은 기준 클록을 쓰므로 CFO가 거의 0으로 나올 것입니다. 수신기를 시험하려면 <code>tx_lo</code>를 수 kHz 비켜 알려진 오프셋을 만드세요. 5 kHz면 1 MSPS에서 0.005 사이클/샘플이고, 거친 CFO 추정이 정확히 그 값을 보고해야 합니다. 두 대의 PlutoSDR로 하면 1장에서 계산한 수십 kHz 단위의 실제 ppm 오차를 직접 만나게 됩니다.</p>
+  <div class="call warn"><span class="lab">하드웨어에서 처음 만나는 문제들</span>
+    <ul>
+      <li><strong>DC 스파이크</strong>: 8장의 LO 누설이 0 Hz에 나타납니다. 이 신호는 대역 중앙을 쓰므로 영향이 있다면 <code>rx_lo</code>를 대역폭 밖으로 비키고 소프트웨어 NCO로 되돌리는 오프셋 튜닝을 적용하세요.</li>
+      <li><strong>포화</strong>: 수신 성상도의 바깥 점이 눌리거나 BER이 이유 없이 나쁘면 TX 이득을 더 낮추거나 감쇠를 늘리세요. <code>r</code>의 최댓값이 12비트 풀스케일(±2048) 근처면 포화입니다.</li>
+      <li><strong>버퍼 경계</strong>: 순환 송신 버퍼의 경계와 수신 버퍼의 경계는 맞지 않습니다. 수신 버퍼가 프레임 두 개 이상이어야 프레임 하나가 온전히 들어옵니다.</li>
+    </ul>
+  </div>
+
+  <h3>단계 4: 정합 필터를 PL로 옮기기</h3>
+  <p>호스트에서 동작을 확인했다면 가장 무거운 샘플 단위 블록부터 FPGA로 옮깁니다. 이 수신기에서는 정합 필터입니다. 9장의 절차를 그대로 따릅니다.</p>
+  <ol class="steps">
+    <li><strong>비트 정확 모델</strong>: RRC 계수를 Q1.17로, 입력을 Q1.11로 양자화한 정수 모델을 만들고, 부동소수점 수신기 대신 이 모델을 끼워 단계 2의 합격 시험을 다시 통과시킵니다.</li>
+    <li><strong>자원 계산</strong>: 33탭 대칭 필터는 곱셈 17개입니다. 1 MSPS 데이터를 100 MHz 클록으로 처리하면 <var>f</var><sub>clk</sub>/<var>f</var><sub>s</sub> = 100이므로 DSP 슬라이스 하나로 충분하고, 61.44 MSPS 원신호에 바로 건다면 슬라이스 수십 개가 필요합니다. 데시메이션 뒤에 둘 이유가 다시 확인됩니다.</li>
+    <li><strong>HLS 또는 HDL 구현</strong>: 9장의 <code>fir_hls.cpp</code>에 아래 스크립트가 만든 계수를 붙여 넣고, AXI-Stream 입출력으로 합성합니다.</li>
+    <li><strong>비트 정확 대조</strong>: 같은 입력 벡터로 HDL 시뮬레이션 출력과 정수 모델 출력이 한 비트도 다르지 않은지 확인합니다.</li>
+    <li><strong>통합</strong>: ADI HDL의 Pluto 프로젝트에서 트랜시버 인터페이스 코어와 DMA 사이에 블록을 끼우고, 정합 필터가 빠진 <code>receive()</code>로 같은 합격 시험을 돌립니다.</li>
+  </ol>
+  <py file="export_coeffs.py" check>
+import numpy as np
+from mini_rx import rrc
+
+h = rrc() / np.max(np.abs(rrc())) * 0.5       # leave headroom: peak tap = 0.5
+q = np.round(h * 2 ** 17).astype(int)         # Q1.17 for the 18-bit DSP48 B port
+assert np.array_equal(q, q[::-1]), "RRC must stay symmetric after rounding"
+print(f"// {len(q)} taps, Q1.17, sum = {q.sum()} ({q.sum() / 2 ** 17:.3f})")
+print("const coef_t H[N] = {")
+for i in range(0, len(q), 8):
+    print("    " + ", ".join(f"{v / 2 ** 17:.8f}" for v in q[i:i + 8]) + ",")
+print("};")
+  </py>
+
+  <h3>확장 과제</h3>
+  <ol class="steps">
+    <li><strong>16-QAM으로</strong>: 매핑·판정을 바꾸고 코스타스 위상 검출기를 판정 기반(decision-directed)으로 일반화합니다. 크기 정보가 의미를 갖기 때문에 AGC 정확도가 갑자기 중요해집니다.</li>
+    <li><strong>실시간 스펙트럼 모니터</strong>: PL에 FFT IP와 전력 평균기를 두고, PS의 Linux에서 웹 페이지로 워터폴을 그립니다. 5장의 dBFS 정규화와 Welch 평균을 그대로 씁니다.</li>
+    <li><strong>FM 방송 수신기</strong>: FM 복조는 순간 주파수, 즉 angle(<var>x</var>[<var>n</var>] · <var>x</var>*[<var>n</var>−1])입니다. 단 FM 방송 대역(88–108 MHz)은 PlutoSDR 공식 튜닝 범위(325 MHz 이상) 밖이므로 하한이 낮은 다른 수신기가 필요합니다.</li>
+    <li><strong>패킷과 오류 정정</strong>: 페이로드에 길이·CRC를 붙이고 오류 정정 부호를 더합니다. RFSoC 계열에는 SD-FEC 하드 블록이 들어 있는 제품도 있습니다.</li>
+    <li><strong>RFSoC로 이식</strong>: 믹서 없는 직접 RF 샘플링(2장의 나이퀴스트 존)과 하드 DDC(8장)를 쓰면 AD9363의 아날로그 앞단 대신 무엇이 달라지는지 비교해 봅니다.</li>
+  </ol>
+
+  <div class="call key"><span class="lab">최종 체크리스트</span>
+    <ul>
+      <li>임의의 주파수가 주어진 샘플률에서 어디로 접히는지 계산할 수 있다 (2장)</li>
+      <li>IQ 스펙트럼의 음의 주파수가 LO 아래라는 것을 설명할 수 있다 (3장)</li>
+      <li>탭 수 × 샘플률로 필요한 MAC/s와 DSP 슬라이스 수를 추정할 수 있다 (4, 9장)</li>
+      <li>FFT 결과를 dBFS로 정규화하고 RBW와 함께 잡음 바닥을 말할 수 있다 (5장)</li>
+      <li>사양에서 FIR 탭 수를 추정하고 설계해 검증할 수 있다 (6장)</li>
+      <li>데시메이션 체인을 비싼 필터가 낮은 샘플률에 오도록 설계할 수 있다 (7장)</li>
+      <li>NCO의 FTW, 해상도, 스퓨리어스를 계산하고 DDC를 구현할 수 있다 (8장)</li>
+      <li>비트 정확 모델로 고정소수점 설계를 검증할 수 있다 (9장)</li>
+      <li>성상도 모양으로 결함을 진단하고 EVM을 잴 수 있다 (10장)</li>
+      <li>동기화 체인의 순서를 근거와 함께 설계하고 루프 대역폭을 고를 수 있다 (11장)</li>
+      <li>위의 모든 것을 합쳐 합격 시험을 통과하는 수신기를 만들었다 (12장)</li>
+    </ul>
+  </div>
+  <p>여기까지 왔다면 신호처리는 더 이상 잊어버린 교과목이 아니라 손에 쥔 도구입니다. 다음은 하드웨어 위에서 이 도구들을 하나씩 PL로 옮기며, 시뮬레이션에서 본 숫자가 실제 전파에서도 나오는지 확인하는 일입니다.</p>
+
+  <div class="quiz" data-quiz="ch12"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch12" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

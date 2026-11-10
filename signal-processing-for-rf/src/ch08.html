@@ -1,0 +1,159 @@
+<!-- ============ CH8 ============ -->
+<section class="chapter col" id="ch8">
+  <div class="eyebrow">Part III · RF 수신 체인 실무 — 8장</div>
+  <h2>믹싱, NCO, DDC</h2>
+  <p class="goal">이 장을 마치면: 복소 곱셈으로 스펙트럼을 원하는 만큼 옮기고, 위상 누산기 NCO를 설계해 주파수 해상도와 스퓨리어스를 계산하며, NCO·믹서·데시메이터를 묶은 DDC를 구현하고, 직접 변환 수신기의 DC 오프셋과 IQ 불균형을 진단할 수 있습니다.</p>
+
+  <h3>곱하면 주파수가 움직인다</h3>
+  <p>3장에서 복소수 곱셈은 각도의 덧셈이라고 했습니다. 주파수 <var>f</var><sub>1</sub>로 도는 신호에 <var>e</var><sup>−<var>j</var>2π<var>f</var><sub>0</sub><var>n</var>/<var>f</var><sub>s</sub></sup>를 곱하면 각도가 매 샘플 그만큼씩 덜 늘어나므로 결과는 <var>f</var><sub>1</sub> − <var>f</var><sub>0</sub>로 돕니다. 신호 하나가 아니라 스펙트럼 전체에 똑같이 적용되므로 <strong>스펙트럼이 통째로 −<var>f</var><sub>0</sub>만큼 평행 이동</strong>합니다. 다른 성분은 생기지 않습니다.</p>
+  <div class="eq"><var>y</var>[<var>n</var>] = <var>x</var>[<var>n</var>] · <var>e</var><sup>−<var>j</var>2π<var>f</var><sub>0</sub><var>n</var>/<var>f</var><sub>s</sub></sup> &nbsp;⇔&nbsp; <var>Y</var>(<var>f</var>) = <var>X</var>(<var>f</var> + <var>f</var><sub>0</sub>)</div>
+  <p>실수 코사인을 곱하면 이야기가 다릅니다. cos는 반대로 도는 두 화살표의 합이므로 스펙트럼이 +<var>f</var><sub>0</sub>와 −<var>f</var><sub>0</sub> 두 방향으로 동시에 옮겨집니다. 합 주파수와 차 주파수가 함께 나오고, 원치 않는 쪽(이미지)을 필터로 제거해야 합니다. 아날로그 믹서가 겪는 이미지 문제의 근원이고, 디지털 영역에서 복소 믹싱을 쓰면 이 문제가 처음부터 없습니다. 비용은 복소 곱셈 하나, 즉 실수 곱셈 4번(입력이 실수면 2번)입니다.</p>
+
+  <h3>NCO: 위상 누산기 하나와 사인 표 하나</h3>
+  <p>믹싱에 쓸 <var>e</var><sup>−<var>j</var>2π<var>f</var><sub>0</sub><var>n</var>/<var>f</var><sub>s</sub></sup>는 FPGA 안에서 수치 제어 발진기(NCO, Numerically Controlled Oscillator)가 만듭니다. 구조는 놀랄 만큼 단순합니다. <var>N</var>비트 누산기가 매 클록 주파수 튜닝 워드(FTW)를 더하고, 누산기 값의 윗부분을 주소로 사인·코사인 표를 읽습니다. 누산기가 넘쳐 0으로 돌아가는 것이 정확히 한 바퀴(2π)입니다. 2의 보수 오버플로가 위상의 랩어라운드와 일치한다는 점이 이 설계의 아름다움입니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 170" role="img" aria-label="NCO 구조: 주파수 튜닝 워드가 N비트 위상 누산기에 매 클록 더해지고, 상위 P비트가 사인 코사인 룩업 테이블의 주소가 된다">
+      <rect class="sv-af" x="10" y="60" width="86" height="40" rx="4"/><text class="sv-t" x="53" y="85" text-anchor="middle">FTW</text>
+      <path class="sv-ln" d="M96 80h30" marker-end="url(#arw)"/>
+      <circle class="sv-r0" cx="142" cy="80" r="15"/><text class="sv-t" x="142" y="85" text-anchor="middle">+</text>
+      <path class="sv-ln" d="M157 80h26" marker-end="url(#arw)"/>
+      <rect class="sv-r2" x="185" y="60" width="104" height="40" rx="4"/><text class="sv-t" x="237" y="78" text-anchor="middle">위상 레지스터</text><text class="sv-m" x="237" y="93" text-anchor="middle">N비트</text>
+      <path class="sv-ln" d="M237 100v30H142v-35" marker-end="url(#arw)"/>
+      <text class="sv-m" x="190" y="148" text-anchor="middle">매 클록 되먹임</text>
+      <path class="sv-ln" d="M289 80h60" marker-end="url(#arw)"/>
+      <text class="sv-m" x="318" y="70" text-anchor="middle">상위 P비트</text>
+      <rect class="sv-r3" x="351" y="52" width="130" height="56" rx="4"/><text class="sv-t" x="416" y="76" text-anchor="middle">cos / sin 표</text><text class="sv-m" x="416" y="94" text-anchor="middle">2^P 항목 (ROM)</text>
+      <path class="sv-ac" d="M481 70h60M481 92h60" marker-end="url(#arwa)"/>
+      <text class="sv-t" x="548" y="74">cos[n]</text><text class="sv-t" x="548" y="97">−sin[n]</text>
+    </svg>
+    <figcaption>그림 8-1. 위상 누산기 NCO. 출력 주파수 <var>f</var><sub>out</sub> = FTW × <var>f</var><sub>clk</sub> / 2<sup><var>N</var></sup>.</figcaption>
+  </figure>
+  <div class="eq">FTW = round( <span class="fr"><span><var>f</var><sub>0</sub> · 2<sup><var>N</var></sup></span><span><var>f</var><sub>s</sub></span></span> ), &nbsp; 해상도 Δ<var>f</var> = <span class="fr"><span><var>f</var><sub>s</sub></span><span>2<sup><var>N</var></sup></span></span> <small>예: <var>N</var> = 32, <var>f</var><sub>s</sub> = 61.44 MHz → 약 0.0143 Hz 간격으로 튜닝. 음의 FTW(2의 보수)는 음의 주파수</small></div>
+  <p>누산기는 32비트라도 표를 2<sup>32</sup>칸으로 만들 수는 없으니 상위 <var>P</var>비트(예: 10비트, 1024칸)만 주소로 씁니다. 버린 하위 비트 때문에 위상이 계단처럼 오차를 갖고, 이 오차가 주기적이라서 스펙트럼에 스퓨리어스로 나타납니다. 널리 쓰는 어림값은 <strong>위상 비트 1개당 약 6 dB</strong>, 즉 최악의 스퓨리어스가 대략 −6.02<var>P</var> dBc입니다. 10비트 주소면 약 −60 dBc입니다. 사인파의 대칭을 이용해 4분의 1 주기만 저장하면 같은 메모리로 2비트를 더 얻습니다. 메모리 대신 곱셈 없이 시프트와 덧셈만으로 회전을 계산하는 CORDIC 알고리즘을 쓰기도 합니다.</p>
+  <v file="nco.v">
+// Phase-accumulator NCO: 32-bit phase, 10-bit LUT address, 16-bit signed outputs.
+// cos_lut.hex / sin_lut.hex hold round(32767*cos(2*pi*k/1024)), k = 0..1023 (two's complement hex).
+module nco #(
+    parameter PHASE_W = 32,
+    parameter ADDR_W  = 10,
+    parameter OUT_W   = 16
+)(
+    input  wire                      clk,
+    input  wire                      rst,
+    input  wire [PHASE_W-1:0]        ftw,      // frequency tuning word = round(f0 * 2^32 / fs)
+    output reg  signed [OUT_W-1:0]   cos_o,
+    output reg  signed [OUT_W-1:0]   msin_o    // -sin, ready for down-conversion
+);
+    reg [PHASE_W-1:0] phase;
+    reg signed [OUT_W-1:0] cos_lut [0:(1<<ADDR_W)-1];
+    reg signed [OUT_W-1:0] sin_lut [0:(1<<ADDR_W)-1];
+    initial begin
+        $readmemh("cos_lut.hex", cos_lut);
+        $readmemh("sin_lut.hex", sin_lut);
+    end
+
+    wire [ADDR_W-1:0] addr = phase[PHASE_W-1 -: ADDR_W];   // keep the top bits only
+
+    always @(posedge clk) begin
+        if (rst) phase <= 0;
+        else     phase <= phase + ftw;                      // wraps exactly at 2*pi
+        cos_o  <= cos_lut[addr];                            // registered ROM read (block RAM)
+        msin_o <= -sin_lut[addr];
+    end
+endmodule
+  </v>
+
+  <h3>DDC: 옮기고, 거르고, 줄인다</h3>
+  <p>디지털 다운컨버터(DDC)는 지금까지 배운 것을 한 줄로 이은 것입니다. 광대역으로 캡처한 IQ 신호에 NCO를 곱해 원하는 채널을 0 Hz로 옮기고(8장), 저역통과로 그 채널만 남기고(6장), 샘플률을 채널 폭에 맞게 줄입니다(7장). 수신 체인에서 하드웨어 LO가 대략적인 튜닝을, DDC가 정밀한 채널 선택을 맡습니다. RFSoC의 RF-ADC 타일에도 NCO와 복소 믹서, 데시메이션 필터로 된 DDC가 하드 블록으로 들어 있습니다.</p>
+
+  <div class="bench" id="ddBench">
+    <header><b>실습 벤치 8-A · DDC로 채널 골라내기</b><span>NCO · MIX · FILTER · DECIMATE</span></header>
+    <div class="body">
+      <div class="ctls">
+        <div class="ctl"><label for="ddF">NCO 주파수 <var>f</var><sub>0</sub> (<var>f</var><sub>s</sub> = 2 MSPS)</label><output id="oDdF"></output><input type="range" id="ddF" min="-1000" max="1000" step="5" value="250"></div>
+        <div class="ctl"><label for="ddM">데시메이션 <var>M</var></label><span></span>
+          <select id="ddM"><option value="1">1 (안 줄임)</option><option value="2">2</option><option value="4">4</option><option value="8" selected>8</option></select></div>
+        <div class="ctl"><span>데시메이션 전 저역통과 필터</span><span></span><div class="seg" id="ddLpf" style="grid-column:1/-1"><button type="button" data-v="1" aria-pressed="true">켬</button><button type="button" data-v="0" aria-pressed="false">끔 (그냥 버리기)</button></div></div>
+      </div>
+      <svg class="plot" id="ddIn" viewBox="0 0 600 190" role="img" aria-label="입력 광대역 스펙트럼과 NCO가 선택한 대역"></svg>
+      <svg class="plot" id="ddOut" viewBox="0 0 600 190" role="img" aria-label="DDC 출력 스펙트럼"></svg>
+      <div class="status g" id="ddNote" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>광대역 캡처에 세 개의 "방송국" A(−600 kHz), B(+250 kHz, 가장 약함), C(+700 kHz)가 있습니다. NCO를 250 kHz에 두면 B가 0 Hz로 옮겨지고, 필터와 ↓8을 거치면 250 kHz 폭의 출력에 B만 남습니다. 이제 필터를 끄세요. 버려진 대역에 있던 A와 C가 접혀 들어와 B를 덮습니다. 7장의 "거르고 나서 버린다"를 눈으로 확인하는 순간입니다. NCO를 −600 kHz로 옮기면 A가 선택됩니다.</p>
+  <py file="ddc.py" check>
+import numpy as np
+from scipy import signal
+
+fs, N = 2e6, 1 << 15
+n = np.arange(N)
+rng = np.random.default_rng(5)
+# Wideband capture: three narrowband "stations" plus noise
+x = (1.00 * np.exp(2j * np.pi * -600e3 / fs * n)
+     + 0.10 * np.exp(2j * np.pi * (250e3 + 3e3) / fs * n)     # station B sits 3 kHz above 250 kHz
+     + 0.30 * np.exp(2j * np.pi * 700e3 / fs * n)
+     + 1e-3 * (rng.standard_normal(N) + 1j * rng.standard_normal(N)))
+
+def ddc(x, f0, fs, M, ntaps=129):
+    nco = np.exp(-2j * np.pi * f0 / fs * np.arange(len(x)))   # NCO
+    y = x * nco                                                 # complex mixer: shift by -f0
+    h = signal.firwin(ntaps, 0.8 / M)                           # anti-alias, cutoff 0.4 * fs/M
+    return signal.lfilter(h, 1, y)[::M], fs / M                 # filter, then decimate
+
+y, fs_out = ddc(x, 250e3, fs, M=8)
+Y = np.fft.fftshift(np.abs(np.fft.fft(y[200:] * np.hanning(len(y) - 200))))
+f = np.fft.fftshift(np.fft.fftfreq(len(y) - 200, 1 / fs_out))
+print(f"output rate {fs_out / 1e3:.0f} kSPS, strongest component at {f[np.argmax(Y)] / 1e3:+.2f} kHz")
+Ydb = 20 * np.log10(Y / Y.max())
+print(f"worst other component: {np.max(Ydb[np.abs(f) > 10e3]):.1f} dB relative to station B")
+  </py>
+
+  <h3>직접 변환 수신기의 흠과 오프셋 튜닝</h3>
+  <p>AD9363 같은 직접 변환(zero-IF) 수신기는 RF를 한 번에 0 Hz로 내리므로 구조가 단순하고 집적하기 좋지만, 아날로그 IQ 믹서의 불완전함이 0 Hz 주변에 그대로 드러납니다.</p>
+  <ul>
+    <li><strong>DC 오프셋과 LO 누설</strong>: LO 신호가 자기 자신과 섞이거나 회로의 오프셋이 더해져 정확히 0 Hz에 스파이크가 생깁니다. 트랜시버의 DC 보정이 대부분 지우지만 완벽하지는 않습니다.</li>
+    <li><strong>IQ 불균형</strong>: I 경로 이득이 Q 경로보다 ε만큼 크거나, 두 LO의 위상차가 90°에서 φ만큼 어긋나면 +<var>f</var>의 신호가 −<var>f</var>에 거울상을 만듭니다. 오차가 작을 때 이미지 제거비(IRR)는 대략 다음과 같습니다.</li>
+  </ul>
+  <div class="eq">IRR ≈ 10 log<sub>10</sub> <span class="fr"><span>4</span><span>ε² + φ²</span></span> &nbsp;[dB] <small>ε는 이득 오차 비율, φ는 위상 오차(라디안). 이득 1%, 위상 1°면 약 40 dB</small></div>
+  <p>해결책은 대개 디지털에서 찾습니다. 첫째, 하드웨어 LO를 관심 신호에서 일부러 조금 비켜(오프셋 튜닝) 신호가 0 Hz가 아닌 곳에 오게 하고, 마지막 정밀 튜닝은 DDC의 NCO로 합니다. 그러면 DC 스파이크는 DDC의 저역통과 필터 밖으로 밀려나 사라집니다. 둘째, 이미지는 대역 안의 다른 신호 위치에 따라 문제가 되기도 하고 안 되기도 하니, 강한 신호의 거울 위치에 약한 관심 신호가 오지 않도록 LO를 고릅니다. 셋째, 남은 불균형은 트랜시버의 직교 보정이나 디지털 IQ 보정 블록으로 줄입니다.</p>
+  <py file="iq_imbalance.py" check>
+import numpy as np
+
+def image_rejection_db(eps, phi_deg, N=4096):
+    """Measure the image of a +f tone after a receiver with IQ gain/phase error."""
+    n = np.arange(N); phi = np.deg2rad(phi_deg)
+    th = 2 * np.pi * 300 / N * n                      # tone exactly on bin +300
+    i = (1 + eps / 2) * np.cos(th)                    # I path a bit hot
+    q = (1 - eps / 2) * np.sin(th + phi)              # Q path a bit cold and skewed
+    X = np.abs(np.fft.fft(i + 1j * q))
+    return 20 * np.log10(X[300] / X[-300])            # wanted (+f) over image (-f)
+
+for eps, ph in ((0.01, 1.0), (0.05, 3.0)):
+    approx = 10 * np.log10(4 / (eps ** 2 + np.deg2rad(ph) ** 2))
+    print(f"gain {eps:.0%}, phase {ph} deg: measured {image_rejection_db(eps, ph):.1f} dB, approx {approx:.1f} dB")
+  </py>
+
+  <div class="call sys"><span class="lab">FPGA 엔지니어의 눈으로</span>
+    <p>DDC는 PL에서 가장 먼저 만들어 볼 만한 블록입니다. 입력은 트랜시버 인터페이스 코어가 내놓는 IQ 스트림, 출력은 DMA로 가는 낮은 샘플률 IQ 스트림, 제어는 PS가 AXI-Lite 레지스터로 쓰는 FTW와 데시메이션 비율 하나씩입니다. NCO는 블록 RAM 하나, 복소 믹서는 DSP 슬라이스 3~4개, 데시메이터는 CIC나 하프밴드 몇 단으로 Z-7010에 충분히 들어갑니다. 레지스터 맵, 스트림 핸드셰이크(tvalid/tready), 리셋 순서처럼 익숙한 문제들이 신호처리 블록에서도 그대로 중요합니다.</p>
+  </div>
+
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>부호 반대</strong>: 다운컨버전에는 <var>e</var><sup>−<var>j</var>…</sup>가 필요합니다. <var>e</var><sup>+<var>j</var>…</sup>를 곱하면 신호가 0 Hz가 아니라 2<var>f</var><sub>0</sub> 쪽으로 갑니다. 테스트 톤으로 방향부터 확인하세요.</li>
+      <li><strong>NCO 출력 크기</strong>: 표를 32767로 채우면 곱셈 결과가 정확히 2<sup>15</sup>배가 되지 않습니다(32767 ≠ 32768). 이득 오차가 문제가 되는 곳에서는 스케일을 명시적으로 보정하세요.</li>
+      <li><strong>필터를 넉넉히</strong>: 데시메이션 필터의 저지대역이 약하면 인접 채널의 강한 신호가 접혀 들어옵니다. 사양은 가장 강한 인접 신호를 기준으로 정합니다.</li>
+    </ul>
+  </div>
+
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>복소 지수를 곱하면 스펙트럼이 평행 이동한다. 실수 코사인은 양쪽으로 옮겨 이미지를 만든다.</li>
+      <li>NCO = 위상 누산기 + 사인 표. 해상도 <var>f</var><sub>s</sub>/2<sup><var>N</var></sup>, 위상 비트 1개당 스퓨리어스 약 6 dB.</li>
+      <li>DDC = NCO × 입력 → 저역통과 → ↓<var>M</var>. LO는 비켜 두고 DDC로 정밀 튜닝하면 DC 문제를 피한다.</li>
+    </ul>
+  </div>
+  <p>지금까지는 모든 계산을 실수로 했습니다. 하지만 FPGA에는 부동소수점이 기본으로 없고, 비트 하나하나가 자원입니다. 다음 장에서는 이 모든 블록을 정수로 옮기는 방법, 그리고 PL과 PS 사이에 일을 나누는 방법을 다룹니다.</p>
+
+  <div class="quiz" data-quiz="ch8"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch8" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
