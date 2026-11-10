@@ -66,13 +66,13 @@
       <text class="sv-t" x="582" y="106">s[n] =</text><text class="sv-t" x="572" y="124">I + jQ</text>
       <text class="sv-m" x="330" y="208" text-anchor="middle">곱셈이 만든 2fc 성분을 LPF가 제거하고 기저대역만 남긴다</text>
     </svg>
-    <figcaption>그림 3-1. 직교(IQ) 복조기. AD9363 안의 아날로그 앞단이 바로 이 구조이며, ADC 두 개가 I와 Q를 각각 샘플링한다.</figcaption>
+    <figcaption>그림 3-1. 직교(IQ) 복조기. AD9361 안의 아날로그 앞단이 바로 이 구조이며, ADC 두 개가 I와 Q를 각각 샘플링한다.</figcaption>
   </figure>
   <p>왜 이렇게 하면 <var>I</var>와 <var>Q</var>가 나올까요? 곱셈의 삼각함수 공식 cos<var>A</var> cos<var>B</var> = ½[cos(<var>A</var>−<var>B</var>) + cos(<var>A</var>+<var>B</var>)]를 쓰면 위쪽 경로는 ½<var>I</var>(<var>t</var>)와 2<var>f</var><sub>c</sub> 근처의 성분으로 나뉩니다. LPF가 2<var>f</var><sub>c</sub> 성분을 지우면 ½<var>I</var>(<var>t</var>)만 남습니다. 아래쪽도 같은 방식으로 ½<var>Q</var>(<var>t</var>)가 나옵니다. 복소수로 한 줄에 쓰면 더 간단합니다. 수신 신호에 <var>e</var><sup>−<var>j</var>2π<var>f</var><sub>c</sub><var>t</var></sup>를 곱해 반송파의 회전을 되감고, 저역통과로 거르면 <var>s</var>(<var>t</var>)가 남습니다. 송신기는 정확히 반대로, <var>s</var>(<var>t</var>)에 <var>e</var><sup>+<var>j</var>2π<var>f</var><sub>c</sub><var>t</var></sup>를 곱하고 실수부를 내보냅니다.</p>
 
   <h3>복소 샘플링: <var>f</var><sub>s</sub> 하나로 대역폭 <var>B</var> = <var>f</var><sub>s</sub>를 본다</h3>
   <p>복소 기저대역 신호에는 +<var>f</var>와 −<var>f</var>를 구분할 정보가 있습니다. 그래서 스펙트럼의 양쪽 절반이 서로 다른 내용을 담을 수 있고, 샘플률 <var>f</var><sub>s</sub>로 −<var>f</var><sub>s</sub>/2 ~ +<var>f</var><sub>s</sub>/2, 즉 폭 <var>f</var><sub>s</sub>의 대역을 앨리어싱 없이 볼 수 있습니다. 숫자 개수로 따지면 복소 샘플 하나가 실수 두 개이므로 데이터량은 실수 샘플링과 같지만, 대역을 반송파 주위 양쪽으로 쓸 수 있다는 것이 결정적인 차이입니다.</p>
-  <p>예를 들어 PlutoSDR의 LO를 2.44 GHz에, 샘플률을 20 MSPS에 두면 2.43–2.45 GHz가 한 번에 보입니다. FFT에서 음의 주파수 칸은 LO보다 낮은 주파수, 양의 칸은 높은 주파수입니다. 이 "LO가 0 Hz가 된다"는 감각이 SDR 작업의 출발점입니다.</p>
+  <p>예를 들어 AD9361의 LO를 2.44 GHz에, 샘플률을 20 MSPS에 두면 2.43–2.45 GHz가 한 번에 보입니다. FFT에서 음의 주파수 칸은 LO보다 낮은 주파수, 양의 칸은 높은 주파수입니다. 이 "LO가 0 Hz가 된다"는 감각이 SDR 작업의 출발점입니다.</p>
 
   <py file="iq_spectrum.py" check>
 import numpy as np
@@ -92,7 +92,7 @@ for name, x in (("complex", complex_tone), ("real", real_tone)):
   </py>
 
   <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
-    <p>메모리에서 IQ 샘플은 정수 두 개짜리 구조체입니다. PlutoSDR의 12비트 ADC 값은 보통 16비트 정수 두 개(I, Q)로 담겨 32비트 워드 하나가 복소 샘플 하나가 되고, DMA와 AXI-Stream도 이 단위로 움직입니다. pyadi-iio는 이것을 numpy 복소 배열로 돌려줍니다. 한 가지 주의할 점은 I와 Q의 비트 위치나 순서, 부호 확장 방식이 인터페이스마다 다를 수 있다는 것입니다. 새 데이터 경로를 만들면 알려진 주파수의 톤을 넣고 스펙트럼 피크가 올바른 부호 쪽에 나타나는지부터 확인하세요. I와 Q가 뒤바뀌면 스펙트럼이 좌우로 뒤집힙니다.</p>
+    <p>메모리에서 IQ 샘플은 정수 두 개짜리 구조체입니다. AD9361의 12비트 ADC 값은 보통 16비트 정수 두 개(I, Q)로 담겨 32비트 워드 하나가 복소 샘플 하나가 되고, DMA와 AXI-Stream도 이 단위로 움직입니다. pyadi-iio는 이것을 numpy 복소 배열로 돌려줍니다. 한 가지 주의할 점은 I와 Q의 비트 위치나 순서, 부호 확장 방식이 인터페이스마다 다를 수 있다는 것입니다. 새 데이터 경로를 만들면 알려진 주파수의 톤을 넣고 스펙트럼 피크가 올바른 부호 쪽에 나타나는지부터 확인하세요. I와 Q가 뒤바뀌면 스펙트럼이 좌우로 뒤집힙니다.</p>
   </div>
 
   <div class="call warn"><span class="lab">흔한 함정: 현실의 IQ는 완벽하지 않다</span>

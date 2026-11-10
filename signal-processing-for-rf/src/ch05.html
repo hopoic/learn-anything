@@ -21,7 +21,7 @@
       <tr><td><var>N</var>/2 + 1 … <var>N</var> − 1</td><td>(<var>k</var> − <var>N</var>) · <var>f</var><sub>s</sub>/<var>N</var></td><td>LO보다 낮은 주파수 (음의 주파수)</td></tr>
     </tbody>
   </table></div>
-  <p>FFT 출력은 0 Hz부터 시작해 양의 주파수, 그다음 음의 주파수 순서로 나옵니다. 화면에 −<var>f</var><sub>s</sub>/2 … +<var>f</var><sub>s</sub>/2 순서로 그리려면 앞뒤 절반을 맞바꾸는 <code>fftshift</code>가 필요합니다. 예를 들어 PlutoSDR을 2 MSPS로 두고 <var>N</var> = 4096 FFT를 하면 빈 폭은 약 488 Hz, 한 번의 FFT가 보는 시간은 약 2 ms입니다.</p>
+  <p>FFT 출력은 0 Hz부터 시작해 양의 주파수, 그다음 음의 주파수 순서로 나옵니다. 화면에 −<var>f</var><sub>s</sub>/2 … +<var>f</var><sub>s</sub>/2 순서로 그리려면 앞뒤 절반을 맞바꾸는 <code>fftshift</code>가 필요합니다. 예를 들어 AD9361을 4 MSPS로 두고 <var>N</var> = 8192 FFT를 하면 빈 폭은 약 488 Hz, 한 번의 FFT가 보는 시간은 약 2 ms입니다.</p>
 
   <h3>FFT는 같은 답을 훨씬 빨리 낸다</h3>
   <p>DFT를 식 그대로 계산하면 빈 <var>N</var>개 × 샘플 <var>N</var>개로 <var>N</var>²번의 복소 곱셈이 필요합니다. FFT(고속 푸리에 변환)는 짝수 번째와 홀수 번째 샘플로 나눠 각각 절반 크기의 DFT를 하고 합치는 일을 재귀적으로 반복해, 약 (<var>N</var>/2) log<sub>2</sub><var>N</var>번으로 줄입니다. <var>N</var> = 1024라면 1,048,576번 대신 5,120번, 200배 이상 빠릅니다. 결과는 DFT와 완전히 같습니다. FFT는 근사가 아니라 계산 순서를 바꾼 것입니다.</p>

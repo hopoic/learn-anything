@@ -33,7 +33,7 @@
   <h3>나이퀴스트 조건: 대역폭의 두 배보다 빠르게</h3>
   <p>접힘이 문제가 되지 않으려면 신호의 모든 성분이 처음부터 0 ~ <var>f</var><sub>s</sub>/2 안에 있어야 합니다. 최고 주파수가 <var>B</var>인 실수 신호라면 <strong><var>f</var><sub>s</sub> &gt; 2<var>B</var></strong>. 이것이 나이퀴스트-섀넌 샘플링 정리의 실무적 요약이고, <var>f</var><sub>s</sub>/2를 나이퀴스트 주파수라고 부릅니다. 이 조건을 만족하면 샘플로부터 원래 연속 신호를 정확히 복원할 수 있습니다.</p>
   <p>부등호가 엄격하다는 점에 주의하세요. <var>f</var> = <var>f</var><sub>s</sub>/2를 정확히 샘플링하면 cos(π<var>n</var> + <var>φ</var>) = cos <var>φ</var> · (−1)<sup><var>n</var></sup>이 됩니다. 크기가 위상에 따라 달라지고, <var>φ</var> = 90°면 모든 샘플이 0입니다. 신호가 통째로 사라집니다.</p>
-  <p>3장에서 다룰 복소(IQ) 샘플링에서는 같은 조건이 <var>f</var><sub>s</sub> &gt; <var>B</var>로 바뀝니다. PlutoSDR이 "샘플률 20 MSPS로 20 MHz 대역폭"을 볼 수 있는 이유입니다.</p>
+  <p>3장에서 다룰 복소(IQ) 샘플링에서는 같은 조건이 <var>f</var><sub>s</sub> &gt; <var>B</var>로 바뀝니다. AD9361이 채널당 61.44 MSPS의 복소 샘플로 최대 56 MHz 대역폭을 다룰 수 있는 이유입니다.</p>
 
   <py file="alias.py" check>
 import numpy as np
@@ -68,7 +68,7 @@ print("f = fs/2, phase 90 deg:", np.round(samples(500, np.pi / 2)[:6], 12))
   <div class="call warn"><span class="lab">흔한 함정</span>
     <ul>
       <li><strong>"2배면 충분하다"</strong>: 정확히 2배에서는 위상에 따라 신호가 사라질 수 있고, 현실의 필터에는 전이대역이 필요합니다. 여유를 두세요.</li>
-      <li><strong>샘플률만 바꾸고 필터는 그대로</strong>: PlutoSDR에서도 <code>sample_rate</code>와 아날로그 필터 대역폭 <code>rx_rf_bandwidth</code>는 별개의 설정입니다. 샘플률을 낮추고 필터를 넓게 두면 대역 밖 신호가 접혀 들어옵니다.</li>
+      <li><strong>샘플률만 바꾸고 필터는 그대로</strong>: AD9361에서도(pyadi-iio 기준) <code>sample_rate</code>와 아날로그 필터 대역폭 <code>rx_rf_bandwidth</code>는 별개의 설정입니다. 샘플률을 낮추고 필터를 넓게 두면 대역 밖 신호가 접혀 들어옵니다.</li>
       <li><strong>디지털 처리 중의 앨리어싱</strong>: 샘플을 솎아 내는 데시메이션도 샘플링입니다. 미리 거르지 않고 버리면 ADC 앞에서 막았던 앨리어싱이 디지털 영역에서 다시 일어납니다(7장).</li>
     </ul>
   </div>

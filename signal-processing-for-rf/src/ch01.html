@@ -24,14 +24,14 @@
   <p>LTI가 중요한 이유는 하나로 요약됩니다. <strong>LTI 시스템에 사인파를 넣으면 같은 주파수의 사인파가 나온다.</strong> 크기와 위상만 바뀝니다. 그래서 어떤 신호든 사인파들의 합으로 쪼갤 수 있다면(5장의 푸리에 변환), 시스템은 "주파수마다 크기와 위상을 얼마나 바꾸는가"라는 표 하나로 완전히 기술됩니다. 이 표가 주파수 응답이고, 필터 설계(6장)는 이 표를 원하는 모양으로 만드는 일입니다. 반대로 믹서는 일부러 LTI가 아니게 만든 시스템입니다. 주파수를 옮기는 것이 목적이니까요(8장).</p>
 
   <h3>RF 수신 체인 한 장으로 보기</h3>
-  <p>이 책 전체가 다루는 것은 아래 그림의 왼쪽 끝에서 오른쪽 끝까지 신호가 흘러가는 길입니다. 기준 하드웨어는 ADALM-PLUTO(PlutoSDR)로 잡았습니다. AD9363 트랜시버 하나와 Zynq Z-7010이 들어 있는, USB로 전원을 받는 교육용 SDR이라 가장 적은 비용으로 이 책의 모든 개념을 실제 전파로 확인할 수 있습니다.</p>
+  <p>이 책 전체가 다루는 것은 아래 그림의 왼쪽 끝에서 오른쪽 끝까지 신호가 흘러가는 길입니다. 기준 하드웨어는 <strong>RK-ZYNQ7020-F</strong> 보드에 AD9361 FMC 카드 <strong>FMC-9361</strong>을 꽂은 조합입니다. 그림의 왼쪽 절반이 FMC-9361의 AD9361, 오른쪽 절반이 RK-ZYNQ7020-F의 Zynq-7020입니다.</p>
 
   <figure class="fig">
-    <svg viewBox="0 0 720 270" role="img" aria-label="RF 수신 체인: 안테나, LNA, IQ 믹서와 LO, 저역통과 필터, ADC, 디지털 데시메이션 필터까지가 AD9363, 그 뒤 DDC와 동기·복조가 Zynq PL, Linux와 응용이 Zynq PS">
+    <svg viewBox="0 0 720 270" role="img" aria-label="RF 수신 체인: 안테나, LNA, IQ 믹서와 LO, 저역통과 필터, ADC, 디지털 데시메이션 필터까지가 AD9361, 그 뒤 DDC와 동기·복조가 Zynq PL, Linux와 응용이 Zynq PS">
       <rect class="sv-r1" x="4" y="26" width="378" height="170" rx="8"/>
-      <text class="sv-t" x="16" y="46">AD9363 트랜시버 (아날로그 + 앞단 디지털)</text>
+      <text class="sv-t" x="16" y="46">AD9361 · FMC-9361 (아날로그 + 앞단 디지털)</text>
       <rect class="sv-r2" x="392" y="26" width="206" height="170" rx="8"/>
-      <text class="sv-t" x="404" y="46">Zynq PL (FPGA 로직)</text>
+      <text class="sv-t" x="404" y="46">Zynq-7020 PL (FPGA)</text>
       <rect class="sv-r3" x="608" y="26" width="108" height="170" rx="8"/>
       <text class="sv-t" x="618" y="46">Zynq PS (ARM)</text>
       <!-- antenna -->
@@ -124,21 +124,23 @@ print(f"-90 dBm       -> {dbm_to_mw(-90):.1e} mW")
 print(f"chain gain    -> {15 - 6 + 40} dB, so -90 dBm arrives at {-90 + 15 - 6 + 40} dBm")
   </py>
 
-  <h3>이 책의 기준 하드웨어</h3>
-  <p>PlutoSDR의 공식 사양은 다음과 같습니다. 숫자 하나하나가 뒤의 장에서 설계 제약으로 다시 등장합니다.</p>
+  <h3>이 책의 기준 하드웨어: RK-ZYNQ7020-F + FMC-9361</h3>
+  <p>RK-ZYNQ7020-F는 XC7Z020-2CLG484 Zynq를 쓰는 단일 보드로, FMC(LPC) 슬롯, DDR3, eMMC, PS·PL 각각의 기가비트 이더넷, USB 2.0, 보드 내장 JTAG+UART를 갖추고 있습니다. FMC-9361은 판매처 설명에 따르면 FMC 핀 배치가 ADI 공식 평가 보드 AD-FMCOMMS2와 같은 AD9361 카드입니다(공식 보드 대비 전원 감시 칩과 EEPROM을 빼고 송신 증폭기를 더했습니다). 그래서 ADI의 FMCOMMS2용 HDL 참조 설계, Linux 드라이버, IIO 도구를 거의 그대로 쓸 수 있고, 보드마다 다른 것은 캐리어 쪽뿐입니다. 숫자 하나하나가 뒤의 장에서 설계 제약으로 다시 등장합니다.</p>
   <div class="tbl"><table>
     <thead><tr><th>항목</th><th>사양</th><th>관련 장</th></tr></thead>
     <tbody>
-      <tr><td>RF 트랜시버</td><td>AD9363, 송수신 각 1채널, 튜닝 범위 325 MHz–3.8 GHz</td><td>3, 8</td></tr>
-      <tr><td>채널 대역폭</td><td>200 kHz–20 MHz</td><td>2, 7</td></tr>
-      <tr><td>ADC/DAC</td><td>12비트, 출력 데이터율 약 65.1 kSPS–61.44 MSPS</td><td>2, 9</td></tr>
-      <tr><td>FPGA</td><td>Zynq XC7Z010: 로직 셀 28k, DSP 슬라이스 80, 블록 RAM 2.1 Mb</td><td>9</td></tr>
-      <tr><td>프로세서</td><td>싱글 코어 Cortex-A9 667 MHz, Linux + IIO 드라이버</td><td>9, 12</td></tr>
-      <tr><td>호스트 연결</td><td>USB 2.0. 위키 기준 약 4 MSPS까지 샘플 손실 없이 스트리밍</td><td>9</td></tr>
-      <tr><td>주파수 정확도</td><td>±25 ppm</td><td>11</td></tr>
+      <tr><td>RF 트랜시버</td><td>AD9361, 2T2R(송수신 각 2채널), 수신 70 MHz–6 GHz · 송신 47 MHz–6 GHz</td><td>3, 8</td></tr>
+      <tr><td>채널 대역폭</td><td>200 kHz 미만–56 MHz</td><td>2, 7</td></tr>
+      <tr><td>ADC/DAC</td><td>12비트, 채널당 최대 61.44 MSPS(복소)</td><td>2, 9</td></tr>
+      <tr><td>디지털 인터페이스</td><td>LVDS (ADI는 FMCOMMS 보드를 LVDS 모드로만 검증)</td><td>9</td></tr>
+      <tr><td>FPGA (PL)</td><td>XC7Z020: 로직 셀 85K, LUT 53,200, DSP 슬라이스 220, 블록 RAM 4.9 Mb</td><td>9</td></tr>
+      <tr><td>프로세서 (PS)</td><td>듀얼 코어 Cortex-A9, 스피드 등급 −2에서 최대 766 MHz</td><td>9, 12</td></tr>
+      <tr><td>호스트 연결</td><td>기가비트 이더넷 (Linux의 IIO 서버를 통해 PC에서 접근)</td><td>9, 12</td></tr>
+      <tr><td>기준 클록</td><td>공식 FMCOMMS2는 40 MHz 크리스털. FMC-9361의 정확도(ppm)는 판매처 자료로 확인</td><td>11</td></tr>
     </tbody>
   </table></div>
-  <p>마지막 두 줄을 기억해 두세요. 61.44 MSPS로 받을 수 있지만 USB로는 4 MSPS 정도밖에 못 보낸다는 사실이 "FPGA 안에서 샘플률을 줄여야 하는" 이유이고(7·9장), ±25 ppm은 2.4 GHz에서 최대 60 kHz의 주파수 오차라서 수신기가 반드시 주파수를 추적해야 하는 이유입니다(11장). 더 큰 플랫폼으로 가면 Zynq UltraScale+ RFSoC처럼 기가샘플급 RF-ADC를 칩 안에 넣고 믹서 없이 RF를 바로 샘플링하는 구조도 있습니다. 원리는 이 책과 같고, 2장의 나이퀴스트 존과 8장의 DDC가 그 구조를 이해하는 열쇠입니다.</p>
+  <p>두 가지를 기억해 두세요. 첫째, 61.44 MSPS 복소 샘플은 I와 Q를 16비트씩 담으면 채널당 약 246 MB/s, 즉 약 2 Gbit/s이고 두 채널이면 약 4 Gbit/s입니다. 기가비트 이더넷으로는 원신호를 그대로 PC에 보낼 수 없다는 뜻이고, 이것이 "FPGA 안에서 샘플률을 줄여야 하는" 이유입니다(7·9장). 둘째, 기준 클록의 작은 ppm 오차가 2.4 GHz에서는 수십 kHz의 주파수 오차가 되므로 수신기가 반드시 주파수를 추적해야 합니다(11장). 같은 AD936x 계열에 Zynq-7010을 붙인 PlutoSDR(AD9363)로도 이 책 대부분을 그대로 따라 할 수 있습니다.</p>
+  <p>이 조합은 ADI가 공식 지원하는 캐리어가 아니므로 참조 설계를 보드에 맞게 옮기는 작업이 한 번 필요합니다. 다행히 ADI가 지원하는 ZedBoard가 같은 XC7Z020-CLG484 칩을 쓰기 때문에 출발점이 분명하고, 이 작업은 임베디드 BSP 일과 거의 같습니다. 구체적인 순서는 9장 끝에서 다룹니다. 더 큰 플랫폼으로 가면 Zynq UltraScale+ RFSoC처럼 기가샘플급 RF-ADC를 칩 안에 넣고 믹서 없이 RF를 바로 샘플링하는 구조도 있습니다. 원리는 이 책과 같고, 2장의 나이퀴스트 존과 8장의 DDC가 그 구조를 이해하는 열쇠입니다.</p>
 
   <div class="call key"><span class="lab">핵심 정리</span>
     <ul>

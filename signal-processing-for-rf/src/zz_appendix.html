@@ -54,18 +54,22 @@
   <h2>참고 자료</h2>
   <h4>하드웨어와 드라이버</h4>
   <ul>
-    <li><a href="https://wiki.analog.com/university/tools/pluto/devs/specs" target="_blank" rel="noopener">Analog Devices Wiki — ADALM-PLUTO Detailed Specifications</a></li>
-    <li><a href="https://www.analog.com/ad9363" target="_blank" rel="noopener">Analog Devices — AD9363 RF Agile Transceiver 제품 페이지</a></li>
+    <li><a href="https://yantechlab.com/products/yx-os14-zynq-7020-f-xilinx-fpga-development-board-with-fmc-support-for-ad9361-onboard-jtag-for-sdr-applications" target="_blank" rel="noopener">RK-ZYNQ7020-F 판매 페이지 사양 (XC7Z020-CLG484-2, FMC LPC, 인터페이스 목록)</a>. 회로도와 예제 프로젝트는 구매처 자료실에서 받는다</li>
+    <li><a href="https://analogdevicesinc.github.io/documentation/solutions/reference-designs/fmcomms2/index.html" target="_blank" rel="noopener">Analog Devices — EVAL-AD-FMCOMMS2 (FMC-9361이 핀 배치를 따르는 공식 AD9361 FMC 보드)</a></li>
+    <li><a href="https://analogdevicesinc.github.io/hdl/projects/fmcomms2" target="_blank" rel="noopener">Analog Devices HDL — FMCOMMS2/3/4 HDL 프로젝트 (빌드 방법)</a></li>
+    <li><a href="https://analogdevicesinc.github.io/documentation/solutions/reference-designs/fmcomms2/quickstart/index.html" target="_blank" rel="noopener">Analog Devices — FMCOMMS2 퀵스타트 (지원 캐리어: ZedBoard, ZC702 등)</a></li>
+    <li><a href="https://analogdevicesinc.github.io/hdl/user_guide/releases.html" target="_blank" rel="noopener">Analog Devices HDL — 릴리스별 Vivado 버전</a></li>
     <li><a href="https://analogdevicesinc.github.io/documentation/solutions/reference-designs/fmcomms2/common/ad9361_ad9363_ad9364_general_description.html" target="_blank" rel="noopener">Analog Devices — AD9361, AD9364 and AD9363 개요 (수신·송신 체인, IQ 보정)</a></li>
+    <li><a href="https://wiki.analog.com/university/tools/pluto/devs/specs" target="_blank" rel="noopener">Analog Devices Wiki — ADALM-PLUTO 상세 사양 (같은 계열 비교용)</a></li>
     <li><a href="https://wiki.analog.com/resources/eval/user-guides/ad9361" target="_blank" rel="noopener">Analog Devices Wiki — AD9361 사용자 가이드 (디지털 필터와 FIR 보상)</a></li>
     <li><a href="https://analogdevicesinc.github.io/pyadi-iio/buffers/index.html" target="_blank" rel="noopener">pyadi-iio — 버퍼와 순환 송신 버퍼</a></li>
-    <li><a href="https://wiki.gnuradio.org/index.php/PlutoSDR_Sink" target="_blank" rel="noopener">GNU Radio Wiki — PlutoSDR Sink (샘플률 한계와 FIR 조건)</a></li>
+    <li><a href="https://wiki.gnuradio.org/index.php/PlutoSDR_Sink" target="_blank" rel="noopener">GNU Radio Wiki — PlutoSDR Sink (AD936x 샘플률 한계와 FIR 조건)</a></li>
     <li><a href="https://docs.amd.com/r/en-US/ug953-vivado-7series-libraries/DSP48E1" target="_blank" rel="noopener">AMD UG953 — DSP48E1 프리미티브 (포트 폭과 기능). 상세 구조는 UG479 7 Series DSP48E1 Slice User Guide</a></li>
     <li><a href="https://www.amd.com/content/dam/amd/en/documents/products/adaptive-socs-and-fpgas/soc/amd-rfsoc-product-brief.pdf" target="_blank" rel="noopener">AMD — Zynq UltraScale+ RFSoC Product Brief</a></li>
   </ul>
   <h4>더 읽을거리</h4>
   <ul>
-    <li><a href="https://pysdr.org/content/pluto.html" target="_blank" rel="noopener">PySDR — PlutoSDR in Python</a>: Python으로 배우는 SDR 무료 온라인 교재. 이 책 다음으로 읽기 좋다</li>
+    <li><a href="https://pysdr.org/content/pluto.html" target="_blank" rel="noopener">PySDR — PlutoSDR in Python</a>: Python으로 배우는 SDR 무료 온라인 교재. pyadi-iio 사용법은 AD9361 보드에도 거의 그대로 적용된다</li>
     <li>Richard G. Lyons, <em>Understanding Digital Signal Processing</em>: 수식보다 직관을 앞세운 DSP 입문서</li>
     <li>Michael Rice, <em>Digital Communications: A Discrete-Time Approach</em>: 11장의 루프 이득 공식과 타이밍·위상 동기를 깊게 다룬다</li>
     <li>fred harris, <em>Multirate Signal Processing for Communication Systems</em>: 폴리페이즈, 하프밴드, 채널라이저의 표준 참고서</li>
