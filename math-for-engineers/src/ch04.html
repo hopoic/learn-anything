@@ -1,0 +1,114 @@
+<!-- ============ CH4 ============ -->
+<section class="chapter col" id="ch4">
+  <div class="eyebrow">Part I · 수학의 언어 — 4장</div>
+  <h2>삼각함수와 회전</h2>
+  <p class="goal">이 장을 마치면: 도(°)와 라디안을 오가며 바퀴의 이동 거리를 계산할 수 있고, sin과 cos을 원 위를 도는 점의 좌표로 이해해 직각삼각형 문제를 풀며, 사인파 <var>A</var> sin(2π<var>ft</var> + <var>φ</var>)의 세 숫자를 읽고, atan2와 각도 정규화로 로봇의 방향 오차를 올바르게 계산할 수 있습니다.</p>
+
+  <h3>라디안: 반지름으로 잰 각도</h3>
+  <p>학교에서는 각도를 도(°)로 배웠지만, 공학 수식과 프로그래밍 라이브러리는 거의 모두 <strong>라디안</strong>(rad)을 씁니다. 라디안은 "호의 길이가 반지름의 몇 배인가"로 잰 각도입니다. 반지름 1인 원에서 호 길이 1만큼 돈 각도가 1 rad입니다.</p>
+  <div class="eq"><var>s</var> = <var>r</var> · <var>θ</var> &nbsp; (<var>θ</var>는 라디안) <small>원 한 바퀴의 둘레 2π<var>r</var> ⇒ 한 바퀴 = 2π rad = 360°, 1 rad ≈ 57.3°</small></div>
+  <p>이 단순한 식 하나가 라디안을 쓰는 이유입니다. 바퀴 반지름이 0.05 m이고 엔코더가 바퀴가 3π rad(1.5바퀴) 돌았다고 알려 주면, 로봇이 간 거리는 곱셈 한 번으로 0.05 × 3π ≈ 0.471 m입니다. 도를 쓰면 매번 π/180을 곱해야 합니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>도</th><th>0°</th><th>30°</th><th>45°</th><th>60°</th><th>90°</th><th>180°</th><th>360°</th></tr></thead>
+    <tbody><tr><td>라디안</td><td>0</td><td>π/6</td><td>π/4</td><td>π/3</td><td>π/2</td><td>π</td><td>2π</td></tr></tbody>
+  </table></div>
+
+  <h3>sin과 cos은 원 위를 도는 점의 좌표다</h3>
+  <p>반지름 1인 원(단위원) 위에 점이 하나 있다고 합시다. 오른쪽 수평 방향에서 시작해 반시계 방향으로 각도 <var>θ</var>만큼 돌아간 위치에 있습니다. 이 점의 <strong>가로 좌표가 cos <var>θ</var>, 세로 좌표가 sin <var>θ</var></strong>입니다. 삼각함수의 정의는 이게 전부입니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 230" role="img" aria-label="단위원 위의 점. 가로 좌표는 cos 세타, 세로 좌표는 sin 세타, 원점에서 점까지의 거리는 1">
+      <line class="sv-ln" x1="60" y1="120" x2="300" y2="120"/>
+      <line class="sv-ln" x1="180" y1="10" x2="180" y2="225"/>
+      <circle cx="180" cy="120" r="95" class="sv-ln"/>
+      <line class="sv-ac" x1="180" y1="120" x2="256" y2="63" marker-end="url(#arwa)"/>
+      <line x1="256" y1="63" x2="256" y2="120" style="stroke:var(--signal);stroke-width:2.2"/>
+      <line x1="180" y1="120" x2="256" y2="120" style="stroke:var(--accent);stroke-width:3.4;opacity:.55"/>
+      <path d="M205 120 A25 25 0 0 0 200 105" class="sv-ln"/>
+      <text class="sv-t" x="210" y="112" style="font-style:italic">θ</text>
+      <text class="sv-t" x="200" y="140">cos θ</text>
+      <text class="sv-t" x="262" y="98" style="fill:var(--signal)">sin θ</text>
+      <text class="sv-t" x="198" y="80">1</text>
+      <circle cx="256" cy="63" r="5" style="fill:var(--accent)"/>
+      <text class="sv-m" x="262" y="56">(cos θ, sin θ)</text>
+      <text class="sv-t" x="340" y="60">직각삼각형으로 보면</text>
+      <text class="sv-m" x="340" y="88">빗변 r 일 때</text>
+      <text class="sv-m" x="340" y="110">x = r · cos θ   (밑변)</text>
+      <text class="sv-m" x="340" y="132">y = r · sin θ   (높이)</text>
+      <text class="sv-m" x="340" y="154">tan θ = y / x = sin θ / cos θ</text>
+      <text class="sv-m" x="340" y="186">피타고라스: sin²θ + cos²θ = 1</text>
+    </svg>
+    <figcaption>그림 4-1. 단위원 위의 점 = (cos θ, sin θ). 반지름이 r이면 좌표에 r을 곱한다.</figcaption>
+  </figure>
+  <p>이 그림에서 학교 때 배운 공식이 모두 나옵니다. 빗변 <var>r</var>, 각도 <var>θ</var>인 직각삼각형의 밑변은 <var>r</var> cos <var>θ</var>, 높이는 <var>r</var> sin <var>θ</var>입니다. 점은 원 위에 있으니 원점까지 거리가 1이고, 피타고라스 정리로 sin²<var>θ</var> + cos²<var>θ</var> = 1입니다. 로봇이 방향 <var>θ</var>로 속도 <var>v</var>만큼 달리면 <var>x</var> 방향으로 <var>v</var> cos <var>θ</var>, <var>y</var> 방향으로 <var>v</var> sin <var>θ</var>만큼 움직인다는 것도 같은 그림입니다.</p>
+
+  <div class="bench" id="ucBench">
+    <header><b>실습 벤치 4-A · 원 위를 도는 점</b><span>UNIT CIRCLE</span></header>
+    <div class="body">
+      <div class="ctl"><label for="ucT">각도 θ</label><output id="oUcT"></output><input type="range" id="ucT" min="0" max="720" step="1" value="40"></div>
+      <svg class="plot" id="ucSvg" viewBox="0 0 600 240" role="img" aria-label="원 위를 도는 점과, 그 점의 가로·세로 좌표를 각도에 따라 펼친 cos과 sin 곡선"></svg>
+      <div class="legend"><span><i style="background:var(--accent)"></i>cos θ (가로 좌표)</span><span><i style="background:var(--signal)"></i>sin θ (세로 좌표)</span></div>
+      <div class="readout"><div><small>라디안</small><b id="ucRad">—</b></div><div><small>cos θ</small><b id="ucCos">—</b></div><div><small>sin θ</small><b id="ucSin">—</b></div></div>
+      <div class="row" style="justify-content:space-between"><button class="btn pri" id="ucPlay" type="button" aria-pressed="false">재생</button><span class="tokc" id="ucNote"></span></div>
+    </div>
+  </div>
+  <p>재생을 눌러 점을 돌려 보세요. 점의 세로 좌표를 시간에 따라 펼치면 사인파가 되고, 가로 좌표를 펼치면 코사인파가 됩니다. 둘은 모양이 같고 90°(π/2)만큼 어긋나 있을 뿐입니다. 사인파는 원운동의 그림자입니다. 발전기의 회전자가 돌면 교류가, 모터가 돌면 진동이 사인파 모양으로 나오는 이유입니다.</p>
+
+  <h3>사인파의 세 숫자: 진폭, 주파수, 위상</h3>
+  <p>점이 1초에 <var>f</var>바퀴 돈다면, <var>t</var>초 동안 돈 각도는 2π<var>ft</var> 라디안입니다. 여기에 원의 크기와 출발 각도를 붙이면 모든 사인파를 표현할 수 있습니다.</p>
+  <div class="eq"><var>y</var>(<var>t</var>) = <var>A</var> · sin(2π<var>f t</var> + <var>φ</var>) <small><var>A</var>: 진폭(원의 반지름) · <var>f</var>: 주파수 [Hz] (1초에 몇 바퀴) · <var>φ</var>: 위상 [rad] (출발 각도)</small></div>
+  <p>주기 <var>T</var> = 1/<var>f</var>는 한 바퀴 도는 데 걸리는 시간이고, 2π<var>f</var>를 묶어 각주파수 <var>ω</var>[rad/s]라고 부르기도 합니다. 위상 <var>φ</var>는 2장의 "그래프 옮기기"입니다. sin(2π<var>f</var>(<var>t</var> − <var>t</var><sub>0</sub>))로 쓰면 신호가 <var>t</var><sub>0</sub>만큼 늦게 도착한 것이고, 이때 위상은 <var>φ</var> = −2π<var>f t</var><sub>0</sub>입니다. 시간 지연이 곧 위상 지연입니다.</p>
+
+  <h3>각도를 되찾기: atan2와 각도 정규화</h3>
+  <p>반대 문제도 자주 나옵니다. 목표 지점까지 가로로 Δ<var>x</var>, 세로로 Δ<var>y</var> 떨어져 있을 때 방향 각도는? tan <var>θ</var> = Δ<var>y</var>/Δ<var>x</var>이니 <var>θ</var> = atan(Δ<var>y</var>/Δ<var>x</var>)라고 하고 싶지만, 이 식에는 두 가지 문제가 있습니다.</p>
+  <ul>
+    <li>(1, 1)과 (−1, −1)은 Δ<var>y</var>/Δ<var>x</var>가 둘 다 1이라 같은 각도(45°)가 나옵니다. 실제로는 정반대 방향(45°와 −135°)입니다.</li>
+    <li>Δ<var>x</var> = 0이면 0으로 나누게 됩니다.</li>
+  </ul>
+  <p>그래서 <strong>atan2(Δ<var>y</var>, Δ<var>x</var>)</strong>를 씁니다. 두 값을 따로 받아 부호를 보고 사분면을 판단하므로 −π부터 +π까지 올바른 각도를 돌려줍니다. 인자 순서가 <var>y</var>, <var>x</var>인 것에 주의하세요.</p>
+  <p>또 하나, 각도의 차이를 구할 때는 반드시 <strong>정규화</strong>해야 합니다. 로봇이 350°를 보고 있고 목표가 10°라면 오차는 10 − 350 = −340°가 아니라 +20°입니다. 왼쪽으로 20°만 돌면 됩니다. 차이를 −180°~+180° 범위로 감싸 주는 함수가 필요합니다.</p>
+
+  <py file="angles.py" check>
+import math
+
+# Wheel odometry: arc length s = r * theta (theta in radians)
+r = 0.05                       # wheel radius [m]
+theta = 3 * math.pi            # 1.5 turns
+print(f"distance = {r * theta:.3f} m")
+
+# atan loses the quadrant, atan2 keeps it
+for dx, dy in [(1, 1), (-1, -1), (0, 2)]:
+    a1 = math.degrees(math.atan(dy / dx)) if dx != 0 else float("nan")
+    a2 = math.degrees(math.atan2(dy, dx))
+    print(f"({dx:+d},{dy:+d})  atan: {a1:7.1f} deg   atan2: {a2:7.1f} deg")
+
+def wrap_pi(a):
+    """Wrap an angle in radians to (-pi, pi]."""
+    return math.atan2(math.sin(a), math.cos(a))
+
+heading, target = math.radians(350), math.radians(10)
+print(f"naive error : {math.degrees(target - heading):.0f} deg")
+print(f"wrapped     : {math.degrees(wrap_pi(target - heading)):.0f} deg")
+  </py>
+
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>C의 <code>sin()</code>, <code>cos()</code>, <code>atan2()</code>도 모두 라디안을 받습니다. FPU가 없는 MCU에서는 sin을 LUT(2장)로 만들거나, 곱셈 없이 시프트와 덧셈만으로 회전을 계산하는 CORDIC 알고리즘을 씁니다. FPGA의 각도 계산기 대부분이 CORDIC입니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>도와 라디안 혼용</strong>: <code>sin(90)</code>은 1이 아니라 sin(90 rad) ≈ 0.894입니다. 센서·설정값은 도, 계산은 라디안으로 쓰는 경우가 많아 경계에서 변환을 빼먹기 쉽습니다.</li>
+      <li><strong>atan에 나눗셈 넣기</strong>: 방향 계산에는 항상 atan2(y, x).</li>
+      <li><strong>각도 차이 정규화 누락</strong>: 359°와 1°의 차이를 358°로 계산하면 로봇이 거의 한 바퀴를 돌아 버립니다. 제어기에 넣기 전에 항상 감쌉니다.</li>
+    </ul>
+  </div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>라디안 = 호 길이 ÷ 반지름. 한 바퀴는 2π. 거리 = 반지름 × 각도.</li>
+      <li>(cos <var>θ</var>, sin <var>θ</var>) = 단위원 위의 점. 사인파는 원운동의 그림자다.</li>
+      <li>사인파 = 진폭 · 주파수 · 위상. 방향 계산은 atan2, 각도 차이는 항상 정규화.</li>
+    </ul>
+  </div>
+  <p>Part I이 끝났습니다. 이제 수식을 읽고, 직선·지수·로그·삼각함수의 얼굴을 알아볼 수 있습니다. Part II에서는 이 함수들이 "얼마나 빨리 변하는가"와 "얼마나 쌓였는가"를 묻는 미적분으로 넘어갑니다. 겁먹을 필요 없습니다. 5장의 미분은 기울기, 6장의 적분은 누산기입니다.</p>
+
+  <div class="quiz" data-quiz="ch4"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch4" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

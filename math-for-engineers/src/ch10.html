@@ -1,0 +1,95 @@
+<!-- ============ CH10 ============ -->
+<section class="chapter col" id="ch10">
+  <div class="eyebrow">Part III · 여러 수를 한 번에 — 10장</div>
+  <h2>복소수: 회전하는 수</h2>
+  <p class="goal">이 장을 마치면: 복소수를 평면 위의 점이자 화살표로 보고 극형식(크기와 각도)으로 바꿀 수 있고, 복소수 곱셈이 "크기는 곱하고 각도는 더한다"는 것을 이용하며, 오일러 공식으로 사인파를 회전하는 화살표(페이저)로 다루고, 임피던스로 RC 필터의 이득과 위상을 계산할 수 있습니다.</p>
+
+  <h3>j는 "옆으로 90도"다</h3>
+  <p>"허수"라는 이름 때문에 복소수는 현실과 동떨어진 상상의 수처럼 느껴집니다. 이름을 잊고 그림으로 봅시다. 보통의 수(실수)는 수직선 위에 있습니다. +1을 곱하면 그대로, −1을 곱하면 원점을 중심으로 <strong>180° 뒤집힙니다</strong>. 그렇다면 "두 번 하면 180° 뒤집히는" 연산, 즉 <strong>90° 회전</strong>을 하는 수가 있으면 어떨까요? 그 수를 <var>j</var>라고 부르면 <var>j</var> × <var>j</var> = −1이 됩니다. 수학에서는 <var>i</var>라고 쓰지만, 전기에서는 <var>i</var>가 전류라서 <var>j</var>를 씁니다.</p>
+  <p>그러면 수가 사는 곳이 직선에서 <strong>평면</strong>으로 넓어집니다. 가로축은 실수, 세로축은 <var>j</var>의 배수(허수)이고, 복소수 <var>z</var> = <var>a</var> + <var>jb</var>는 이 평면 위의 점 (<var>a</var>, <var>b</var>)입니다. 8장의 2D 벡터와 같은 점인데, <strong>곱셈</strong>이라는 연산이 하나 더 붙어 있다는 것이 다릅니다.</p>
+
+  <h3>곱셈 = 회전 + 확대</h3>
+  <p>복소수도 점이니까 4장처럼 원점에서의 거리와 각도로 나타낼 수 있습니다. 이것을 극형식이라고 합니다.</p>
+  <div class="eq"><var>z</var> = <var>a</var> + <var>jb</var> = <var>r</var>∠<var>θ</var>, &nbsp; <var>r</var> = |<var>z</var>| = √<span class="rt"><var>a</var><sup>2</sup> + <var>b</var><sup>2</sup></span>, &nbsp; <var>θ</var> = atan2(<var>b</var>, <var>a</var>) <small>거꾸로: <var>a</var> = <var>r</var> cos <var>θ</var>, <var>b</var> = <var>r</var> sin <var>θ</var></small></div>
+  <p>이렇게 쓰면 복소수 곱셈의 비밀이 드러납니다. <strong>크기는 곱하고, 각도는 더합니다</strong>.</p>
+  <div class="eq">(<var>r</var><sub>1</sub>∠<var>θ</var><sub>1</sub>) × (<var>r</var><sub>2</sub>∠<var>θ</var><sub>2</sub>) = (<var>r</var><sub>1</sub><var>r</var><sub>2</sub>)∠(<var>θ</var><sub>1</sub> + <var>θ</var><sub>2</sub>) <small>예: <var>j</var> = 1∠90°이므로 <var>j</var>를 곱하면 크기 그대로 90° 회전. <var>j</var>² = 1∠180° = −1</small></div>
+  <p>9장에서 점을 돌리려면 2×2 회전 행렬이 필요했지만, 복소수로는 1∠<var>θ</var>를 곱하기만 하면 됩니다. 나눗셈은 반대로 크기는 나누고 각도는 뺍니다. <strong>켤레</strong>(conjugate) <var>z</var>* = <var>a</var> − <var>jb</var>는 가로축에 대해 뒤집은 점으로, 각도의 부호만 바뀝니다. <var>z</var> × <var>z</var>* = |<var>z</var>|²라서 크기를 구할 때 자주 씁니다.</p>
+
+  <div class="bench" id="cxBench">
+    <header><b>실습 벤치 10-A · 거듭 곱하기 = 거듭 돌리기</b><span>COMPLEX POWERS</span></header>
+    <div class="body">
+      <div class="ctls">
+        <div class="ctl"><label for="cxR">w의 크기 r</label><output id="oCxR"></output><input type="range" id="cxR" min="0.8" max="1.12" step="0.005" value="1"></div>
+        <div class="ctl"><label for="cxT">w의 각도 θ</label><output id="oCxT"></output><input type="range" id="cxT" min="0" max="180" step="1" value="30"></div>
+      </div>
+      <div class="ctl"><label for="cxN">곱한 횟수 n (w⁰, w¹, …, wⁿ)</label><output id="oCxN"></output><input type="range" id="cxN" min="1" max="40" step="1" value="12"></div>
+      <svg class="plot" id="cxSvg" viewBox="0 0 600 320" role="img" aria-label="복소평면 위에서 w의 거듭제곱들이 원이나 나선을 그리는 그림"></svg>
+      <div class="readout"><div><small>w = a + jb</small><b id="cxW">—</b></div><div><small>wⁿ의 크기 rⁿ</small><b id="cxRn">—</b></div><div><small>wⁿ의 각도 nθ</small><b id="cxTn">—</b></div></div>
+      <div class="status g" id="cxNote" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>크기를 정확히 1로 두면 점들이 원 위를 일정한 간격으로 돕니다. 크기를 1보다 조금만 작게 하면 안쪽으로 감기는 나선(사라지는 진동), 조금만 크게 하면 바깥으로 풀리는 나선(커지는 진동)이 됩니다. 7장에서 오일러 방법의 오차가 매 걸음 (1 − α)배가 되어 |1 − α| &gt; 1이면 발산했던 것과 같은 이야기입니다. 디지털 필터와 제어기가 안정하려면 "극점이 단위원 안에 있어야 한다"는 말을 듣게 되는데, 그 단위원이 바로 이 그림의 원입니다.</p>
+
+  <h3>오일러 공식: 회전하는 화살표로 사인파를 쓴다</h3>
+  <p>크기 1, 각도 <var>θ</var>인 복소수는 cos <var>θ</var> + <var>j</var> sin <var>θ</var>입니다. 이것을 아주 짧게 쓰는 방법이 있습니다.</p>
+  <div class="eq"><var>e</var><sup><var>jθ</var></sup> = cos <var>θ</var> + <var>j</var> sin <var>θ</var> <small>오일러 공식. "<var>e</var>의 <var>jθ</var>승"은 "각도 <var>θ</var>를 가리키는 길이 1인 화살표"라고 읽으면 된다</small></div>
+  <p>왜 지수 함수가 회전과 같은지는 5장의 미분으로 짐작할 수 있습니다. <var>e</var><sup><var>jθ</var></sup>를 <var>θ</var>로 미분하면 <var>j</var><var>e</var><sup><var>jθ</var></sup>, 즉 "변화 방향이 언제나 현재 위치에서 90° 옆"입니다. 원점에서 늘 직각 방향으로 움직이는 점은 원을 그립니다. 그리고 지수 법칙 <var>e</var><sup><var>jα</var></sup><var>e</var><sup><var>jβ</var></sup> = <var>e</var><sup><var>j</var>(<var>α</var>+<var>β</var>)</sup>이 "각도는 더한다"는 곱셈 규칙과 정확히 맞아떨어집니다.</p>
+  <p>이제 <var>θ</var> = <var>ωt</var>로 두면 <var>e</var><sup><var>jωt</var></sup>는 1초에 <var>f</var>바퀴 도는 화살표이고, 그 실수부(가로 그림자)가 cos(<var>ωt</var>)입니다. 4장에서 "사인파는 원운동의 그림자"라고 했던 것을 수식 하나로 쓴 것입니다. 교류 회로에서는 주파수가 모두 같으니 회전은 잠시 잊고, 출발 화살표 <var>A</var>∠<var>φ</var>만 들고 다닙니다. 이것이 <strong>페이저</strong>(phasor)입니다. 같은 주파수의 사인파 두 개를 더하는 어려운 삼각함수 계산이 화살표 덧셈 한 번으로 끝납니다.</p>
+
+  <h3>실전: 임피던스와 RC 필터</h3>
+  <p>페이저를 쓰면 커패시터와 인덕터도 저항처럼 다룰 수 있습니다. 각 소자의 "복소 저항"인 임피던스는 이렇습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>소자</th><th>임피던스 <var>Z</var></th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td>저항 <var>R</var></td><td><var>R</var></td><td>주파수와 무관, 위상 변화 없음</td></tr>
+      <tr><td>커패시터 <var>C</var></td><td>1 / (<var>jωC</var>)</td><td>주파수가 높을수록 작아짐(고주파를 통과시킴), 전류가 전압보다 90° 앞섬</td></tr>
+      <tr><td>인덕터 <var>L</var></td><td><var>jωL</var></td><td>주파수가 높을수록 커짐(고주파를 막음), 전류가 전압보다 90° 뒤짐</td></tr>
+    </tbody>
+  </table></div>
+  <p>RC 저역통과 필터의 출력은 전압 분배 공식을 그대로 쓰면 됩니다. 옴의 법칙이 복소수로 바뀌었을 뿐입니다.</p>
+  <div class="eq"><var>H</var>(<var>f</var>) = <span class="fr"><span><var>Z</var><sub><var>C</var></sub></span><span><var>R</var> + <var>Z</var><sub><var>C</var></sub></span></span> = <span class="fr"><span>1</span><span>1 + <var>j</var> 2π<var>f RC</var></span></span> <small>|<var>H</var>|는 이득, ∠<var>H</var>는 위상. 차단 주파수 <var>f</var><sub>c</sub> = 1/(2π<var>RC</var>)에서 1/(1 + <var>j</var>) = 0.707∠−45°</small></div>
+  <p>차단 주파수에서 이득이 1/√2, 즉 −3 dB(3장)가 되고 위상이 45° 늦어집니다. 7장의 시정수 <var>τ</var> = <var>RC</var>로 쓰면 <var>f</var><sub>c</sub> = 1/(2π<var>τ</var>)이니, 시간 영역의 "얼마나 천천히 따라가나"와 주파수 영역의 "어디부터 깎나"가 같은 숫자 하나로 연결됩니다.</p>
+
+  <py file="complex_rc.py" check>
+import cmath, math
+
+z = 3 + 4j
+print(f"z = {z}, |z| = {abs(z)}, angle = {math.degrees(cmath.phase(z)):.2f} deg")
+print("z * j =", z * 1j, "(rotated by 90 deg)")
+w = cmath.rect(1.0, math.radians(120))           # polar -> rectangular
+print(f"1 at 120 deg = {w.real:.3f}{w.imag:+.3f}j")
+print("z * conj(z) =", z * z.conjugate(), "= |z|^2")
+
+# RC low-pass: H(f) = 1 / (1 + j 2 pi f R C)
+R, C = 1_000.0, 1e-6                             # 1 kOhm, 1 uF
+fc = 1 / (2 * math.pi * R * C)
+print(f"cutoff fc = {fc:.1f} Hz")
+for f in (fc / 10, fc, 10 * fc, 100 * fc):
+    H = 1 / (1 + 1j * 2 * math.pi * f * R * C)
+    print(f"f = {f:8.1f} Hz: gain {20 * math.log10(abs(H)):6.2f} dB, "
+          f"phase {math.degrees(cmath.phase(H)):6.1f} deg")
+  </py>
+  <p>결과를 보면 차단 주파수의 10배마다 이득이 약 20 dB씩 떨어집니다. 1차 필터의 "−20 dB/decade" 규칙입니다. 이 로그-로그 그래프가 보드 선도이고, 3장의 로그 눈금이 여기서 쓰입니다.</p>
+
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>SDR이나 레이더에서 다루는 IQ 데이터는 복소수 샘플 <var>I</var> + <var>jQ</var>입니다. NumPy는 <code>complex64</code>, C99는 <code>&lt;complex.h&gt;</code>의 <code>float complex</code>로 그대로 다룰 수 있습니다. 신호를 주파수 성분으로 쪼개는 푸리에 변환(FFT)은 "신호와 각 주파수의 회전 화살표 <var>e</var><sup>−<var>jωt</var></sup>의 내적"입니다. 8장의 내적과 이 장의 회전 화살표를 합친 것이고, 더 깊이는 책장의 'RF·FPGA를 위한 신호처리 교본'에서 이어집니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>위상을 atan으로 구하기</strong>: 복소수의 각도도 반드시 atan2(<var>b</var>, <var>a</var>) 또는 <code>cmath.phase</code>. 4장과 같은 이유입니다.</li>
+      <li><strong>Hz와 rad/s 혼동</strong>: <var>ω</var> = 2π<var>f</var>. 임피던스 공식에 Hz를 그대로 넣으면 결과가 2π배 틀립니다.</li>
+      <li><strong>Python의 <code>j</code></strong>: <code>1j</code>처럼 숫자를 붙여 써야 허수 단위입니다. <code>j</code>만 쓰면 변수 이름으로 해석됩니다.</li>
+    </ul>
+  </div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>복소수 = 평면 위의 점. <var>j</var>를 곱하면 90° 회전.</li>
+      <li>곱셈: 크기는 곱하고 각도는 더한다. |<var>w</var>| &lt; 1의 거듭제곱은 사라지고, &gt; 1은 폭발한다.</li>
+      <li><var>e</var><sup><var>jθ</var></sup> = cos <var>θ</var> + <var>j</var> sin <var>θ</var>. 사인파 = 회전 화살표의 그림자, 임피던스로 교류 회로를 옴의 법칙처럼 푼다.</li>
+    </ul>
+  </div>
+  <p>Part III까지 오면서 우리는 값이 정확히 정해져 있다고 가정했습니다. 하지만 실제 센서 값에는 언제나 잡음이 있고, 부품은 확률적으로 고장 납니다. Part IV에서는 불확실성을 숫자로 다루는 확률과 통계를 배우고, 마지막 장에서 지금까지의 모든 도구를 합쳐 위치 추정기를 만듭니다.</p>
+
+  <div class="quiz" data-quiz="ch10"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch10" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

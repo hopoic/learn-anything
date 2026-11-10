@@ -10,6 +10,7 @@
 | 02 | C 개발자를 위한 Python 교본 | [`python-for-c-developers/`](python-for-c-developers/) |
 | 03 | C 개발자를 위한 C++ 교본 | [`cpp-for-c-developers/`](cpp-for-c-developers/) |
 | 04 | RF·FPGA를 위한 신호처리 교본 | [`signal-processing-for-rf/`](signal-processing-for-rf/) |
+| 05 | 엔지니어를 위한 수학 교본 | [`math-for-engineers/`](math-for-engineers/) |
 
 GitHub Pages로 배포되며, 루트 `index.html`이 책장(목차) 페이지입니다.
 
@@ -19,4 +20,4 @@ GitHub Pages로 배포되며, 루트 `index.html`이 책장(목차) 페이지입
 2. 루트 `index.html`의 `<ul class="shelf">` 안에 `<li class="book">` 카드를 하나 복사해 링크, 번호, 제목, 통계를 바꿉니다.
 3. 위 표에 한 줄 추가합니다.
 
-대부분의 책은 외부 의존성이 없는 단일 HTML 파일입니다(글꼴만 Google Fonts). C++ 교본은 컴파일러 워커 때문에 `assets/`와 원본 `src/`를 함께 두고, 신호처리 교본은 원본 `src/`와 예제 코드 `code/`를 함께 둡니다. 자세한 내용은 각 폴더의 README를 보세요. 진도와 퀴즈 결과는 브라우저 localStorage에 책마다 따로 저장됩니다.
+대부분의 책은 외부 의존성이 없는 단일 HTML 파일입니다(글꼴만 Google Fonts). C++ 교본은 컴파일러 워커 때문에 `assets/`와 원본 `src/`를 함께 두고, 신호처리 교본과 수학 교본은 원본 `src/`와 예제 코드 `code/`를 함께 둡니다. 자세한 내용은 각 폴더의 README를 보세요. 진도와 퀴즈 결과는 브라우저 localStorage에 책마다 따로 저장됩니다.

@@ -1,0 +1,155 @@
+<!-- ============ CH13 ============ -->
+<section class="chapter col" id="ch13">
+  <div class="eyebrow">Part IV · 불확실성 + 실전 — 13장</div>
+  <h2>실전: 미니 위치 추정기</h2>
+  <p class="goal">이 장을 마치면: 예측과 측정을 각자의 분산으로 가중해 섞는 원리를 설명할 수 있고, 1차원 칼만 필터를 30줄 남짓한 코드로 구현해 시뮬레이션으로 합격 기준을 검증하며, Q와 R을 조정해 응답성과 매끄러움을 맞바꾸고, 행렬을 쓰는 다음 단계로 확장할 수 있습니다.</p>
+
+  <h3>문제: 잡음 낀 측위와 드리프트하는 바퀴</h3>
+  <p>레일 위를 앞뒤로 움직이는 로봇이 있습니다. 위치를 알려 주는 정보는 두 가지입니다.</p>
+  <ul>
+    <li><strong>바퀴 오도메트리</strong>: 바퀴 엔코더로 잰 속도. 0.1초 간격으로 매끄럽게 나오지만, 미끄러짐 때문에 잡음(<var>σ</var> = 0.1 m/s)이 있고 바퀴 지름 오차 때문에 작은 바이어스(+0.02 m/s)도 있습니다. 적분해서 위치를 얻으면 6장에서 본 것처럼 오차가 계속 쌓입니다.</li>
+    <li><strong>절대 위치 측정</strong>: UWB나 GPS 같은 측위 장치. 오차가 쌓이지는 않지만 매번 ±0.5 m(<var>σ</var>) 정도 튑니다.</li>
+  </ul>
+  <p>하나는 매끄럽지만 서서히 틀어지고, 하나는 틀어지지 않지만 시끄럽습니다. 둘의 장점만 취하는 방법이 칼만 필터입니다. 이 장에서 만들 추정기의 사양은 다음과 같습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>항목</th><th>사양</th><th>관련 장</th></tr></thead>
+    <tbody>
+      <tr><td>상태</td><td>위치 <var>x</var> [m] 하나와 그 불확실성(분산) <var>P</var> [m²]</td><td>12</td></tr>
+      <tr><td>예측 입력</td><td>오도메트리 속도 <var>u</var>, 주기 <var>dt</var> = 0.1 s</td><td>6, 7</td></tr>
+      <tr><td>측정</td><td>위치 <var>z</var>, 잡음 <var>σ</var><sub><var>z</var></sub> = 0.5 m, 10 Hz</td><td>12</td></tr>
+      <tr><td>합격 기준</td><td>60초 임무 30회에서 위치 RMS 오차 중앙값 ≤ 0.15 m, 최악 ≤ 0.2 m (측정만 쓸 때의 약 1/3 이하)</td><td>1, 12</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>두 추측을 섞는 법: 분산으로 가중한 평균</h3>
+  <p>먼저 정지된 문제부터. 위치에 대한 추측이 두 개 있습니다. 예측은 10.0 m(분산 <var>P</var>), 측정은 10.6 m(분산 <var>R</var>)입니다. 어떻게 섞을까요? 그냥 평균 내면 10.3 m이지만, 둘 중 하나가 훨씬 정확하다면 그쪽을 더 믿어야 합니다. 정답은 <strong>분산이 작은 쪽에 더 큰 가중치</strong>를 주는 것입니다.</p>
+  <div class="eq"><var>K</var> = <span class="fr"><span><var>P</var></span><span><var>P</var> + <var>R</var></span></span>, &nbsp; <var class="ht">x</var> ← <var class="ht">x</var> + <var>K</var> (<var>z</var> − <var class="ht">x</var>), &nbsp; <var>P</var> ← (1 − <var>K</var>) <var>P</var> <small><var>K</var>: 칼만 이득(0~1) · <var>z</var> − <var class="ht">x</var>: 측정이 예측과 얼마나 다른가(혁신, innovation)</small></div>
+  <p class="say"><b>읽는 법:</b> "예측이 불확실할수록(<var>P</var>가 클수록) 측정 쪽으로 더 많이 움직인다." 예측의 분산이 0이면 <var>K</var> = 0이라 측정을 무시하고, 측정의 분산이 0이면 <var>K</var> = 1이라 측정을 그대로 받습니다. 둘이 같으면 <var>K</var> = 0.5로 딱 가운데입니다.</p>
+  <p>이 식을 다시 보세요. <var class="ht">x</var> ← <var class="ht">x</var> + <var>K</var>(<var>z</var> − <var class="ht">x</var>)는 7장의 EMA 필터 <code>y += α(x − y)</code>와 모양이 똑같습니다. 칼만 필터는 <strong>α를 상황에 맞게 매번 자동으로 계산하는 EMA</strong>입니다. 그리고 섞고 난 뒤의 분산 (1 − <var>K</var>)<var>P</var>는 <var>P</var>보다도, <var>R</var>보다도 작습니다. 서로 독립인 두 정보를 합치면 어느 하나보다 확실해집니다. 11장의 베이즈 갱신을 정규분포에 대해 풀면 정확히 이 식이 나옵니다.</p>
+
+  <h3>예측-보정 루프</h3>
+  <p>이제 로봇이 움직입니다. 매 주기마다 두 단계를 반복합니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 200" role="img" aria-label="예측 단계와 보정 단계가 번갈아 도는 칼만 필터 루프">
+      <rect class="sv-r2" x="40" y="40" width="240" height="110" rx="8"/>
+      <text class="sv-t" x="160" y="66" text-anchor="middle" style="font-weight:600">① 예측 (predict)</text>
+      <text class="sv-m" x="160" y="92" text-anchor="middle">x̂ ← x̂ + u · dt      (6장 적분)</text>
+      <text class="sv-m" x="160" y="114" text-anchor="middle">P ← P + Q           (12장 분산 합)</text>
+      <text class="sv-m" x="160" y="138" text-anchor="middle">불확실성이 커진다</text>
+      <rect class="sv-r3" x="360" y="40" width="240" height="110" rx="8"/>
+      <text class="sv-t" x="480" y="66" text-anchor="middle" style="font-weight:600">② 보정 (update)</text>
+      <text class="sv-m" x="480" y="92" text-anchor="middle">K = P / (P + R)</text>
+      <text class="sv-m" x="480" y="114" text-anchor="middle">x̂ ← x̂ + K (z − x̂)</text>
+      <text class="sv-m" x="480" y="138" text-anchor="middle">P ← (1 − K) P   불확실성이 줄어든다</text>
+      <path d="M282 70 C 310 50, 330 50, 356 70" class="sv-ac" marker-end="url(#arwa)"/>
+      <path d="M358 125 C 330 180, 310 180, 284 125" class="sv-ac" marker-end="url(#arwa)"/>
+      <text class="sv-m" x="320" y="34" text-anchor="middle">측정 z 도착</text>
+      <text class="sv-m" x="320" y="192" text-anchor="middle">dt 후 다음 주기</text>
+    </svg>
+    <figcaption>그림 13-1. 칼만 필터 = 예측으로 불확실성이 커지고, 측정으로 다시 줄어드는 루프.</figcaption>
+  </figure>
+  <p>예측 단계는 7장의 오일러 방법 그대로 오도메트리 속도를 한 걸음 적분합니다. 이때 오도메트리 잡음 때문에 위치에 대한 확신이 줄어드니, 12장의 "독립 잡음은 분산이 더해진다"에 따라 <var>P</var>에 <var>Q</var>를 더합니다. 이 예제에서 <var>Q</var> = (<var>σ</var><sub>odo</sub> · <var>dt</var>)²입니다. 보정 단계는 앞 절의 섞기입니다. 이 두 줄씩이 칼만 필터의 전부입니다.</p>
+
+  <py file="mini_kf.py" src="../code/mini_kf.py" check></py>
+  <p>측위만 쓰면 0.48 m, 오도메트리만 쓰면 시간이 갈수록 틀어지는데, 둘을 섞으면 RMS 오차가 0.1 m 근처로 떨어집니다. 측정 하나하나는 ±0.5 m씩 튀지만, 필터는 이득 <var>K</var> ≈ 0.02로 측정을 아주 조금씩만 받아들여 잡음을 평균내고, 그 사이를 오도메트리로 매끄럽게 메웁니다. 이 <var>K</var> 값은 사람이 정한 것이 아니라 <var>Q</var>와 <var>R</var>로부터 필터가 스스로 수렴한 값입니다.</p>
+
+  <div class="bench" id="kfBench">
+    <header><b>실습 벤치 13-A · 칼만 필터 시뮬레이터</b><span>KALMAN</span></header>
+    <div class="body">
+      <div class="ctls">
+        <div class="ctl"><label for="kfZ">측위 잡음 σ_z</label><output id="oKfZ"></output><input type="range" id="kfZ" min="0.05" max="1.5" step="0.05" value="0.5"></div>
+        <div class="ctl"><label for="kfB">오도메트리 바이어스</label><output id="oKfB"></output><input type="range" id="kfB" min="0" max="0.15" step="0.005" value="0.02"></div>
+        <div class="ctl"><label for="kfQ">필터가 가정하는 Q (실제 대비 배수)</label><output id="oKfQ"></output><input type="range" id="kfQ" min="-3" max="3" step="0.25" value="0"></div>
+        <div class="ctl"><span>보기</span><span></span><div class="seg" id="kfView" style="grid-column:1/-1"><button type="button" data-v="pos" aria-pressed="true">위치</button><button type="button" data-v="err" aria-pressed="false">오차 (추정 − 실제)</button></div></div>
+      </div>
+      <svg class="plot" id="kfSvg" viewBox="0 0 600 280" role="img" aria-label="실제 위치, 측위 측정 점, 오도메트리만으로 구한 위치, 칼만 필터 추정"></svg>
+      <div class="legend"><span><i style="background:var(--ink)"></i>실제</span><span><i style="background:var(--muted)"></i>측위 측정</span><span><i style="background:var(--bad)"></i>오도메트리만</span><span><i style="background:var(--accent)"></i>칼만 추정</span></div>
+      <div class="readout"><div><small>측위만 RMS</small><b id="kfRm">—</b></div><div><small>오도메트리만 RMS</small><b id="kfRd">—</b></div><div><small>칼만 RMS</small><b id="kfRk">—</b></div><div><small>정상상태 이득 K</small><b id="kfK">—</b></div></div>
+      <div class="row" style="justify-content:space-between"><button class="btn" id="kfNew" type="button">새 임무 시뮬레이션</button><span class="tokc" id="kfNote"></span></div>
+    </div>
+  </div>
+  <p>Q 배수를 왼쪽 끝(1/1000)으로 보내면 필터가 오도메트리를 과신해 측정을 거의 무시하고, 바이어스 때문에 서서히 틀어집니다. 오른쪽 끝(1000배)으로 보내면 측정을 과신해 추정이 측위 잡음을 따라 덜덜 떨립니다. 오차 보기로 바꾸면 차이가 더 잘 보입니다. 바이어스를 크게 올려 보세요. 필터는 "오도메트리 잡음은 평균 0"이라고 가정하고 있어서 바이어스를 잡지 못하고, 이때는 Q를 실제보다 조금 키우는 것이 오히려 낫습니다. <strong>모델이 틀리면 필터도 틀린다</strong>는 것, 그리고 Q를 키우는 것이 "내 모델을 덜 믿겠다"는 뜻이라는 것을 확인할 수 있습니다.</p>
+
+  <py file="tuning_and_acceptance.py" check>
+import numpy as np
+from mini_kf import run
+
+# Tuning: Q scale trades smoothness (small Q) against responsiveness (large Q)
+print(" Q scale   rms error   error jitter      gain K")
+for q in (0.01, 1.0, 10.0, 100.0):
+    rs = [run(seed=s, q_scale=q) for s in range(20)]
+    rms = np.mean([r["rms_kf"] for r in rs])
+    jitter = np.mean([np.std(np.diff(r["est"] - r["true"])) for r in rs]) * 1000
+    print(f" {q:7.2f}   {rms:7.3f} m      {jitter:6.1f} mm/step     {rs[0]['gain'][-1]:.4f}")
+
+# Acceptance test: 30 missions with different random seeds
+rs = [run(seed=s) for s in range(30)]
+kf = np.array([r["rms_kf"] for r in rs])
+meas = np.array([r["rms_meas"] for r in rs])
+ok = np.median(kf) <= 0.15 and kf.max() <= 0.2
+print(f"\nmeasurement only : median rms {np.median(meas):.3f} m")
+print(f"Kalman filter    : median rms {np.median(kf):.3f} m, worst {kf.max():.3f} m")
+print("acceptance:", "PASS" if ok else "FAIL")
+  </py>
+
+  <p>표의 "추정 떨림"은 한 주기 사이에 추정 오차가 얼마나 흔들리는지입니다. Q를 작게 잡으면 매끄럽지만 바이어스를 따라잡지 못해 오차가 크고, 크게 잡으면 측정을 따라 떨립니다. 이 시뮬레이션에서 Q를 실제의 10배로 잡았을 때 오차가 가장 작은 것은 필터 모델에 없는 바이어스를 "모르는 잡음"으로 흡수하기 때문입니다. 실무의 튜닝도 이렇게 시뮬레이션이나 기록된 데이터로 오차와 떨림을 함께 보며 정합니다. 합격 시험은 30번의 임무 모두에서 사양을 만족했습니다.</p>
+
+  <h3>펌웨어로 옮기기</h3>
+  <p>1차원 칼만 필터는 MCU에서 돌리기에 충분히 가볍습니다. 곱셈 몇 번과 나눗셈 한 번이 전부입니다.</p>
+  <c file="kalman1d.h">
+typedef struct {
+    float x;   /* position estimate [m] */
+    float P;   /* variance of the estimate [m^2] */
+    float Q;   /* variance added per prediction step */
+    float R;   /* variance of one measurement */
+} kalman1d_t;
+
+static inline void kf_predict(kalman1d_t *kf, float u, float dt)
+{
+    kf->x += u * dt;
+    kf->P += kf->Q;
+}
+
+static inline float kf_update(kalman1d_t *kf, float z)
+{
+    float K = kf->P / (kf->P + kf->R);
+    kf->x += K * (z - kf->x);
+    kf->P *= (1.0f - K);
+    return K;
+}
+  </c>
+  <p>측위가 오도메트리보다 느리게 들어오면(예: 오도메트리 100 Hz, 측위 1 Hz), 매 주기 <code>kf_predict</code>만 부르고 측정이 도착한 주기에만 <code>kf_update</code>를 부르면 됩니다. 측정이 없는 동안 <var>P</var>가 커지다가, 측정이 오면 크게 반영하고 다시 줄어듭니다.</p>
+
+  <h3>확장 과제</h3>
+  <p>여기서 멈추지 말고 한 단계씩 더 가 보세요. 각 과제는 이 책의 어느 장을 다시 쓰는지 함께 적었습니다.</p>
+  <div class="ladder">
+    <div><b>과제 1</b><span><strong>이상치 거르기 (12장)</strong>: 혁신 <var>z</var> − <var class="ht">x</var>이 √<span class="rt"><var>P</var> + <var>R</var></span>의 3배를 넘으면 그 측정은 버립니다. 측위 신호가 가끔 반사파로 수 미터씩 튀는 상황을 시뮬레이션에 넣어 효과를 확인하세요.</span></div>
+    <div><b>과제 2</b><span><strong>바이어스까지 추정하는 2상태 필터 (9장)</strong>: 상태를 벡터 [<var>x</var>, <var>b</var>](위치, 오도메트리 바이어스)로 늘립니다. 예측은 <var><b>x</b></var> ← <var>F</var><var><b>x</b></var> + <var>B</var><var>u</var>, <var>P</var> ← <var>FPF</var><sup>T</sup> + <var>Q</var>, 보정은 <var>K</var> = <var>PH</var><sup>T</sup>(<var>HPH</var><sup>T</sup> + <var>R</var>)<sup>−1</sup>. 여기서 <var>F</var> = [[1, −<var>dt</var>], [0, 1]], <var>B</var> = [<var>dt</var>, 0]<sup>T</sup>, <var>H</var> = [1, 0]. 1차원 식의 나눗셈이 역행렬로, 분산이 행렬 <var>P</var>로 바뀌었을 뿐입니다. 벤치에서 바이어스 0.1일 때의 오차가 얼마나 줄어드는지 비교하세요.</span></div>
+    <div><b>과제 3</b><span><strong>속도도 추정하기 (5장)</strong>: 오도메트리가 없다고 치고 상태를 [위치, 속도]로 두어 측위만으로 속도를 추정해 보세요. 5장의 "미분은 잡음을 키운다"를 칼만 필터가 어떻게 피하는지 볼 수 있습니다.</span></div>
+    <div><b>과제 4</b><span><strong>2차원과 방향 (4, 8, 9장)</strong>: 평면 위의 로봇 (<var>x</var>, <var>y</var>, <var>ψ</var>)로 넓히면 예측식에 cos <var>ψ</var>, sin <var>ψ</var>가 들어가 비선형이 됩니다. 매 순간 그 자리에서 직선으로 근사(미분)해 쓰는 것이 확장 칼만 필터(EKF)이고, ROS 2의 robot_localization 패키지가 하는 일입니다.</span></div>
+  </div>
+
+  <h3>최종 체크리스트</h3>
+  <p>이 장의 30줄짜리 코드에는 이 책의 거의 모든 장이 들어 있습니다. 아래 질문에 답할 수 있다면 엔지니어를 위한 수학의 기초를 다시 세운 것입니다.</p>
+  <ul class="steps">
+    <li>수식 <var>K</var> = <var>P</var>/(<var>P</var> + <var>R</var>)를 소리 내어 읽고 코드로 옮길 수 있는가? (1장)</li>
+    <li>예측 단계의 <var class="ht">x</var> ← <var class="ht">x</var> + <var>u</var> · <var>dt</var>가 적분의 오일러 근사라는 것을 아는가? (6, 7장)</li>
+    <li>오도메트리만 쓰면 왜 틀어지고, 바이어스는 왜 시간에 비례해 쌓이는가? (6장)</li>
+    <li>보정 식이 EMA와 같은 모양이고 <var>K</var>가 α 역할이라는 것을 설명할 수 있는가? (7장)</li>
+    <li><var>P</var>에 <var>Q</var>를 더하는 이유(분산의 합)와 섞은 뒤 분산이 줄어드는 이유를 설명할 수 있는가? (12장)</li>
+    <li>보정이 베이즈 갱신의 한 형태라는 것을 아는가? (11장)</li>
+    <li>2상태로 확장할 때 행렬 곱의 순서와 역행렬이 어디에 쓰이는지 아는가? (9장)</li>
+  </ul>
+
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>칼만 필터 = 예측(적분, 분산 증가) + 보정(분산 가중 평균, 분산 감소)의 반복.</li>
+      <li><var>K</var> = <var>P</var>/(<var>P</var> + <var>R</var>)는 자동으로 계산되는 EMA 계수. 섞은 결과는 어느 한쪽보다 확실하다.</li>
+      <li>Q는 "내 예측 모델을 얼마나 못 믿나", R은 "측정을 얼마나 못 믿나". 모델이 틀리면 Q를 키우거나 상태를 늘린다.</li>
+    </ul>
+  </div>
+  <p>수고하셨습니다. 수식 기호 읽기에서 시작해 칼만 필터까지 왔습니다. 이제 데이터시트와 논문의 수식이 나와도 눈을 피하지 말고, 1장의 네 단계로 한 겹씩 벗겨 보세요. 대부분은 이미 아는 그림과 몇 줄의 코드로 바뀔 것입니다. 더 공부할 자료는 부록 B에 정리했습니다.</p>
+
+  <div class="quiz" data-quiz="ch13"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch13" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

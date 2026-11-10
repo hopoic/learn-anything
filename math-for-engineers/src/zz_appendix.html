@@ -1,0 +1,88 @@
+<!-- ============ APPENDIX ============ -->
+<section class="chapter col" id="glossary">
+  <div class="eyebrow">부록 A</div>
+  <h2>기호·용어집</h2>
+  <p>수식을 읽다 막히면 여기서 찾으세요. 1장의 기호 사전을 책 전체 범위로 넓힌 것입니다.</p>
+  <h3>기호</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>기호</th><th>읽는 법 / 뜻</th><th>코드로는</th><th>장</th></tr></thead>
+    <tbody>
+      <tr><td class="sym"><var>x</var><sub><var>i</var></sub></td><td>x 아래첨자 i. 배열의 i번째</td><td><code>x[i]</code></td><td>1</td></tr>
+      <tr><td class="sym">Σ, Π</td><td>모두 더함, 모두 곱함</td><td><code>sum</code>, <code>prod</code> 루프</td><td>1</td></tr>
+      <tr><td class="sym"><var>f</var>(<var>x</var>)</td><td>함수 f에 x를 넣은 결과</td><td><code>f(x)</code></td><td>2</td></tr>
+      <tr><td class="sym">Δ<var>x</var></td><td>변화량</td><td><code>x[k] - x[k-1]</code></td><td>1, 2</td></tr>
+      <tr><td class="sym">log<sub><var>a</var></sub> <var>x</var>, ln</td><td>a를 몇 번 곱해야 x가 되나. ln은 밑이 <var>e</var></td><td><code>log2</code>, <code>log10</code>, <code>log</code></td><td>3</td></tr>
+      <tr><td class="sym"><var>e</var></td><td>자연로그의 밑, 약 2.71828</td><td><code>math.e</code>, <code>exp(1)</code></td><td>3, 7</td></tr>
+      <tr><td class="sym">π, rad</td><td>반원의 각도, 라디안</td><td><code>math.pi</code></td><td>4</td></tr>
+      <tr><td class="sym"><var>f</var> ′(<var>x</var>), <var>dy</var>/<var>dx</var></td><td>미분, 순간 변화율</td><td><code>(f(x+h) - f(x)) / h</code></td><td>5</td></tr>
+      <tr><td class="sym">lim</td><td>극한, 그 값에 다가감</td><td>h를 아주 작게</td><td>5</td></tr>
+      <tr><td class="sym">∫ <var>f</var> <var>dx</var></td><td>적분, 그래프 아래 넓이</td><td><code>acc += f(x) * dx</code></td><td>6</td></tr>
+      <tr><td class="sym"><var>τ</var></td><td>시정수. 1τ에 63%</td><td><code>tau = dt / alpha</code></td><td>7</td></tr>
+      <tr><td class="sym">|<var><b>v</b></var>|</td><td>벡터의 크기(길이)</td><td><code>np.linalg.norm(v)</code></td><td>8</td></tr>
+      <tr><td class="sym"><var><b>a</b></var> · <var><b>b</b></var></td><td>내적. |a||b|cos θ</td><td><code>a @ b</code></td><td>8</td></tr>
+      <tr><td class="sym"><var>A</var><var><b>x</b></var>, <var>A</var><sup>−1</sup>, <var>A</var><sup>T</sup></td><td>행렬 곱, 역행렬, 전치(행과 열 바꾸기)</td><td><code>A @ x</code>, <code>solve</code>, <code>A.T</code></td><td>9</td></tr>
+      <tr><td class="sym">det <var>A</var></td><td>행렬식. 넓이 배율, 0이면 되돌릴 수 없음</td><td><code>np.linalg.det</code></td><td>9</td></tr>
+      <tr><td class="sym"><var>j</var>, <var>e</var><sup><var>jθ</var></sup></td><td>90° 회전하는 수, 각도 θ의 단위 화살표</td><td><code>1j</code>, <code>cmath.rect(1, th)</code></td><td>10</td></tr>
+      <tr><td class="sym"><var>P</var>(A | B)</td><td>B라는 조건에서 A일 확률</td><td>B인 경우 중 A의 비율</td><td>11</td></tr>
+      <tr><td class="sym"><var>μ</var>, <var>σ</var>, <var>σ</var><sup>2</sup></td><td>평균, 표준편차, 분산</td><td><code>mean</code>, <code>std</code>, <code>var</code></td><td>12</td></tr>
+      <tr><td class="sym"><var class="ht">x</var>, <var>K</var></td><td>추정값, 칼만 이득</td><td><code>x_est</code>, <code>K</code></td><td>13</td></tr>
+    </tbody>
+  </table></div>
+  <h3>용어</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>용어</th><th>뜻</th><th>장</th></tr></thead>
+    <tbody>
+      <tr><td>함수, 그래프</td><td>입력을 출력으로 바꾸는 규칙, 그 규칙의 모양</td><td>2</td></tr>
+      <tr><td>기울기, 절편</td><td>입력이 1 늘 때 출력이 느는 양, 입력이 0일 때의 출력</td><td>2</td></tr>
+      <tr><td>선형 보간 (lerp)</td><td>두 점 사이를 직선으로 이어 중간값을 읽기</td><td>2</td></tr>
+      <tr><td>데시벨 (dB)</td><td>비율의 로그 표기. 전력비 10 log<sub>10</sub>, 진폭비 20 log<sub>10</sub></td><td>3</td></tr>
+      <tr><td>진폭, 주파수, 위상</td><td>사인파를 정하는 세 숫자: 크기, 1초당 회전 수, 출발 각도</td><td>4</td></tr>
+      <tr><td>atan2</td><td>(y, x) 두 값으로 사분면까지 올바른 각도를 구하는 함수</td><td>4</td></tr>
+      <tr><td>수치 미분, 중앙 차분</td><td>차분 ÷ 간격으로 미분을 근사, (x<sub>k+1</sub> − x<sub>k−1</sub>)/2dt</td><td>5</td></tr>
+      <tr><td>리만 합, 사다리꼴 공식</td><td>막대 / 사다리꼴로 넓이를 근사하는 수치 적분</td><td>6</td></tr>
+      <tr><td>드리프트</td><td>적분 과정에서 바이어스가 쌓여 생기는 오차</td><td>6</td></tr>
+      <tr><td>미분방정식</td><td>현재 상태로 변화율을 정하는 규칙</td><td>7</td></tr>
+      <tr><td>오일러 방법</td><td>다음 값 = 지금 값 + 변화율 × dt</td><td>7</td></tr>
+      <tr><td>EMA (지수 이동평균)</td><td><code>y += α(x − y)</code>. RC 저역통과 필터의 이산 버전</td><td>7</td></tr>
+      <tr><td>감쇠비 ζ</td><td>2차 시스템이 얼마나 출렁이는지 정하는 수. 0.7 근처가 실무 목표</td><td>7</td></tr>
+      <tr><td>단위 벡터, 정규화</td><td>길이 1인 벡터, 벡터를 길이로 나눠 방향만 남기기</td><td>8</td></tr>
+      <tr><td>투영</td><td>한 벡터가 다른 방향으로 드리운 그림자의 길이</td><td>8</td></tr>
+      <tr><td>동차 좌표</td><td>좌표에 1을 붙여 회전과 이동을 한 행렬에 담는 방법</td><td>9</td></tr>
+      <tr><td>페이저</td><td>사인파를 크기와 위상을 가진 복소수 화살표로 나타낸 것</td><td>10</td></tr>
+      <tr><td>임피던스</td><td>교류에서의 복소 저항. <var>R</var>, 1/(<var>jωC</var>), <var>jωL</var></td><td>10</td></tr>
+      <tr><td>독립, 배반</td><td>서로 영향이 없음(곱한다), 동시에 일어날 수 없음(더한다)</td><td>11</td></tr>
+      <tr><td>기본 비율, 헛경보율</td><td>사건 자체의 드문 정도, 정상인데 경보가 나는 비율</td><td>11</td></tr>
+      <tr><td>베이즈 정리</td><td>사후 확률 = 가능도 × 사전 확률 ÷ 증거의 확률</td><td>11</td></tr>
+      <tr><td>정규분포, 68-95-99.7</td><td>종 모양 분포, ±1·2·3σ 안에 드는 비율</td><td>12</td></tr>
+      <tr><td>최소제곱법</td><td>오차 제곱합이 가장 작은 직선(모델)을 찾는 방법</td><td>12</td></tr>
+      <tr><td>칼만 필터</td><td>예측과 측정을 분산으로 가중해 섞는 예측-보정 루프</td><td>13</td></tr>
+      <tr><td>Q, R</td><td>예측 한 걸음의 불확실성(분산), 측정 한 번의 불확실성(분산)</td><td>13</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="chapter col" id="refs">
+  <div class="eyebrow">부록 B</div>
+  <h2>더 공부할 자료</h2>
+  <p>이 책은 "그림 + 코드"로 감을 잡는 데 집중했습니다. 같은 철학을 가진 자료를 골랐습니다. 모두 무료로 볼 수 있습니다(일부는 책이 따로 판매됨).</p>
+  <div class="tbl"><table>
+    <thead><tr><th>자료</th><th>무엇을 얻나</th><th>관련 장</th></tr></thead>
+    <tbody>
+      <tr><td><a href="https://www.3blue1brown.com/topics/calculus" target="_blank" rel="noopener">3Blue1Brown — Essence of Calculus</a></td><td>미분·적분·극한을 애니메이션으로 보는 영상 시리즈. 이 책 5–6장의 그림을 훨씬 아름답게 보여 줍니다.</td><td>5–7</td></tr>
+      <tr><td><a href="https://www.3blue1brown.com/topics/linear-algebra" target="_blank" rel="noopener">3Blue1Brown — Essence of Linear Algebra</a></td><td>"행렬 = 공간 변환"이라는 9장의 관점을 처음부터 끝까지 밀고 나간 시리즈. 행렬식, 역행렬, 고유벡터까지.</td><td>8, 9</td></tr>
+      <tr><td><a href="https://seeing-theory.brown.edu/" target="_blank" rel="noopener">Seeing Theory (Brown University)</a></td><td>확률과 통계를 인터랙티브 시각화로 배우는 웹 교재. 베이즈 추론과 회귀 분석 장이 11–12장과 잘 이어집니다. 2019년 이후 업데이트는 멈췄지만 사이트는 계속 열려 있습니다.</td><td>11, 12</td></tr>
+      <tr><td><a href="https://allendowney.github.io/ThinkStats/" target="_blank" rel="noopener">Allen B. Downey — Think Stats, 3rd ed.</a></td><td>수식 대신 Python 코드로 통계를 가르치는 책. 무료 온라인판과 Jupyter 노트북 제공.</td><td>11, 12</td></tr>
+      <tr><td><a href="https://www.kalmanfilter.net/" target="_blank" rel="noopener">KalmanFilter.NET (Alex Becker)</a></td><td>숫자 예제로 1차원부터 다차원 칼만 필터까지 차근차근 설명하는 무료 튜토리얼. 13장의 확장 과제 2–4를 할 때 좋습니다.</td><td>13</td></tr>
+      <tr><td><a href="https://www.ros.org/reps/rep-0103.html" target="_blank" rel="noopener">ROS REP 103</a></td><td>ROS의 단위와 좌표계 규약(오른손 좌표계, x 앞·y 왼쪽·z 위).</td><td>8, 9</td></tr>
+      <tr><td><a href="../signal-processing-for-rf/">책장 Book 04 — RF·FPGA를 위한 신호처리 교본</a></td><td>10장의 복소수와 회전 화살표가 IQ, FFT, 필터 설계로 이어지는 다음 단계.</td><td>3, 4, 10</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call key"><span class="lab">공부를 이어 가는 요령</span>
+    <ul>
+      <li>새 수식을 만나면 1장의 네 단계(읽기 → 정체 가리기 → 작은 숫자 → 코드)를 그대로 씁니다.</li>
+      <li>확신이 안 서면 시뮬레이션합니다. 난수로 1000번 돌려 보는 것이 가장 믿음직한 검산입니다(11장).</li>
+      <li>업무 코드에서 수식을 발견하면 이 책의 어느 장인지 표시해 두세요. 아는 것과 연결될 때 가장 오래 남습니다.</li>
+    </ul>
+  </div>
+  <p class="foot">엔지니어를 위한 수학 교본 · Learn Anything Book 05 · 진도와 퀴즈 결과는 이 브라우저에만 저장됩니다.</p>
+</section>

@@ -1,0 +1,131 @@
+<!-- ============ CH6 ============ -->
+<section class="chapter col" id="ch6">
+  <div class="eyebrow">Part II · 변화와 누적 — 미적분 — 6장</div>
+  <h2>적분: 차곡차곡 쌓기</h2>
+  <p class="goal">이 장을 마치면: 적분을 "얇은 조각을 모두 더한 것"으로 설명할 수 있고, 속도에서 거리를, 전류에서 배터리 사용량(mAh)을 수치 적분으로 구하며, 미분과 적분이 서로 되돌리는 연산이라는 것과 적분할 때 오차가 시간에 따라 쌓이는(드리프트) 이유를 설명할 수 있습니다.</p>
+
+  <h3>넓이 = 쌓인 양</h3>
+  <p>시속 60 km로 2시간 달리면 120 km를 갑니다. 속도 × 시간입니다. 이것을 그래프로 그리면, 가로축이 시간이고 세로축이 속도인 그래프에서 높이 60, 폭 2인 <strong>직사각형의 넓이</strong>가 120입니다. "그래프 아래 넓이 = 쌓인 양"이라는 것이 적분의 핵심 그림입니다.</p>
+  <p>속도가 계속 변한다면? 시간을 아주 얇은 조각으로 자릅니다. 각 조각 안에서는 속도가 거의 일정하니 직사각형으로 칠 수 있고, 조각마다 속도 × 짧은 시간을 구해 전부 더하면 됩니다. 조각을 한없이 얇게 하면 정확한 넓이가 되고, 그것이 적분입니다.</p>
+  <div class="eq"><span class="so"><span><var>b</var></span><b>∫</b><span><var>a</var></span></span> <var>f</var>(<var>x</var>) <var>dx</var> &nbsp;≈&nbsp; <span class="so"><span><var>N</var>−1</span><b>Σ</b><span><var>i</var>=0</span></span> <var>f</var>(<var>x</var><sub><var>i</var></sub>) · Δ<var>x</var> <small>∫는 길게 늘인 S(Sum), <var>dx</var>는 "아주 얇은 폭". 왼쪽은 오른쪽에서 Δ<var>x</var> → 0으로 보낸 것</small></div>
+  <p class="say"><b>소리 내어 읽기:</b> "a부터 b까지 f(x)dx를 적분한다" = "a에서 b까지 구간을 얇게 잘라, 각 조각의 높이 f(x) 곱하기 폭 dx를 전부 더한다." 1장에서 Σ가 for 루프였으니, 적분은 <strong>아주 촘촘한 for 루프</strong>입니다.</p>
+
+  <div class="bench" id="rmBench">
+    <header><b>실습 벤치 6-A · 막대로 넓이 채우기</b><span>RIEMANN SUM</span></header>
+    <div class="body">
+      <div class="ctl"><span>곡선과 구간</span><span></span><div class="seg" id="rmFn" style="grid-column:1/-1"><button type="button" data-v="sin" aria-pressed="true">sin x, 0 ~ π (정답 2)</button><button type="button" data-v="sq" aria-pressed="false">x², 0 ~ 2 (정답 8/3)</button><button type="button" data-v="cur" aria-pressed="false">모터 전류 프로파일</button></div></div>
+      <div class="ctl"><span>조각의 높이를 정하는 법</span><span></span><div class="seg" id="rmM" style="grid-column:1/-1"><button type="button" data-v="L" aria-pressed="true">왼쪽 끝</button><button type="button" data-v="M" aria-pressed="false">가운데</button><button type="button" data-v="T" aria-pressed="false">사다리꼴</button></div></div>
+      <div class="ctl"><label for="rmN">조각 수 N</label><output id="oRmN"></output><input type="range" id="rmN" min="1" max="100" step="1" value="6"></div>
+      <svg class="plot" id="rmSvg" viewBox="0 0 600 260" role="img" aria-label="곡선 아래를 막대나 사다리꼴로 채운 그림"></svg>
+      <div class="readout"><div><small>조각들의 합</small><b id="rmSum">—</b></div><div><small>정확한 넓이</small><b id="rmEx">—</b></div><div><small>오차</small><b id="rmErr">—</b></div></div>
+      <div class="status y" id="rmNote" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>조각 수를 늘리면 막대가 곡선을 점점 더 잘 덮습니다. 같은 <var>N</var>에서 "가운데"와 "사다리꼴"이 "왼쪽 끝"보다 훨씬 정확하다는 것도 확인해 보세요. 왼쪽 끝 방식은 오르막에서 늘 모자라게, 내리막에서 늘 넘치게 셉니다. 사다리꼴은 각 조각의 양 끝 높이를 평균 내 그 오차를 상쇄합니다.</p>
+
+  <h3>적분은 누산기다</h3>
+  <p>펌웨어에서 적분은 한 줄입니다. 일정한 주기 <var>dt</var>마다 현재 값에 <var>dt</var>를 곱해 누산기에 더합니다.</p>
+  <c file="coulomb_counter.c">
+/* Coulomb counting: integrate battery current to get the charge used */
+static float used_mAh = 0.0f;
+
+void battery_tick(float current_mA, float dt_s)   /* called every dt_s seconds */
+{
+    used_mAh += current_mA * dt_s / 3600.0f;      /* mA * s -> mAh */
+}
+  </c>
+  <p>배터리 잔량계(fuel gauge)가 하는 일이 정확히 이것입니다. 전하량 <var>Q</var> = ∫ <var>I</var> <var>dt</var>, 즉 전류 그래프 아래 넓이가 사용한 전하입니다. 2 A를 30분 동안 흘리면 넓이는 2 A × 0.5 h = 1 Ah = 1000 mAh입니다. 아래 예제는 로봇이 대기, 주행, 기동 순간의 큰 전류를 오가는 프로파일을 적분하면서, 샘플링 주기가 결과를 얼마나 바꾸는지 봅니다.</p>
+
+  <py file="coulomb_counting.py" check>
+import numpy as np
+
+def current(t):
+    """Robot battery current [A] over a 10-minute mission."""
+    I = np.full_like(t, 0.3)                     # idle
+    I[(t >= 60) & (t < 300)] = 2.0               # driving
+    I[(t >= 60) & (t < 63)] = 6.0                # 3-second start-up surge
+    ramp = (t >= 300) & (t < 330)                # gentle stop: 2.0 A -> 0.3 A
+    I[ramp] = 2.0 - (t[ramp] - 300) / 30 * 1.7
+    I[(t >= 400) & (t < 500)] = 1.2              # slow patrol
+    return I
+
+# Reference: integrate a very finely sampled profile (trapezoid rule)
+tf = np.arange(0, 600.001, 0.001)
+ref = np.trapezoid(current(tf), tf) / 3.6        # A*s / 3.6 = mAh
+print(f"reference          : {ref:6.1f} mAh")
+
+# Firmware accumulator: used += I * dt at a fixed sampling period
+for dt in (0.1, 1.0, 5.0):
+    t = np.arange(0, 600, dt)
+    used = np.sum(current(t) * dt) / 3.6
+    print(f"sampled every {dt:3.1f} s: {used:6.1f} mAh  (error {100 * (used - ref) / ref:+.1f} %)")
+  </py>
+
+  <p>0.1초 주기는 기준값과 거의 같지만, 5초 주기로 재면 3초짜리 기동 전류를 한 번 찍고 그 값이 5초 내내 흘렀다고 셉니다. 조각의 폭이 현상보다 넓으면 넓이를 잘못 셉니다. 짧은 스파이크가 있는 신호일수록 촘촘히 재거나, 하드웨어 적분기가 있는 전용 잔량계 칩을 씁니다.</p>
+
+  <h3>미분과 적분은 서로 되돌린다</h3>
+  <p>위치를 미분하면 속도이고, 속도를 적분하면 위치(이동 거리)입니다. 두 연산은 서로를 되돌립니다. 이것이 미적분학의 기본 정리이고, 그림으로 보면 당연합니다. 넓이가 쌓여 가는 <strong>속도</strong>는 지금 이 순간 막대의 <strong>높이</strong>와 같으니까요. 높이가 큰 곳을 지날 때는 넓이가 빨리 쌓이고, 높이가 0인 곳에서는 넓이가 멈춥니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 140" role="img" aria-label="위치, 속도, 가속도 사이를 미분은 오른쪽으로, 적분은 왼쪽으로 오간다">
+      <rect class="sv-r2" x="20" y="40" width="160" height="56" rx="6"/><text class="sv-t" x="100" y="66" text-anchor="middle">위치 x(t)</text><text class="sv-m" x="100" y="84" text-anchor="middle">[m]</text>
+      <rect class="sv-r2" x="240" y="40" width="160" height="56" rx="6"/><text class="sv-t" x="320" y="66" text-anchor="middle">속도 v(t)</text><text class="sv-m" x="320" y="84" text-anchor="middle">[m/s]</text>
+      <rect class="sv-r2" x="460" y="40" width="160" height="56" rx="6"/><text class="sv-t" x="540" y="66" text-anchor="middle">가속도 a(t)</text><text class="sv-m" x="540" y="84" text-anchor="middle">[m/s²]</text>
+      <line class="sv-ac" x1="182" y1="52" x2="236" y2="52" marker-end="url(#arwa)"/><line class="sv-ac" x1="402" y1="52" x2="456" y2="52" marker-end="url(#arwa)"/>
+      <text class="sv-m" x="209" y="34" text-anchor="middle" style="fill:var(--accent)">d/dt 미분</text><text class="sv-m" x="429" y="34" text-anchor="middle" style="fill:var(--accent)">d/dt 미분</text>
+      <line x1="236" y1="86" x2="182" y2="86" style="stroke:var(--signal);stroke-width:1.6" marker-end="url(#arws)"/><line x1="456" y1="86" x2="402" y2="86" style="stroke:var(--signal);stroke-width:1.6" marker-end="url(#arws)"/>
+      <text class="sv-m" x="209" y="118" text-anchor="middle" style="fill:var(--signal)">∫dt 적분</text><text class="sv-m" x="429" y="118" text-anchor="middle" style="fill:var(--signal)">∫dt 적분</text>
+    </svg>
+    <figcaption>그림 6-1. 미분은 오른쪽으로(변화율), 적분은 왼쪽으로(누적). 가속도계 → 속도 → 위치는 적분 두 번, 엔코더 위치 → 속도는 미분 한 번.</figcaption>
+  </figure>
+  <p>그래서 5장의 미분 표를 거꾸로 읽으면 적분 표가 됩니다. cos <var>x</var>를 적분하면 sin <var>x</var>, <var>x</var><sup><var>n</var></sup>을 적분하면 <var>x</var><sup><var>n</var>+1</sup>/(<var>n</var>+1)입니다. 단 하나 주의할 점이 있습니다. 미분하면 상수는 사라지므로, 적분으로 되돌릴 때 원래 상수가 얼마였는지는 알 수 없습니다. 이것이 "적분 상수 <var>C</var>"이고, 공학적으로는 <strong>초깃값</strong>입니다. 속도를 아무리 정확히 적분해도 출발 위치를 모르면 현재 위치를 알 수 없습니다.</p>
+
+  <h3>적분의 함정: 드리프트</h3>
+  <p>적분은 잡음에는 강합니다. 위아래로 흔들리는 잡음은 더하다 보면 서로 상쇄되기 때문입니다(미분과 정반대). 대신 적분에는 치명적인 약점이 있습니다. <strong>작은 치우침(바이어스)이 끝없이 쌓입니다</strong>. 자이로가 정지 상태에서도 0.01 °/s를 읽는다면, 이 값을 적분한 각도는 1시간 뒤 36°가 틀어져 있습니다. 가속도계로 위치를 구하려면 두 번 적분해야 하는데, 이 경우 바이어스 오차는 시간의 제곱으로 커집니다.</p>
+
+  <py file="integration_drift.py" check>
+import numpy as np
+
+dt = 0.01
+t = np.arange(0, 60 + dt, dt)          # one minute
+rng = np.random.default_rng(7)
+
+# Gyro at rest: true rate 0, measured = bias + noise
+bias = 0.01                                        # [deg/s]
+for T in (60, 600):
+    tt = np.arange(0, T, dt)
+    n = rng.normal(0, 0.5, tt.size)
+    noise_part = np.sum(n) * dt                    # integrated noise only
+    print(f"gyro after {T:3d} s: noise part {noise_part:+6.2f} deg, bias part {bias * T:+5.2f} deg")
+
+# Accelerometer at rest with a tiny bias: integrate twice for position
+acc = 0.01 + rng.normal(0, 0.05, t.size)           # [m/s^2]
+vel = np.cumsum(acc) * dt
+pos = np.cumsum(vel) * dt
+for T in (1, 10, 60):
+    k = int(T / dt)
+    print(f"accel: position error after {T:2d} s = {pos[k]:8.3f} m  (0.5*b*t^2 = {0.5 * 0.01 * T**2:.3f})")
+  </py>
+  <p>자이로의 잡음(0.5 °/s)은 바이어스(0.01 °/s)보다 50배나 크지만, 적분하면 +와 −가 상쇄되어 시간의 제곱근(√<var>t</var>)으로만 자랍니다. 바이어스는 상쇄될 상대가 없어 시간에 정비례(<var>t</var>)로 자랍니다. 그래서 시간이 길어질수록 결국 바이어스가 이깁니다. 가속도계 쪽은 0.01 m/s²라는 미미한 바이어스가 1분 만에 18 m 오차가 됩니다. 관성 센서만으로 위치를 오래 추정할 수 없는 이유이고, 13장에서 다른 센서와 섞는 이유입니다.</p>
+
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>PID의 I항이 오차의 적분입니다. 작은 정상상태 오차도 계속 쌓아 결국 없애 주지만, 모터가 포화되어 있는 동안에도 계속 쌓이면 나중에 크게 오버슈트합니다. 이것이 적분기 와인드업(windup)이고, 그래서 I항 누산기에는 상한을 둡니다. 고정소수점 누산기라면 오버플로도 같은 이유로 조심해야 합니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>단위 환산 누락</strong>: mA × s를 그냥 더하면 mA·s(밀리쿨롬)입니다. mAh로 보려면 3600으로 나눕니다.</li>
+      <li><strong>초깃값 잊기</strong>: 적분은 변화량만 줍니다. 누산기 초기화(부팅 시 잔량, 출발 위치)가 틀리면 결과 전체가 그만큼 틀립니다.</li>
+      <li><strong>바이어스 보정 없이 적분</strong>: 정지 상태에서 센서 평균을 재서 바이어스를 빼고 적분하세요. 그래도 남는 드리프트는 다른 센서로 잡아야 합니다.</li>
+    </ul>
+  </div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>적분 = 그래프 아래 넓이 = 얇은 조각의 합 = 누산기 <code>acc += x * dt</code>.</li>
+      <li>미분과 적분은 서로 되돌린다. 적분으로 되돌릴 때는 초깃값이 필요하다.</li>
+      <li>적분은 잡음은 상쇄하지만 바이어스는 쌓는다. 두 번 적분하면 시간의 제곱으로 쌓인다.</li>
+    </ul>
+  </div>
+  <p>지금까지는 변화율이 이미 주어져 있었습니다. 그런데 현실의 많은 시스템은 "변화율이 현재 상태에 달려 있다"는 규칙으로 움직입니다. 커패시터는 충전될수록 천천히 충전되고, 뜨거운 모터는 식을수록 천천히 식습니다. 다음 장에서 이런 규칙을 미분방정식으로 쓰고, 그것을 펌웨어의 루프 한 줄로 풀어 봅니다.</p>
+
+  <div class="quiz" data-quiz="ch6"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch6" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

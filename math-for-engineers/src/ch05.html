@@ -1,0 +1,124 @@
+<!-- ============ CH5 ============ -->
+<section class="chapter col" id="ch5">
+  <div class="eyebrow">Part II · 변화와 누적 — 미적분 — 5장</div>
+  <h2>미분: 순간의 기울기</h2>
+  <p class="goal">이 장을 마치면: 미분을 "아주 짧은 구간에서 잰 기울기"로 설명할 수 있고, 위치·속도·가속도의 관계를 미분으로 읽으며, 기본 미분 규칙 몇 개로 최댓값 문제를 풀고, 센서 데이터를 수치 미분할 때 잡음이 커지는 이유와 대처법을 알게 됩니다.</p>
+
+  <h3>평균 속도에서 순간 속도로</h3>
+  <p>2장에서 직선의 기울기는 Δ<var>y</var>/Δ<var>x</var>라고 했습니다. 직선은 어디서 재도 기울기가 같습니다. 그런데 곡선은 위치마다 기울기가 다릅니다. 차가 출발해서 가속할 때, "지금 이 순간의 속도"는 얼마일까요?</p>
+  <p>위치를 <var>x</var>(<var>t</var>)라고 하면 1초 동안의 평균 속도는 (<var>x</var>(<var>t</var>+1) − <var>x</var>(<var>t</var>)) / 1입니다. 그래프에서는 곡선 위 두 점을 잇는 직선(할선)의 기울기입니다. 이제 간격을 0.1초, 0.01초, 0.001초로 줄여 가면, 두 점이 거의 붙으면서 할선이 곡선에 살짝 닿는 직선(접선)에 다가갑니다. <strong>간격을 한없이 줄였을 때 기울기가 다가가는 값</strong>, 그것이 미분입니다.</p>
+  <div class="eq"><var>f</var> ′(<var>x</var>) = <span class="so"><span>&nbsp;</span><b style="font-size:1em">lim</b><span><var>h</var>→0</span></span> <span class="fr"><span><var>f</var>(<var>x</var> + <var>h</var>) − <var>f</var>(<var>x</var>)</span><span><var>h</var></span></span> <small>다른 표기: <span class="fr"><span><var>df</var></span><span><var>dx</var></span></span>, <span class="fr"><span><var>dy</var></span><span><var>dx</var></span></span>. 여기서 <var>d</var>는 "아주아주 작은 Δ"라는 뜻</small></div>
+  <p class="say"><b>소리 내어 읽기:</b> "f 프라임 x는, h를 0으로 보낼 때 'f(x+h) 빼기 f(x), 나누기 h'가 다가가는 값이다." lim(극한, limit)은 "그 값에 다가간다"는 뜻입니다. h를 정말 0으로 만들면 0/0이 되니까, 0에 "다가가게만" 하는 것입니다.</p>
+  <p>컴퓨터에서는 lim을 계산할 수 없으니 <var>h</var>를 충분히 작은 값으로 두고 그냥 나눕니다. 그것이 수치 미분이고, 펌웨어가 늘 하는 <code>(x[k] - x[k-1]) / dt</code>입니다.</p>
+
+  <div class="bench" id="slBench">
+    <header><b>실습 벤치 5-A · 기울기 확대경</b><span>DERIVATIVE</span></header>
+    <div class="body">
+      <div class="ctl"><span>곡선</span><span></span><div class="seg" id="slFn" style="grid-column:1/-1"><button type="button" data-v="sq" aria-pressed="true">x²</button><button type="button" data-v="sin" aria-pressed="false">sin x</button><button type="button" data-v="cub" aria-pressed="false">0.3x³ − x</button></div></div>
+      <div class="ctls">
+        <div class="ctl"><label for="slX">기울기를 잴 위치 x</label><output id="oSlX"></output><input type="range" id="slX" min="-2.5" max="2.5" step="0.05" value="1"></div>
+        <div class="ctl"><label for="slH">간격 h (오른쪽으로 갈수록 작게)</label><output id="oSlH"></output><input type="range" id="slH" min="0" max="3" step="0.02" value="0"></div>
+      </div>
+      <svg class="plot" id="slSvg" viewBox="0 0 600 280" role="img" aria-label="곡선, 두 점을 잇는 할선, 그리고 실제 접선"></svg>
+      <div class="legend"><span><i style="background:var(--ink)"></i>곡선 f(x)</span><span><i style="background:var(--signal)"></i>할선: 두 점 x, x+h를 이은 직선</span><span><i style="background:var(--accent)"></i>접선: 진짜 순간 기울기</span></div>
+      <div class="readout"><div><small>할선 기울기 Δy/Δx</small><b id="slSec">—</b></div><div><small>참 기울기 f′(x)</small><b id="slTrue">—</b></div><div><small>차이</small><b id="slErr">—</b></div></div>
+      <div class="status y" id="slNote" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>간격 <var>h</var> 슬라이더를 오른쪽으로 밀면 주황색 할선이 파란 접선에 착 달라붙습니다. <var>h</var>가 1에서 0.001로 줄어드는 동안 차이가 거의 같은 비율로 줄어드는 것을 보세요. 또 <var>x</var>를 움직여 보면 곡선이 꼭대기나 바닥을 지나는 곳에서 접선이 수평(기울기 0)이 됩니다. 이 사실은 잠시 뒤 최댓값 찾기에 씁니다.</p>
+
+  <h3>미분 규칙: 외울 것은 몇 개뿐</h3>
+  <p>매번 극한을 계산할 필요는 없습니다. 자주 나오는 함수의 미분 결과는 정해져 있고, 공학에서 실제로 쓰는 것은 아래 표 정도입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>함수 <var>f</var>(<var>x</var>)</th><th>미분 <var>f</var> ′(<var>x</var>)</th><th>직관</th></tr></thead>
+    <tbody>
+      <tr><td>상수 <var>c</var></td><td>0</td><td>변하지 않으니 변화율 0</td></tr>
+      <tr><td><var>ax</var> + <var>b</var></td><td><var>a</var></td><td>직선의 기울기는 어디서나 <var>a</var></td></tr>
+      <tr><td><var>x</var><sup><var>n</var></sup></td><td><var>n</var> · <var>x</var><sup><var>n</var>−1</sup></td><td>지수를 앞으로 내리고 하나 줄인다. <var>x</var><sup>2</sup> → 2<var>x</var></td></tr>
+      <tr><td>sin <var>x</var></td><td>cos <var>x</var></td><td>원 위의 점의 세로 속도 = 가로 좌표(4장)</td></tr>
+      <tr><td>cos <var>x</var></td><td>−sin <var>x</var></td><td>가로 속도는 세로 좌표의 반대 방향</td></tr>
+      <tr><td><var>e</var><sup><var>x</var></sup></td><td><var>e</var><sup><var>x</var></sup></td><td>자기 자신이 곧 변화율인 유일한 함수(7장)</td></tr>
+      <tr><td>ln <var>x</var></td><td>1/<var>x</var></td><td>클수록 천천히 증가</td></tr>
+    </tbody>
+  </table></div>
+  <p>여기에 규칙 두 개만 더하면 됩니다. 첫째, <strong>선형성</strong>: 더한 것의 미분은 미분한 것의 합이고, 상수배는 그대로 밖으로 나옵니다. (3<var>x</var><sup>2</sup> + sin <var>x</var>)′ = 6<var>x</var> + cos <var>x</var>. 둘째, <strong>연쇄 법칙</strong>: 안쪽에 함수가 들어 있으면 안쪽의 미분을 곱합니다. 공학에서 가장 흔한 예는 사인파입니다.</p>
+  <div class="eq"><span class="fr"><span><var>d</var></span><span><var>dt</var></span></span> sin(<var>ωt</var>) = <var>ω</var> · cos(<var>ωt</var>) <small>안쪽 <var>ωt</var>가 <var>ω</var>배 빨리 변하니까, 바깥도 <var>ω</var>배 빨리 변한다</small></div>
+  <p>이 식은 실용적인 사실 하나를 알려 줍니다. 진폭이 같아도 <strong>주파수가 높은 신호일수록 미분값(변화 속도)이 주파수에 비례해 커집니다</strong>. 그래서 미분은 고주파를 키우는 연산, 즉 잡음을 키우는 연산입니다. 이 장의 마지막 절에서 다시 만납니다.</p>
+
+  <h3>위치 → 속도 → 가속도, 그리고 최댓값 찾기</h3>
+  <p>미분은 "변화율"이므로 물리량 사이의 사다리를 만듭니다. 위치 <var>x</var>(<var>t</var>)를 미분하면 속도 <var>v</var> = <var>dx</var>/<var>dt</var>, 속도를 미분하면 가속도 <var>a</var> = <var>dv</var>/<var>dt</var>입니다. 두 번 미분한 것을 2계 미분이라 하고 <var>f</var> ″로 씁니다. 2계 미분은 기울기가 변하는 정도, 즉 곡선이 얼마나 휘었는가입니다.</p>
+  <p>미분의 가장 강력한 쓰임은 <strong>최댓값과 최솟값 찾기</strong>입니다. 매끄러운 곡선이 꼭대기나 바닥에 닿는 순간에는 접선이 수평이므로 기울기가 0입니다. 그래서 "<var>f</var> ′(<var>x</var>) = 0인 <var>x</var>를 찾아라"가 최적화 문제의 출발점이 됩니다.</p>
+  <p>전자과에서 배운 <strong>최대 전력 전달</strong>이 좋은 예입니다. 내부 저항 <var>R</var><sub>s</sub>인 전원에 부하 <var>R</var>을 달면 부하가 받는 전력은 <var>P</var>(<var>R</var>) = <var>V</var><sup>2</sup><var>R</var> / (<var>R</var> + <var>R</var><sub>s</sub>)<sup>2</sup>입니다. <var>R</var>이 너무 작으면 전압이 안 걸리고, 너무 크면 전류가 안 흐릅니다. 그 사이 어딘가에 꼭대기가 있고, <var>dP</var>/<var>dR</var> = 0을 풀면 <var>R</var> = <var>R</var><sub>s</sub>가 나옵니다. 아래 코드는 이것을 손으로 미분하지 않고 수치로 확인합니다.</p>
+
+  <py file="max_power.py" check>
+import numpy as np
+
+V, Rs = 12.0, 4.0                       # source voltage [V], internal resistance [ohm]
+
+def P(R):
+    return V**2 * R / (R + Rs) ** 2     # power delivered to the load [W]
+
+R = np.linspace(0.5, 20, 3901)          # sweep the load resistance
+dP = np.gradient(P(R), R)               # numerical derivative dP/dR
+i = np.where(np.diff(np.sign(dP)) != 0)[0][0]   # where the slope changes sign
+print(f"slope crosses zero at R = {R[i]:.2f} ohm (theory: R = Rs = {Rs} ohm)")
+print(f"max power = {P(R[i]):.2f} W, at R = 2 ohm: {P(2.0):.2f} W, at R = 8 ohm: {P(8.0):.2f} W")
+  </py>
+
+  <h3>실전 수치 미분: 잡음이 커지는 이유</h3>
+  <p>엔코더나 위치 센서로 속도를 구할 때 가장 간단한 방법은 연속한 두 샘플의 차를 시간 간격으로 나누는 것입니다.</p>
+  <c file="velocity.c">
+/* Called every dt seconds from a timer interrupt */
+float velocity_update(float pos_now, float dt)
+{
+    static float pos_prev = 0.0f;
+    float v = (pos_now - pos_prev) / dt;   /* backward difference */
+    pos_prev = pos_now;
+    return v;
+}
+  </c>
+  <p>그런데 위치 값에 아주 작은 잡음 <var>ε</var>이 섞여 있다면, 차를 <var>dt</var>로 나누는 순간 잡음은 대략 <var>ε</var>/<var>dt</var> 크기가 됩니다. <var>dt</var>를 줄여 "더 정확한 미분"을 하려 할수록 잡음은 커집니다. 벤치 5-A에서는 <var>h</var>를 줄일수록 좋아졌지만, 그건 잡음 없는 수학 곡선이었기 때문입니다. 아래 실험은 잡음이 0.001밖에 안 되는 위치 신호를 여러 간격으로 미분해 오차를 잽니다.</p>
+
+  <py file="noisy_derivative.py" check>
+import numpy as np
+
+rng = np.random.default_rng(1)
+sigma = 0.001                                    # position noise (tiny!)
+print("   dt     forward-diff error   central-diff error")
+for dt in (0.2, 0.05, 0.01, 0.001):
+    t = np.arange(0, 10, dt)
+    x = np.sin(t) + rng.normal(0, sigma, t.size)  # measured position
+    v_true = np.cos(t)
+    v_fwd = (x[1:] - x[:-1]) / dt                 # (x[k+1] - x[k]) / dt
+    v_cen = (x[2:] - x[:-2]) / (2 * dt)           # (x[k+1] - x[k-1]) / 2dt
+    e_fwd = np.sqrt(np.mean((v_fwd - v_true[:-1]) ** 2))
+    e_cen = np.sqrt(np.mean((v_cen - v_true[1:-1]) ** 2))
+    print(f"{dt:6.3f}   {e_fwd:12.4f}         {e_cen:12.4f}")
+  </py>
+  <p>결과를 보면 간격이 너무 크면 곡선을 직선으로 근사한 오차가 커지고, 너무 작으면 잡음이 폭발합니다. 그 사이에 최적점이 있습니다. 실무에서 쓰는 대처법은 세 가지입니다.</p>
+  <ul>
+    <li><strong>중앙 차분</strong>: (<var>x</var><sub><var>k</var>+1</sub> − <var>x</var><sub><var>k</var>−1</sub>)/2<var>dt</var>. 간격이 같아도 근사 오차가 훨씬 작습니다. 대신 한 샘플 늦게 나옵니다.</li>
+    <li><strong>미분 전후에 저역통과 필터</strong>: 고주파 잡음을 먼저 깎아 냅니다(7장의 1차 필터).</li>
+    <li><strong>미분하지 말고 추정하기</strong>: 위치와 속도를 함께 추정하는 필터를 씁니다(13장의 칼만 필터).</li>
+  </ul>
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>PID 제어기의 D항이 바로 오차의 미분입니다. D 이득을 올리면 모터가 "지글거리는" 이유가 이 절에 있습니다. 그래서 대부분의 실전 PID 구현은 D항에 저역통과 필터를 달고, 목표값이 계단처럼 바뀔 때 생기는 미분 폭발(derivative kick)을 피하려 오차 대신 측정값을 미분합니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>"샘플링을 빠르게 하면 속도가 더 정확해진다"</strong>: 잡음이 있으면 반대입니다. 엔코더 분해능이 낮으면 짧은 <var>dt</var>에서 차가 0 아니면 1카운트라 속도가 계단처럼 튑니다.</li>
+      <li><strong>불규칙한 <var>dt</var></strong>: 인터럽트 지터로 실제 간격이 흔들리면, 고정 상수 <var>dt</var>로 나눈 미분값도 흔들립니다. 타임스탬프로 실제 간격을 재서 나누세요.</li>
+    </ul>
+  </div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>미분 = 간격을 한없이 줄였을 때의 기울기 = 순간 변화율. 코드로는 차분 ÷ 간격.</li>
+      <li><var>x</var><sup><var>n</var></sup> → <var>nx</var><sup><var>n</var>−1</sup>, sin → cos, <var>e</var><sup><var>x</var></sup> → <var>e</var><sup><var>x</var></sup>, 안쪽이 있으면 안쪽의 미분을 곱한다.</li>
+      <li>꼭대기와 바닥에서는 기울기가 0. 미분은 고주파와 잡음을 키운다.</li>
+    </ul>
+  </div>
+  <p>미분은 "얼마나 빨리 변하나"였습니다. 다음 장에서는 반대 질문, "지금까지 얼마나 쌓였나"를 다룹니다. 속도에서 이동 거리를, 전류에서 배터리 사용량을 구하는 적분입니다. 그리고 미분과 적분이 서로를 되돌리는 연산이라는 것을 보게 됩니다.</p>
+
+  <div class="quiz" data-quiz="ch5"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch5" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

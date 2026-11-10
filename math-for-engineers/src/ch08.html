@@ -1,0 +1,113 @@
+<!-- ============ CH8 ============ -->
+<section class="chapter col" id="ch8">
+  <div class="eyebrow">Part III · 여러 수를 한 번에 — 8장</div>
+  <h2>벡터: 방향이 있는 수</h2>
+  <p class="goal">이 장을 마치면: 벡터를 숫자 묶음이자 화살표로 보고 덧셈·뺄셈·스칼라배·크기·정규화를 계산할 수 있고, 내적으로 두 방향 사이의 각도와 한 벡터를 다른 방향으로 투영한 길이를 구하며, 2D 외적의 부호로 왼쪽·오른쪽을 판단할 수 있습니다.</p>
+
+  <h3>숫자 묶음이자 화살표</h3>
+  <p>온도나 전압은 숫자 하나로 충분합니다. 이런 양을 스칼라라고 합니다. 그런데 로봇의 위치, 속도, 바람, 힘은 "얼마나"와 "어느 쪽으로"를 함께 말해야 합니다. 이런 양을 <strong>벡터</strong>라고 합니다.</p>
+  <p>벡터는 두 가지 얼굴을 갖습니다. 하나는 <strong>숫자 묶음</strong>입니다. 평면 위라면 (3, 4)처럼 두 숫자, 공간이라면 (<var>x</var>, <var>y</var>, <var>z</var>) 세 숫자. 코드로는 <code>struct { float x, y; }</code>나 길이 2짜리 배열입니다. 다른 하나는 <strong>화살표</strong>입니다. 원점에서 가로로 3, 세로로 4만큼 간 곳을 가리키는 화살표. 계산은 숫자로 하고, 이해는 화살표로 합니다.</p>
+  <p>화살표의 길이, 즉 벡터의 <strong>크기</strong>(norm)는 4장의 피타고라스 정리로 구합니다.</p>
+  <div class="eq">|<var><b>v</b></var>| = √<span class="rt"><var>v</var><sub><var>x</var></sub><sup>2</sup> + <var>v</var><sub><var>y</var></sub><sup>2</sup></span> &nbsp; 예: |(3, 4)| = √<span class="rt">9 + 16</span> = 5 <small>3차원이면 <var>z</var><sup>2</sup>을 더하면 된다. 굵은 글씨 <var><b>v</b></var>는 "이건 벡터"라는 표시</small></div>
+
+  <h3>더하기, 빼기, 늘리기</h3>
+  <p>벡터 계산은 성분끼리 하면 됩니다. 그림으로 보면 각각 뜻이 있습니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 210" role="img" aria-label="벡터 덧셈은 화살표를 꼬리에 머리를 이어 붙이는 것, 뺄셈 B 빼기 A는 A에서 B로 가는 화살표">
+      <text class="sv-t" x="20" y="22">덧셈: 이어 붙이기</text>
+      <line class="sv-ac" x1="40" y1="180" x2="140" y2="130" marker-end="url(#arwa)"/><text class="sv-t" x="80" y="172" style="fill:var(--accent)">a = (2, 1)</text>
+      <line x1="140" y1="130" x2="190" y2="40" style="stroke:var(--signal);stroke-width:1.8" marker-end="url(#arws)"/><text class="sv-t" x="172" y="98" style="fill:var(--signal)">b = (1, 1.8)</text>
+      <line class="sv-ln" x1="40" y1="180" x2="188" y2="43" marker-end="url(#arw)" style="stroke-dasharray:5 4"/><text class="sv-t" x="58" y="96">a + b = (3, 2.8)</text>
+      <text class="sv-t" x="330" y="22">뺄셈: B − A = A에서 B로 가는 화살표</text>
+      <circle cx="370" cy="160" r="5" style="fill:var(--ink)"/><text class="sv-t" x="352" y="182">A (로봇)</text>
+      <circle cx="560" cy="70" r="5" style="fill:var(--ink)"/><text class="sv-t" x="540" y="56">B (목표)</text>
+      <line class="sv-ac" x1="374" y1="158" x2="553" y2="73" marker-end="url(#arwa)"/><text class="sv-t" x="440" y="140" style="fill:var(--accent)">B − A</text>
+      <text class="sv-m" x="330" y="205">길이 |B − A| = 목표까지 거리, 방향 = 가야 할 쪽</text>
+    </svg>
+    <figcaption>그림 8-1. 덧셈은 화살표를 꼬리-머리로 이어 붙이기, B − A는 A에서 B로 가는 화살표.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>덧셈</strong> (<var>a</var><sub><var>x</var></sub> + <var>b</var><sub><var>x</var></sub>, <var>a</var><sub><var>y</var></sub> + <var>b</var><sub><var>y</var></sub>): 화살표를 이어 붙인 결과. 이동을 연달아 하면 위치 벡터가 더해지고, 힘 여러 개가 작용하면 힘 벡터가 더해집니다.</li>
+    <li><strong>뺄셈</strong> <var><b>B</b></var> − <var><b>A</b></var>: A에서 B로 가는 화살표. 로봇에서 목표까지의 방향과 거리가 이 한 번의 뺄셈으로 나옵니다.</li>
+    <li><strong>스칼라배</strong> <var>k</var> · <var><b>v</b></var>: 방향은 그대로, 길이만 <var>k</var>배. <var>k</var>가 음수면 반대 방향.</li>
+    <li><strong>정규화</strong> <var><b>v</b></var> / |<var><b>v</b></var>|: 길이를 1로 만든 단위 벡터. "얼마나"를 지우고 "어느 쪽"만 남깁니다. 로봇의 방향 <var>ψ</var>는 단위 벡터 (cos <var>ψ</var>, sin <var>ψ</var>)로 나타낼 수 있습니다(4장).</li>
+  </ul>
+
+  <h3>내적: 두 방향이 얼마나 같은가</h3>
+  <p>벡터 둘을 곱하는 방법 중 공학에서 가장 많이 쓰는 것이 <strong>내적</strong>(dot product)입니다. 계산은 성분끼리 곱해 더하는 것뿐인데, 그 결과에 기하학적인 뜻이 숨어 있습니다.</p>
+  <div class="eq"><var><b>a</b></var> · <var><b>b</b></var> = <var>a</var><sub><var>x</var></sub><var>b</var><sub><var>x</var></sub> + <var>a</var><sub><var>y</var></sub><var>b</var><sub><var>y</var></sub> = |<var><b>a</b></var>| |<var><b>b</b></var>| cos <var>θ</var> <small><var>θ</var>: 두 화살표 사이의 각도. 왼쪽은 계산법, 오른쪽은 뜻</small></div>
+  <p>cos <var>θ</var>는 두 방향이 같으면 1, 수직이면 0, 반대면 −1입니다. 그래서 내적의 <strong>부호</strong>만 봐도 많은 것을 알 수 있습니다. 양수면 대체로 같은 쪽, 0이면 직각, 음수면 대체로 반대쪽입니다. 또 <var><b>b</b></var>가 단위 벡터라면 <var><b>a</b></var> · <var><b>b</b></var>는 "<var><b>a</b></var>가 <var><b>b</b></var> 방향으로 얼마나 뻗어 있는가", 즉 <strong>투영</strong>(그림자)의 길이입니다.</p>
+
+  <div class="bench" id="dtBench">
+    <header><b>실습 벤치 8-A · 내적 탐색기</b><span>DOT PRODUCT</span></header>
+    <div class="body">
+      <div class="ctls">
+        <div class="ctl"><label for="dtA">a의 방향</label><output id="oDtA"></output><input type="range" id="dtA" min="-180" max="180" step="1" value="15"></div>
+        <div class="ctl"><label for="dtLa">a의 길이</label><output id="oDtLa"></output><input type="range" id="dtLa" min="0.2" max="2" step="0.05" value="1.8"></div>
+        <div class="ctl"><label for="dtB">b의 방향</label><output id="oDtB"></output><input type="range" id="dtB" min="-180" max="180" step="1" value="60"></div>
+        <div class="ctl"><label for="dtLb">b의 길이</label><output id="oDtLb"></output><input type="range" id="dtLb" min="0.2" max="2" step="0.05" value="0.7"></div>
+      </div>
+      <svg class="plot" id="dtSvg" viewBox="0 0 600 320" role="img" aria-label="두 벡터 a, b와 a를 b 방향으로 투영한 그림자"></svg>
+      <div class="legend"><span><i style="background:var(--accent)"></i>a</span><span><i style="background:var(--signal)"></i>b</span><span><i style="background:var(--ink)"></i>a의 b 방향 그림자(투영)</span></div>
+      <div class="readout"><div><small>a·b (성분 곱의 합)</small><b id="dtDot">—</b></div><div><small>|a||b|cos θ</small><b id="dtCos">—</b></div><div><small>사이각 θ</small><b id="dtAng">—</b></div></div>
+      <div class="status g" id="dtNote" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>두 방향을 직각으로 맞추면 내적이 정확히 0이 되고 그림자가 사라집니다. 성분으로 계산한 값과 |<var><b>a</b></var>||<var><b>b</b></var>|cos <var>θ</var>로 계산한 값이 언제나 같다는 것도 확인해 보세요. 1장의 FIR 필터 Σ<var>h</var><sub><var>k</var></sub><var>x</var><sub><var>n</var>−<var>k</var></sub>도 사실 계수 벡터와 입력 벡터의 내적입니다. 필터는 "입력이 계수 모양과 얼마나 닮았나"를 재는 셈이고, 12장의 상관(correlation)도 같은 생각입니다.</p>
+
+  <h3>실전: 목표가 앞에 있나, 왼쪽에 있나</h3>
+  <p>로봇이 위치 <var><b>P</b></var>에서 방향 <var>ψ</var>를 보고 있고, 목표가 <var><b>G</b></var>에 있습니다. 방향 단위 벡터를 <var><b>h</b></var> = (cos <var>ψ</var>, sin <var>ψ</var>), 목표를 향한 벡터를 <var><b>g</b></var> = <var><b>G</b></var> − <var><b>P</b></var>라고 하면 질문 두 개가 계산 두 번으로 풀립니다.</p>
+  <ul>
+    <li><strong>앞인가 뒤인가?</strong> <var><b>h</b></var> · <var><b>g</b></var> &gt; 0이면 앞쪽(±90° 이내).</li>
+    <li><strong>왼쪽인가 오른쪽인가?</strong> 2D 외적 <var>h</var><sub><var>x</var></sub><var>g</var><sub><var>y</var></sub> − <var>h</var><sub><var>y</var></sub><var>g</var><sub><var>x</var></sub>가 양수면 왼쪽(반시계 방향), 음수면 오른쪽. 크기는 |<var><b>h</b></var>||<var><b>g</b></var>| sin <var>θ</var>입니다.</li>
+  </ul>
+  <p>둘을 합치면 각도도 바로 나옵니다. <var>θ</var> = atan2(외적, 내적). 4장의 atan2에 sin 성분과 cos 성분을 넣은 것입니다. 이렇게 구한 각도는 자동으로 −180°~+180° 범위라 따로 정규화할 필요도 없습니다.</p>
+
+  <py file="vectors.py" check>
+import numpy as np
+
+P = np.array([1.0, 1.0])                 # robot position [m]
+psi = np.radians(30)                     # robot heading
+h = np.array([np.cos(psi), np.sin(psi)]) # unit heading vector
+
+for G in ([4.0, 2.0], [0.0, 3.0], [-2.0, 0.0]):
+    g = np.array(G) - P                  # vector from robot to goal
+    dist = np.linalg.norm(g)
+    dot = h @ g                          # h . g
+    cross = h[0] * g[1] - h[1] * g[0]    # 2D cross product (z component)
+    ang = np.degrees(np.arctan2(cross, dot))
+    side = "left" if cross > 0 else "right"
+    where = "ahead" if dot > 0 else "behind"
+    print(f"goal {G}: dist {dist:4.2f} m, {where:6s}, {side:5s}, turn {ang:+6.1f} deg")
+
+# acos needs clamping: rounding can push the cosine slightly above 1
+u = np.array([0.9, 0.6]); v = u * 0.1          # same direction, angle is 0
+c = (u @ v) / (np.linalg.norm(u) * np.linalg.norm(v))
+print(f"cos = {c:.17g}")
+with np.errstate(invalid="ignore"):
+    print("acos(cos)          =", np.degrees(np.arccos(c)))
+print("acos(clip(cos))    =", np.degrees(np.arccos(np.clip(c, -1.0, 1.0))))
+  </py>
+
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>벡터 연산은 SIMD와 궁합이 좋습니다. 성분끼리 독립적으로 곱하고 더하므로 NEON 같은 명령으로 여러 성분을 한 번에 처리할 수 있고, 내적은 곱셈-누산(MAC)의 연속입니다. GPU와 DSP가 잘하는 일이 바로 이것입니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>0 벡터 정규화</strong>: 로봇이 이미 목표 위에 있으면 |<var><b>g</b></var>| = 0이라 0으로 나눕니다. 길이가 아주 작으면 정규화하지 않도록 분기하세요.</li>
+      <li><strong>acos의 NaN</strong>: 내적 ÷ 크기의 곱이 반올림 오차로 1.0000001이 되면 <code>acos</code>가 NaN을 냅니다. −1~1로 잘라(clamp) 쓰거나, 처음부터 atan2(외적, 내적)를 쓰세요.</li>
+      <li><strong>좌표계 손잡이</strong>: 화면 좌표처럼 <var>y</var>가 아래로 커지는 좌표계에서는 외적의 왼쪽/오른쪽 판정이 뒤집힙니다. ROS의 REP 103처럼 좌표계 규약을 먼저 확인하세요.</li>
+    </ul>
+  </div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>벡터 = 숫자 묶음 = 화살표. 크기는 피타고라스, B − A는 A에서 B로 가는 화살표.</li>
+      <li>내적 = 성분 곱의 합 = |<var><b>a</b></var>||<var><b>b</b></var>|cos <var>θ</var>. 부호로 앞/뒤, 단위 벡터와의 내적은 투영 길이.</li>
+      <li>2D 외적의 부호로 왼쪽/오른쪽, 각도는 atan2(외적, 내적).</li>
+    </ul>
+  </div>
+  <p>내적은 벡터 둘에서 숫자 하나를 만들었습니다. 그렇다면 내적을 여러 개 한꺼번에 해서 벡터에서 새 벡터를 만들면? 그것이 다음 장의 행렬입니다. 행렬은 공간 전체를 돌리고 늘리는 변환 기계이고, 로봇 좌표계 변환의 언어입니다.</p>
+
+  <div class="quiz" data-quiz="ch8"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch8" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

@@ -1,0 +1,132 @@
+<!-- ============ CH12 ============ -->
+<section class="chapter col" id="ch12">
+  <div class="eyebrow">Part IV · 불확실성 + 실전 — 12장</div>
+  <h2>통계와 잡음</h2>
+  <p class="goal">이 장을 마치면: 평균·분산·표준편차를 계산하고 그 뜻을 설명할 수 있고, 정규분포의 68-95-99.7 규칙으로 측정값의 범위를 판단하며, 독립 잡음의 분산이 더해진다는 것과 <var>N</var>개를 평균하면 잡음이 √<span class="rt"><var>N</var></span>배 줄어든다는 것을 쓰고, 최소제곱법으로 잡음 낀 데이터에 직선을 맞출 수 있습니다.</p>
+
+  <h3>평균과 흩어짐: 분산과 표준편차</h3>
+  <p>정지해 있는 센서를 100번 읽으면 값이 조금씩 다르게 나옵니다. 이 숫자 더미를 요약하는 첫 번째 숫자는 <strong>평균</strong> <var>μ</var>(1장의 <var class="ov">x</var>)이고, 두 번째 숫자는 "평균에서 얼마나 흩어져 있나"입니다.</p>
+  <p>흩어짐을 재려면 각 값이 평균에서 벗어난 정도(편차) <var>x</var><sub><var>i</var></sub> − <var>μ</var>를 봐야 하는데, 그냥 평균 내면 +와 −가 상쇄되어 0이 됩니다. 1장의 RMS와 같은 요령으로 <strong>제곱해서 평균</strong>내면 됩니다. 이것이 분산이고, 단위를 원래대로 돌리려고 루트를 씌운 것이 표준편차입니다.</p>
+  <div class="eq"><var>σ</var><sup>2</sup> = <span class="fr"><span>1</span><span><var>N</var></span></span> <span class="so"><span><var>N</var></span><b>Σ</b><span><var>i</var>=1</span></span> (<var>x</var><sub><var>i</var></sub> − <var>μ</var>)<sup>2</sup>, &nbsp; <var>σ</var> = √<span class="rt"><var>σ</var><sup>2</sup></span> <small>분산 <var>σ</var>²: 편차 제곱의 평균 · 표준편차 <var>σ</var>: 원래 단위로 된 "전형적인 흔들림 크기"</small></div>
+  <p>평균이 0인 잡음이라면 표준편차는 1장의 RMS와 같은 값입니다. 데이터시트의 "RMS 잡음 2 mV"는 곧 "표준편차 2 mV"라는 뜻입니다. 표본에서 분산을 추정할 때는 <var>N</var> 대신 <var>N</var> − 1로 나누기도 하는데(NumPy의 <code>ddof=1</code>), 데이터가 수십 개 이상이면 차이는 무시해도 됩니다.</p>
+
+  <h3>정규분포와 68-95-99.7 규칙</h3>
+  <p>측정값을 많이 모아 히스토그램을 그리면 대개 가운데가 볼록한 종 모양이 나옵니다. 이것이 <strong>정규분포</strong>(가우스 분포)입니다. 왜 이렇게 흔할까요? 측정 잡음은 보통 열잡음, 양자화, 진동 같은 수많은 작은 원인의 <strong>합</strong>입니다. 작고 독립적인 원인을 많이 더하면, 개별 원인의 모양과 상관없이 합은 종 모양에 가까워집니다(중심극한정리). 정규분포는 평균 <var>μ</var>와 표준편차 <var>σ</var> 두 숫자로 완전히 정해집니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 210" role="img" aria-label="정규분포 곡선. 평균에서 1 시그마 안에 68퍼센트, 2 시그마 안에 95퍼센트, 3 시그마 안에 99.7퍼센트">
+      <path d="M110.0 170 L110.0 168.4 L117.1 167.9 L124.2 167.2 L131.4 166.3 L138.5 165.1 L145.6 163.7 L152.7 161.9 L159.8 159.8 L166.9 157.2 L174.1 154.1 L181.2 150.4 L188.3 146.1 L195.4 141.3 L202.5 135.7 L209.7 129.6 L216.8 122.8 L223.9 115.4 L231.0 107.6 L238.1 99.3 L245.3 90.8 L252.4 82.2 L259.5 73.6 L266.6 65.3 L273.7 57.5 L280.8 50.3 L288.0 43.9 L295.1 38.6 L302.2 34.5 L309.3 31.6 L316.4 30.2 L323.6 30.2 L330.7 31.6 L337.8 34.5 L344.9 38.6 L352.0 43.9 L359.2 50.3 L366.3 57.5 L373.4 65.3 L380.5 73.6 L387.6 82.2 L394.7 90.8 L401.9 99.3 L409.0 107.6 L416.1 115.4 L423.2 122.8 L430.3 129.6 L437.5 135.7 L444.6 141.3 L451.7 146.1 L458.8 150.4 L465.9 154.1 L473.1 157.2 L480.2 159.8 L487.3 161.9 L494.4 163.7 L501.5 165.1 L508.6 166.3 L515.8 167.2 L522.9 167.9 L530.0 168.4 L530.0 170Z" style="fill:color-mix(in srgb,var(--accent) 10%,transparent)"/>
+      <path d="M180.0 170 L180.0 151.1 L184.7 148.4 L189.5 145.4 L194.2 142.1 L199.0 138.6 L203.7 134.8 L208.5 130.7 L213.2 126.3 L218.0 121.6 L222.7 116.7 L227.5 111.6 L232.2 106.2 L236.9 100.7 L241.7 95.1 L246.4 89.4 L251.2 83.6 L255.9 77.9 L260.7 72.2 L265.4 66.7 L270.2 61.3 L274.9 56.2 L279.7 51.4 L284.4 47.0 L289.2 43.0 L293.9 39.4 L298.6 36.4 L303.4 33.9 L308.1 32.0 L312.9 30.7 L317.6 30.1 L322.4 30.1 L327.1 30.7 L331.9 32.0 L336.6 33.9 L341.4 36.4 L346.1 39.4 L350.8 43.0 L355.6 47.0 L360.3 51.4 L365.1 56.2 L369.8 61.3 L374.6 66.7 L379.3 72.2 L384.1 77.9 L388.8 83.6 L393.6 89.4 L398.3 95.1 L403.1 100.7 L407.8 106.2 L412.5 111.6 L417.3 116.7 L422.0 121.6 L426.8 126.3 L431.5 130.7 L436.3 134.8 L441.0 138.6 L445.8 142.1 L450.5 145.4 L455.3 148.4 L460.0 151.1 L460.0 170Z" style="fill:color-mix(in srgb,var(--accent) 16%,transparent)"/>
+      <path d="M250.0 170 L250.0 85.1 L252.4 82.2 L254.7 79.3 L257.1 76.5 L259.5 73.6 L261.9 70.8 L264.2 68.1 L266.6 65.3 L269.0 62.7 L271.4 60.0 L273.7 57.5 L276.1 55.0 L278.5 52.6 L280.8 50.3 L283.2 48.1 L285.6 45.9 L288.0 43.9 L290.3 42.0 L292.7 40.2 L295.1 38.6 L297.5 37.1 L299.8 35.7 L302.2 34.5 L304.6 33.4 L306.9 32.4 L309.3 31.6 L311.7 31.0 L314.1 30.5 L316.4 30.2 L318.8 30.0 L321.2 30.0 L323.6 30.2 L325.9 30.5 L328.3 31.0 L330.7 31.6 L333.1 32.4 L335.4 33.4 L337.8 34.5 L340.2 35.7 L342.5 37.1 L344.9 38.6 L347.3 40.2 L349.7 42.0 L352.0 43.9 L354.4 45.9 L356.8 48.1 L359.2 50.3 L361.5 52.6 L363.9 55.0 L366.3 57.5 L368.6 60.0 L371.0 62.7 L373.4 65.3 L375.8 68.1 L378.1 70.8 L380.5 73.6 L382.9 76.5 L385.3 79.3 L387.6 82.2 L390.0 85.1 L390.0 170Z" style="fill:color-mix(in srgb,var(--accent) 26%,transparent)"/>
+      <path d="M40.0 170.0 L43.5 169.9 L47.0 169.9 L50.5 169.9 L54.0 169.9 L57.5 169.9 L61.0 169.9 L64.5 169.8 L68.0 169.8 L71.5 169.7 L75.0 169.7 L78.5 169.6 L82.0 169.6 L85.5 169.5 L89.0 169.4 L92.5 169.3 L96.0 169.2 L99.5 169.0 L103.0 168.9 L106.5 168.7 L110.0 168.4 L113.5 168.2 L117.0 167.9 L120.5 167.6 L124.0 167.2 L127.5 166.8 L131.0 166.3 L134.5 165.8 L138.0 165.2 L141.5 164.6 L145.0 163.8 L148.5 163.0 L152.0 162.1 L155.5 161.2 L159.0 160.1 L162.5 158.9 L166.0 157.6 L169.5 156.1 L173.0 154.6 L176.5 152.9 L180.0 151.1 L183.5 149.1 L187.0 147.0 L190.5 144.7 L194.0 142.3 L197.5 139.7 L201.0 137.0 L204.5 134.1 L208.0 131.1 L211.5 127.9 L215.0 124.5 L218.5 121.1 L222.0 117.5 L225.5 113.7 L229.0 109.9 L232.5 105.9 L236.0 101.9 L239.5 97.7 L243.0 93.5 L246.5 89.3 L250.0 85.1 L253.5 80.8 L257.0 76.6 L260.5 72.4 L264.0 68.3 L267.5 64.3 L271.0 60.4 L274.5 56.7 L278.0 53.1 L281.5 49.7 L285.0 46.5 L288.5 43.5 L292.0 40.8 L295.5 38.3 L299.0 36.2 L302.5 34.3 L306.0 32.8 L309.5 31.6 L313.0 30.7 L316.5 30.2 L320.0 30.0 L323.5 30.2 L327.0 30.7 L330.5 31.6 L334.0 32.8 L337.5 34.3 L341.0 36.2 L344.5 38.3 L348.0 40.8 L351.5 43.5 L355.0 46.5 L358.5 49.7 L362.0 53.1 L365.5 56.7 L369.0 60.4 L372.5 64.3 L376.0 68.3 L379.5 72.4 L383.0 76.6 L386.5 80.8 L390.0 85.1 L393.5 89.3 L397.0 93.5 L400.5 97.7 L404.0 101.9 L407.5 105.9 L411.0 109.9 L414.5 113.7 L418.0 117.5 L421.5 121.1 L425.0 124.5 L428.5 127.9 L432.0 131.1 L435.5 134.1 L439.0 137.0 L442.5 139.7 L446.0 142.3 L449.5 144.7 L453.0 147.0 L456.5 149.1 L460.0 151.1 L463.5 152.9 L467.0 154.6 L470.5 156.1 L474.0 157.6 L477.5 158.9 L481.0 160.1 L484.5 161.2 L488.0 162.1 L491.5 163.0 L495.0 163.8 L498.5 164.6 L502.0 165.2 L505.5 165.8 L509.0 166.3 L512.5 166.8 L516.0 167.2 L519.5 167.6 L523.0 167.9 L526.5 168.2 L530.0 168.4 L533.5 168.7 L537.0 168.9 L540.5 169.0 L544.0 169.2 L547.5 169.3 L551.0 169.4 L554.5 169.5 L558.0 169.6 L561.5 169.6 L565.0 169.7 L568.5 169.7 L572.0 169.8 L575.5 169.8 L579.0 169.9 L582.5 169.9 L586.0 169.9 L589.5 169.9 L593.0 169.9 L596.5 169.9 L600.0 170.0" class="sv-ac"/>
+      <line class="sv-ln" x1="30" y1="170" x2="610" y2="170"/>
+      <text class="sv-m" x="320" y="188" text-anchor="middle">μ</text>
+      <text class="sv-m" x="250" y="188" text-anchor="middle">−1σ</text><text class="sv-m" x="390" y="188" text-anchor="middle">+1σ</text>
+      <text class="sv-m" x="180" y="188" text-anchor="middle">−2σ</text><text class="sv-m" x="460" y="188" text-anchor="middle">+2σ</text>
+      <text class="sv-m" x="110" y="188" text-anchor="middle">−3σ</text><text class="sv-m" x="530" y="188" text-anchor="middle">+3σ</text>
+      <text class="sv-t" x="320" y="120" text-anchor="middle">68.3%</text>
+      <text class="sv-t" x="320" y="205" text-anchor="middle" style="font-size:12px">±2σ 안: 95.4% · ±3σ 안: 99.7%</text>
+    </svg>
+    <figcaption>그림 12-1. 정규분포에서 평균 ±1σ, ±2σ, ±3σ 안에 들어오는 비율.</figcaption>
+  </figure>
+  <p>이 규칙 하나로 실무 판단이 가능해집니다. ADC 잡음이 <var>σ</var> = 2 LSB라면 값의 99.7%는 평균 ±6 LSB 안에 들어옵니다. 그래서 "정상 범위 밖" 판정 문턱을 ±3<var>σ</var>에 두는 일이 많습니다. 다만 0.3%는 정상인데도 밖으로 나간다는 뜻이니, 초당 1000번 검사하면 초당 3번은 헛경보가 납니다. 11장의 헛경보 이야기가 여기서 다시 나옵니다.</p>
+
+  <h3>평균내기의 힘: √N 법칙</h3>
+  <p>통계에서 엔지니어가 가장 많이 쓰는 사실은 이것입니다. <strong>서로 독립인 잡음을 더하면 분산이 더해집니다</strong>. 표준편차가 아니라 분산입니다.</p>
+  <div class="eq">Var(<var>X</var> + <var>Y</var>) = Var(<var>X</var>) + Var(<var>Y</var>) &nbsp;⇒&nbsp; <var>N</var>개 평균의 표준편차 = <span class="fr"><span><var>σ</var></span><span>√<span class="rt"><var>N</var></span></span></span></div>
+  <p><var>N</var>개를 더하면 분산은 <var>N</var>배(표준편차 √<span class="rt"><var>N</var></span>배)가 되고, <var>N</var>으로 나누면 표준편차가 <var>N</var>배 줄어드니, 합쳐서 √<span class="rt"><var>N</var></span>배 줄어듭니다. 신호는 매번 같아서 그대로 남고 잡음만 줄어듭니다. 4번 평균하면 잡음이 절반, 100번이면 1/10입니다. 잡음이 절반이 되면 ADC 해상도가 1비트 늘어난 셈이므로 "4배 오버샘플링해서 평균하면 1비트 이득"이라는 규칙이 나옵니다.</p>
+
+  <div class="bench" id="avBench">
+    <header><b>실습 벤치 12-A · 평균내기의 힘</b><span>AVERAGING</span></header>
+    <div class="body">
+      <div class="ctl"><label for="avN">한 번에 평균 내는 샘플 수 N</label><output id="oAvN"></output><input type="range" id="avN" min="0" max="8" step="1" value="2"></div>
+      <svg class="plot" id="avSvg" viewBox="0 0 600 260" role="img" aria-label="단일 측정값의 히스토그램과 N개 평균값의 히스토그램 비교"></svg>
+      <div class="legend"><span><i style="background:var(--muted)"></i>단일 측정 3000번 (σ = 1)</span><span><i style="background:var(--accent)"></i>N개 평균 3000번</span></div>
+      <div class="readout"><div><small>평균값들의 실측 표준편차</small><b id="avMeas">—</b></div><div><small>이론값 1/√N</small><b id="avTh">—</b></div><div><small>늘어난 유효 비트</small><b id="avBits">—</b></div></div>
+      <div class="row" style="justify-content:space-between"><button class="btn" id="avNew" type="button">새로 측정하기</button><span class="tokc" id="avNote"></span></div>
+    </div>
+  </div>
+  <p>N을 4배씩 올릴 때마다 파란 히스토그램의 폭이 절반으로 좁아지는 것을 보세요. 대신 측정 한 번에 걸리는 시간도 N배가 됩니다. 평균내기는 <strong>시간을 주고 정밀도를 사는</strong> 거래입니다. 7장의 EMA 필터도 이 거래를 연속적으로 하는 장치입니다.</p>
+
+  <py file="noise_stats.py" check>
+import numpy as np
+
+rng = np.random.default_rng(42)
+true_v = 1.250                                   # true voltage [V]
+x = true_v + rng.normal(0, 0.002, 100_000)      # sensor with 2 mV rms noise
+
+print(f"mean = {x.mean():.5f} V, std = {x.std() * 1e3:.3f} mV")
+for k in (1, 2, 3):
+    inside = np.mean(np.abs(x - x.mean()) < k * x.std())
+    print(f"within +-{k} sigma: {100 * inside:.1f} %")
+
+# Averaging N samples: noise shrinks by sqrt(N)
+for N in (1, 4, 16, 64):
+    m = x[: (x.size // N) * N].reshape(-1, N).mean(axis=1)
+    print(f"N = {N:3d}: std of averages = {m.std() * 1e3:.3f} mV "
+          f"(theory {2 / np.sqrt(N):.3f} mV)")
+
+# Averaging does NOT remove a bias
+biased = x + 0.010
+print(f"biased sensor, N = 64 average error: {(biased[:64].mean() - true_v) * 1e3:+.2f} mV")
+  </py>
+
+  <h3>직선 맞추기: 최소제곱법</h3>
+  <p>2장에서는 두 점으로 센서를 보정했습니다. 그런데 두 점 모두에 잡음이 있다면 직선도 그만큼 틀어집니다. 더 좋은 방법은 여러 점을 재고, 모든 점에 "가장 잘 맞는" 직선을 찾는 것입니다. "가장 잘 맞는다"의 정의는 각 점과 직선 사이의 세로 오차를 <strong>제곱해서 더한 값이 가장 작은</strong> 직선입니다. 그래서 최소제곱법(least squares)이라고 부릅니다.</p>
+  <div class="eq"><var>a</var> = <span class="fr"><span>Σ (<var>x</var><sub><var>i</var></sub> − <var class="ov">x</var>)(<var>y</var><sub><var>i</var></sub> − <var class="ov">y</var>)</span><span>Σ (<var>x</var><sub><var>i</var></sub> − <var class="ov">x</var>)<sup>2</sup></span></span>, &nbsp; <var>b</var> = <var class="ov">y</var> − <var>a</var> <var class="ov">x</var> <small>분자는 "x와 y가 함께 움직이는 정도"(공분산), 분모는 "x가 흩어진 정도"(분산)</small></div>
+  <p>왜 이런 식이 나오는지는 5장의 "최소일 때 미분이 0"을 기울기와 절편에 대해 풀면 됩니다. 실무에서는 <code>np.polyfit</code>이 대신해 줍니다. 분자의 Σ(<var>x</var> − <var class="ov">x</var>)(<var>y</var> − <var class="ov">y</var>)를 정규화한 것이 <strong>상관계수</strong>로, 두 양이 얼마나 직선적으로 함께 움직이는지를 −1~1로 나타냅니다. 8장의 "내적 = 얼마나 닮았나"와 같은 생각입니다.</p>
+
+  <py file="least_squares.py" check>
+import numpy as np
+
+rng = np.random.default_rng(5)
+raw = np.linspace(1000, 2000, 11)                 # ADC counts at 11 reference points
+true_line = 0.08 * raw - 75.0                     # the sensor's true behaviour
+
+def fit_two_point(x, y):
+    a = (y[-1] - y[0]) / (x[-1] - x[0])           # uses only the end points
+    return a, y[0] - a * x[0]
+
+def fit_least_squares(x, y):
+    xm, ym = x.mean(), y.mean()                   # uses every point
+    a = np.sum((x - xm) * (y - ym)) / np.sum((x - xm) ** 2)
+    return a, ym - a * xm
+
+y = true_line + rng.normal(0, 0.5, raw.size)      # one calibration run, 0.5 degC noise
+print("one run      : two-point a=%.5f b=%.2f | least squares a=%.5f b=%.2f"
+      % (fit_two_point(raw, y) + fit_least_squares(raw, y)))
+print("np.polyfit   :", np.round(np.polyfit(raw, y, 1), 5))
+
+# Repeat the calibration 5000 times and compare the typical error
+grid = np.linspace(1000, 2000, 101)
+errs = {"two-point": [], "least squares": []}
+for _ in range(5000):
+    y = true_line + rng.normal(0, 0.5, raw.size)
+    for name, fit in (("two-point", fit_two_point), ("least squares", fit_least_squares)):
+        a, b = fit(raw, y)
+        errs[name].append(np.max(np.abs(a * grid + b - (0.08 * grid - 75.0))))
+for name, e in errs.items():
+    print(f"{name:13s}: worst-case error over range, median of 5000 runs = {np.median(e):.3f} degC")
+print(f"correlation coefficient r = {np.corrcoef(raw, y)[0, 1]:.4f}")
+  </py>
+
+  <p>보정 한 번만 보면 운에 따라 두 방법이 비슷할 수도 있습니다. 그래서 같은 보정을 5000번 반복해 전형적인 오차를 비교했습니다. 모든 점을 쓰는 최소제곱이 양 끝 두 점만 쓰는 방법보다 확실히 작은 오차를 냅니다. 점이 많을수록 잡음이 평균되어 사라지기 때문이고, 바로 앞 절의 √N 법칙이 직선 맞추기에서도 일하는 것입니다.</p>
+
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>평균내기로 바이어스는 안 없어진다</strong>: 위 예제의 마지막 줄처럼, 10 mV 치우침은 64번 평균해도 10 mV입니다. 평균은 무작위 잡음(정밀도)만 줄이고, 계통 오차(정확도)는 보정으로 잡아야 합니다.</li>
+      <li><strong>상관된 잡음</strong>: 50/60 Hz 전원 험처럼 샘플끼리 연관된 잡음은 √N만큼 줄지 않습니다. √N 법칙은 독립일 때만 성립합니다.</li>
+      <li><strong>튀는 값(outlier)</strong>: 제곱은 큰 오차를 크게 키웁니다. 가끔 튀는 값이 있는 센서는 평균 대신 중앙값(median)이 더 안전합니다.</li>
+    </ul>
+  </div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>표준편차 = 편차 제곱 평균의 루트 = 전형적인 흔들림. 평균 0인 잡음에서는 RMS와 같다.</li>
+      <li>정규분포: ±1σ 68%, ±2σ 95%, ±3σ 99.7%.</li>
+      <li>독립 잡음은 분산이 더해진다. <var>N</var>개 평균은 잡음을 √<span class="rt"><var>N</var></span>배 줄인다. 최소제곱은 모든 점을 써서 직선을 맞춘다.</li>
+    </ul>
+  </div>
+  <p>이제 모든 도구가 모였습니다. 7장의 상태 갱신, 6장의 적분과 드리프트, 11장의 베이즈 갱신, 그리고 이 장의 "분산은 더해진다". 마지막 장에서 이것들을 합쳐, 잡음 낀 측정과 드리프트하는 예측을 가장 좋은 비율로 섞는 칼만 필터를 직접 만듭니다.</p>
+
+  <div class="quiz" data-quiz="ch12"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch12" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

@@ -1,0 +1,119 @@
+<!-- ============ CH7 ============ -->
+<section class="chapter col" id="ch7">
+  <div class="eyebrow">Part II · 변화와 누적 — 미적분 — 7장</div>
+  <h2>미분방정식과 시뮬레이션</h2>
+  <p class="goal">이 장을 마치면: "변화율이 현재 상태에 달려 있다"는 미분방정식을 읽을 수 있고, 1차 시스템의 시정수 τ와 63%·5τ 규칙을 쓰며, 오일러 방법으로 미분방정식을 루프 코드로 바꾸고 시간 간격이 너무 크면 왜 발산하는지 설명하며, 2차 시스템의 감쇠비가 오버슈트를 정한다는 것을 압니다.</p>
+
+  <h3>변화율이 상태에 달려 있을 때</h3>
+  <p>저항 <var>R</var>을 거쳐 커패시터 <var>C</var>를 전압 <var>V</var><sub>in</sub>으로 충전한다고 합시다. 처음에는 전압 차가 커서 전류가 많이 흐르고 빠르게 충전됩니다. 커패시터 전압 <var>V</var>가 <var>V</var><sub>in</sub>에 가까워지면 차이가 작아져 전류가 줄고, 충전이 느려집니다. 이 이야기를 식으로 쓰면 이렇습니다.</p>
+  <div class="eq"><span class="fr"><span><var>dV</var></span><span><var>dt</var></span></span> = <span class="fr"><span><var>V</var><sub>in</sub> − <var>V</var></span><span><var>τ</var></span></span>, &nbsp; <var>τ</var> = <var>RC</var> <small>"전압이 변하는 속도는 목표와의 차이에 비례한다"</small></div>
+  <p>이렇게 <strong>미지의 함수와 그 미분이 함께 들어 있는 식</strong>을 미분방정식이라고 합니다. 보통 방정식의 답은 숫자(<var>x</var> = 3)이지만, 미분방정식의 답은 함수(<var>V</var>(<var>t</var>) = …)입니다. "다음 순간이 어떻게 될지를 지금 상태로 정하는 규칙"이라고 생각하면 됩니다. 프로그래머에게 익숙한 말로는 <strong>상태 갱신 규칙</strong>입니다.</p>
+  <p>같은 모양의 식이 곳곳에 있습니다. 뜨거운 모터가 주변 온도로 식는 속도(뉴턴의 냉각 법칙), 탱크에서 물이 빠지는 속도, 그리고 디지털 저역통과 필터가 입력을 따라가는 속도가 모두 "목표와의 차이에 비례해 다가간다"입니다.</p>
+
+  <h3><var>e</var>와 시정수 <var>τ</var></h3>
+  <p>위 미분방정식의 답(처음에 <var>V</var> = 0)은 다음과 같습니다.</p>
+  <div class="eq"><var>V</var>(<var>t</var>) = <var>V</var><sub>in</sub> · (1 − <var>e</var><sup>−<var>t</var>/<var>τ</var></sup>) <small><var>e</var> ≈ 2.71828, 자연로그의 밑</small></div>
+  <p>왜 하필 <var>e</var>일까요? 5장 표에서 <var>e</var><sup><var>x</var></sup>는 미분해도 자기 자신인 유일한 함수라고 했습니다. "변화율이 현재 값에 비례한다"는 규칙을 만족하는 함수가 바로 지수 함수이고, 그 비례 상수가 1이 되게 하는 밑이 <var>e</var>입니다. 그래서 자연의 성장과 감쇠를 쓰면 저절로 <var>e</var>가 나옵니다.</p>
+  <p><var>τ</var>(타우)는 시정수(time constant)로, 단위는 초입니다. 10 kΩ과 10 μF이면 <var>τ</var> = 10<sup>4</sup> × 10<sup>−5</sup> = 0.1 s입니다. 아래 표만 기억하면 대부분의 1차 시스템 문제를 암산할 수 있습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>경과 시간</th><th>1τ</th><th>2τ</th><th>3τ</th><th>4τ</th><th>5τ</th></tr></thead>
+    <tbody><tr><td>목표까지 도달한 비율</td><td>63.2%</td><td>86.5%</td><td>95.0%</td><td>98.2%</td><td>99.3%</td></tr></tbody>
+  </table></div>
+  <p>"1τ면 63%, 5τ면 사실상 끝"이 실무 규칙입니다. 리셋 회로의 지연, 센서 응답 시간, 온도 안정화 대기 시간을 정할 때 씁니다.</p>
+
+  <h3>오일러 방법: 미분방정식은 루프가 된다</h3>
+  <p>대부분의 미분방정식은 위처럼 깔끔한 답이 없습니다. 그래도 걱정할 필요가 없습니다. 컴퓨터로 <strong>한 걸음씩 밟아 가면</strong> 됩니다. 아주 짧은 시간 <var>dt</var> 동안은 변화율이 거의 일정하니, "지금 값 + 변화율 × <var>dt</var>"로 다음 값을 구합니다. 이것이 오일러(Euler) 방법입니다.</p>
+  <div class="eq"><var>V</var><sub><var>k</var>+1</sub> = <var>V</var><sub><var>k</var></sub> + <var>dt</var> · <span class="fr"><span><var>V</var><sub>in</sub> − <var>V</var><sub><var>k</var></sub></span><span><var>τ</var></span></span> <small>미분방정식의 <var>dV</var>/<var>dt</var>를 (<var>V</var><sub><var>k</var>+1</sub> − <var>V</var><sub><var>k</var></sub>)/<var>dt</var>로 바꾸고 정리한 것</small></div>
+  <p>이 식을 <var>α</var> = <var>dt</var>/<var>τ</var>로 놓고 코드로 쓰면 놀랍게도 익숙한 모양이 나옵니다.</p>
+  <c file="lowpass.c">
+/* One step of the RC equation = the classic exponential moving average */
+float lowpass_step(float y, float x, float alpha)   /* alpha = dt / tau */
+{
+    return y + alpha * (x - y);    /* move a fraction alpha toward the input */
+}
+  </c>
+  <p>센서 값을 부드럽게 할 때 쓰는 <code>y += alpha * (x - y)</code>, 즉 지수 이동평균(EMA) 필터는 RC 저역통과 회로의 미분방정식을 오일러 방법으로 푼 것과 정확히 같은 식입니다. <var>α</var>를 고르는 것은 시정수를 고르는 것이고, <var>τ</var> = <var>dt</var>/<var>α</var>입니다. 100 Hz로 갱신하면서 <var>α</var> = 0.1이면 <var>τ</var> = 0.1 s입니다.</p>
+
+  <div class="bench" id="euBench">
+    <header><b>실습 벤치 7-A · 오일러 적분기</b><span>EULER</span></header>
+    <div class="body">
+      <div class="ctl"><label for="euR">시간 간격 <var>dt</var> ÷ 시정수 <var>τ</var> (= α)</label><output id="oEuR"></output><input type="range" id="euR" min="0.05" max="2.5" step="0.05" value="0.3"></div>
+      <svg class="plot" id="euSvg" viewBox="0 0 600 250" role="img" aria-label="정확한 지수 충전 곡선과 오일러 방법으로 한 걸음씩 계산한 점들"></svg>
+      <div class="legend"><span><i style="background:var(--accent)"></i>정확한 답 1 − e^(−t/τ)</span><span><i style="background:var(--signal)"></i>오일러 방법의 계산값</span></div>
+      <div class="readout"><div><small>한 걸음마다 오차에 곱해지는 수</small><b id="euF">—</b></div><div><small>5τ 시점 최대 오차</small><b id="euE">—</b></div></div>
+      <div class="status g" id="euNote" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>간격을 키워 보세요. α가 1보다 작으면 계산값이 모자란 쪽에서 다가가고, 1을 넘으면 목표를 지나쳤다 돌아오기를 반복하며, 2를 넘으면 진동이 점점 커져 <strong>발산</strong>합니다. 이유는 간단합니다. 목표와의 오차가 한 걸음마다 (1 − α)배가 되는데, α &gt; 2이면 |1 − α| &gt; 1이라 오차가 매번 커집니다. 실제 회로는 절대 발산하지 않으니, 이건 순전히 계산 방법이 만든 가짜 현상입니다. 시뮬레이션이나 제어 루프의 주기를 정할 때 <strong>간격은 시스템의 가장 빠른 시정수보다 충분히 짧게</strong>(보통 1/10 이하) 잡아야 하는 이유입니다.</p>
+
+  <py file="euler_rc.py" check>
+import numpy as np
+
+tau, Vin, T_end = 1.0, 1.0, 5.0
+for ratio in (0.1, 0.5, 1.5, 2.5):
+    dt = ratio * tau
+    n = int(round(T_end / dt))
+    V, err = 0.0, 0.0
+    for k in range(n):
+        V = V + dt * (Vin - V) / tau                  # Euler step
+        exact = Vin * (1 - np.exp(-(k + 1) * dt / tau))
+        err = max(err, abs(V - exact))
+    print(f"dt/tau = {ratio:3.1f}: error factor per step {1 - ratio:+.1f}, "
+          f"max error over {n:2d} steps = {err:.3g}")
+
+# The 63 % / 5 tau rule
+for m in (1, 2, 3, 5):
+    print(f"t = {m} tau -> {100 * (1 - np.exp(-m)):.1f} % of the way")
+  </py>
+
+  <h3>2차 시스템 맛보기: 스프링, 댐퍼, 그리고 오버슈트</h3>
+  <p>로봇 팔이나 서스펜션처럼 질량이 있는 시스템은 상태가 둘입니다. 위치와 속도. 스프링은 위치에 비례해 되돌리는 힘을, 댐퍼는 속도에 비례해 저항하는 힘을 냅니다. 뉴턴의 법칙 <var>F</var> = <var>ma</var>로 쓰면 가속도(2계 미분)가 들어간 2차 미분방정식이 됩니다.</p>
+  <div class="eq"><var>m</var> · <var>x</var> ″ = −<var>k</var> · <var>x</var> − <var>c</var> · <var>x</var> ′ <small>질량 × 가속도 = 스프링 힘 + 댐퍼 힘</small></div>
+  <p>풀 때는 상태를 둘로 나눠 오일러 방법을 그대로 씁니다. 매 걸음 가속도를 구해 속도를 갱신하고, 그 속도로 위치를 갱신합니다. 이 시스템의 성격은 <strong>감쇠비 ζ</strong>(제타) 하나로 요약됩니다. ζ가 작으면 출렁이며(부족 감쇠), 1이면 출렁임 없이 가장 빨리 도착하고(임계 감쇠), 1보다 크면 굼뜨게 다가갑니다(과감쇠). 제어 루프를 튜닝한다는 것은 결국 닫힌 루프의 ζ와 응답 속도를 고르는 일입니다.</p>
+
+  <py file="spring_damper.py" check>
+import numpy as np
+
+wn = 2 * np.pi * 1.0          # natural frequency: 1 Hz
+dt = 1e-4
+t = np.arange(0, 6, dt)
+print(" zeta   overshoot   theory   rise(10-90%)   settle(2%)")
+for zeta in (0.1, 0.4, 0.7, 1.0, 2.0):
+    x, v = 0.0, 0.0           # step response toward x = 1
+    xs = np.empty(t.size)
+    for i in range(t.size):
+        a = wn**2 * (1.0 - x) - 2 * zeta * wn * v   # acceleration from the ODE
+        v += a * dt                                  # update velocity first
+        x += v * dt                                  # then position (semi-implicit Euler)
+        xs[i] = x
+    over = max(0.0, xs.max() - 1.0) * 100
+    theory = 100 * np.exp(-zeta * np.pi / np.sqrt(1 - zeta**2)) if zeta < 1 else 0.0
+    outside = np.where(np.abs(xs - 1.0) > 0.02)[0]
+    settle = t[outside[-1]] if outside.size else 0.0
+    settle_s = f"{settle:5.2f} s" if settle < t[-1] - 0.01 else "  > 6 s"
+    rise = t[np.argmax(xs >= 0.9)] - t[np.argmax(xs >= 0.1)]
+    print(f" {zeta:3.1f}   {over:6.1f} %   {theory:6.1f} %     {rise:5.2f} s      {settle_s}")
+  </py>
+  <p>표를 보면 ζ가 작을수록 빨리 올라가지만 크게 출렁이고 오래 흔들립니다(ζ = 0.1은 6초가 지나도 자리를 못 잡습니다). ζ가 1을 넘으면 출렁임은 없지만 굼떠집니다. ζ = 0.7 근처는 5% 미만의 오버슈트로 임계 감쇠보다 빨리 올라가면서 정착 시간은 비슷합니다. 실무에서 단골 튜닝 목표가 되는 이유입니다.</p>
+
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>제어 펌웨어의 메인 루프는 사실상 미분방정식 풀이기입니다. 매 주기 센서로 상태를 읽고, 규칙에 따라 다음 출력을 정하고, 시간이 <var>dt</var>만큼 흐릅니다. ROS 2의 시뮬레이터나 Gazebo 같은 물리 엔진도 같은 일을 훨씬 정교한 적분 방법(룽게-쿠타 등)으로 할 뿐입니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>너무 긴 루프 주기</strong>: <var>dt</var>가 시스템 시정수에 비해 길면 시뮬레이션도, 이산 제어기도 진동하거나 발산합니다. 실제 하드웨어 문제가 아닌데 코드가 불안정해 보인다면 먼저 <var>dt</var>를 의심하세요.</li>
+      <li><strong>EMA 계수를 주기와 따로 바꾸기</strong>: 루프 주기를 바꾸면서 α를 그대로 두면 시정수가 바뀝니다. α = <var>dt</var>/<var>τ</var>로 계산해 두세요.</li>
+    </ul>
+  </div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>미분방정식 = 지금 상태로 변화율을 정하는 규칙 = 상태 갱신 규칙.</li>
+      <li>1차 시스템: 1τ에 63%, 5τ에 99%. EMA 필터 <code>y += α(x − y)</code>는 RC 회로와 같은 식, <var>τ</var> = <var>dt</var>/α.</li>
+      <li>오일러 방법: 다음 값 = 지금 값 + 변화율 × <var>dt</var>. <var>dt</var>가 너무 크면 가짜 진동과 발산이 생긴다.</li>
+    </ul>
+  </div>
+  <p>Part II가 끝났습니다. 2차 시스템에서 위치와 속도라는 두 숫자를 한꺼번에 다뤄야 했는데, 상태가 열 개, 백 개가 되면 어떻게 할까요? Part III에서는 여러 숫자를 하나로 묶어 다루는 벡터와 행렬, 그리고 회전을 곱셈 한 번으로 해결하는 복소수를 배웁니다.</p>
+
+  <div class="quiz" data-quiz="ch7"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch7" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

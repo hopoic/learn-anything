@@ -1,0 +1,136 @@
+<!-- ============ CH1 ============ -->
+<section class="chapter col" id="ch1">
+  <div class="eyebrow">Part I · 수학의 언어 — 1장</div>
+  <h2>수식은 코드다</h2>
+  <p class="goal">이 장을 마치면: 엔지니어링 문서에 자주 나오는 기호(첨자, 함수 표기, Σ, Π, |<var>x</var>|, Δ, 그리스 문자)를 소리 내어 읽을 수 있고, Σ가 들어간 수식을 for 루프로 옮길 수 있으며, 처음 보는 수식을 만났을 때 따라 할 수 있는 네 단계 읽기 절차를 갖게 됩니다.</p>
+
+  <h3>수학을 못하는 게 아니라 언어를 모르는 것이다</h3>
+  <p>데이터시트나 논문을 읽다가 수식이 나오면 눈이 저절로 다음 문단으로 넘어가는 경험, 많은 엔지니어가 갖고 있습니다. 그런데 그 수식이 하는 일을 코드로 보여 주면 대부분 "아, 이거였어?"라고 합니다. 이동평균, 센서 보정, 제어 루프처럼 <strong>이미 매일 짜고 있는 코드</strong>인 경우가 많기 때문입니다.</p>
+  <p>수학 표기법은 칠판에 손으로 빠르게 쓰기 위해 압축된 프로그래밍 언어라고 생각하면 편합니다. 변수 이름은 한 글자이고, 곱셈 기호는 생략하고, 반복문은 Σ 하나로 줄입니다. 그래서 어려워 보이는 것이지, 하는 일 자체가 어려운 경우는 생각보다 적습니다. 이 책은 모든 수식을 <strong>읽는 법 → 그림 → 코드</strong> 순서로 풀어 드립니다.</p>
+
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>펌웨어에서 ADC 값을 8번 읽어 평균 내는 루프를 짜 본 적이 있다면 이미 Σ를 써 본 것이고, 타이머 인터럽트마다 <code>pos += speed * dt</code>를 해 봤다면 이미 적분을 해 본 것입니다. 이 책이 하는 일은 그 코드에 수학 이름표를 붙여 주는 것입니다.</p>
+  </div>
+
+  <h3>기호 사전: 수식에도 문법이 있다</h3>
+  <p>먼저 자주 나오는 기호를 "어떻게 읽고, 코드로는 무엇인지" 표로 정리합니다. 지금 다 외울 필요는 없습니다. 막힐 때 돌아와 찾아보는 사전으로 쓰세요. 부록 A에도 같은 내용이 있습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>기호</th><th>읽는 법</th><th>뜻</th><th>코드로는</th></tr></thead>
+    <tbody>
+      <tr><td class="sym"><var>x</var><sub><var>i</var></sub></td><td>x 아래첨자 i, "x i"</td><td>x라는 배열의 i번째 값</td><td><code>x[i]</code></td></tr>
+      <tr><td class="sym"><var>x</var><sup>2</sup></td><td>x 제곱</td><td>x를 두 번 곱함</td><td><code>x * x</code>, <code>x**2</code></td></tr>
+      <tr><td class="sym"><var>f</var>(<var>x</var>)</td><td>f of x, "에프 엑스"</td><td>함수 f에 x를 넣은 결과</td><td><code>f(x)</code></td></tr>
+      <tr><td class="sym">2π<var>ft</var></td><td>2 파이 f t</td><td>곱셈 기호를 생략한 것</td><td><code>2 * pi * f * t</code></td></tr>
+      <tr><td class="sym">Σ</td><td>시그마, "합"</td><td>아래 시작부터 위 끝까지 더함</td><td><code>for</code> + <code>+=</code></td></tr>
+      <tr><td class="sym">Π</td><td>파이(대문자), "곱"</td><td>전부 곱함</td><td><code>for</code> + <code>*=</code></td></tr>
+      <tr><td class="sym">|<var>x</var>|</td><td>x의 절댓값</td><td>부호를 뗀 크기</td><td><code>abs(x)</code></td></tr>
+      <tr><td class="sym">Δ<var>x</var></td><td>델타 x</td><td>x의 변화량</td><td><code>x[k] - x[k-1]</code></td></tr>
+      <tr><td class="sym">√<span class="rt"><var>x</var></span></td><td>루트 x</td><td>제곱해서 x가 되는 수</td><td><code>sqrt(x)</code></td></tr>
+      <tr><td class="sym">≈</td><td>근사적으로 같다</td><td>거의 같다</td><td><code>abs(a - b) &lt; eps</code></td></tr>
+      <tr><td class="sym"><var class="ov">x</var></td><td>x 바(bar)</td><td>x들의 평균</td><td><code>mean(x)</code></td></tr>
+      <tr><td class="sym"><var class="ht">x</var></td><td>x 햇(hat)</td><td>x의 추정값</td><td><code>x_est</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>그리스 문자는 공학에서 거의 정해진 뜻으로 쓰입니다. 문자를 보면 "아, 그 종류의 양이구나" 하고 짐작할 수 있으면 수식의 절반은 읽은 셈입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>문자</th><th>이름</th><th>공학에서 흔한 뜻</th></tr></thead>
+    <tbody>
+      <tr><td class="sym">θ, φ, ψ</td><td>세타, 파이, 프사이</td><td>각도, 위상, 로봇의 방향(heading)</td></tr>
+      <tr><td class="sym">ω</td><td>오메가</td><td>각속도, 각주파수 (ω = 2π<var>f</var>)</td></tr>
+      <tr><td class="sym">τ</td><td>타우</td><td>시정수(time constant), 지연</td></tr>
+      <tr><td class="sym">μ, σ</td><td>뮤, 시그마(소문자)</td><td>평균, 표준편차. μ는 10<sup>−6</sup>(마이크로)이기도 함</td></tr>
+      <tr><td class="sym">Δ, δ</td><td>델타</td><td>변화량, 아주 작은 차이</td></tr>
+      <tr><td class="sym">ε</td><td>엡실론</td><td>아주 작은 양, 허용 오차</td></tr>
+      <tr><td class="sym">λ</td><td>람다</td><td>파장, 고장률, 고유값</td></tr>
+      <tr><td class="sym">α, β</td><td>알파, 베타</td><td>계수, 가중치, 필터 상수</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Σ는 for 루프다</h3>
+  <p>가장 중요한 번역 하나를 익히겠습니다. <var>N</var>개 측정값의 평균은 이렇게 씁니다.</p>
+  <div class="xl">
+    <div class="eq"><div><var class="ov">x</var> = <span class="fr"><span>1</span><span><var>N</var></span></span> <span class="so"><span><var>N</var></span><b>Σ</b><span><var>i</var>=1</span></span> <var>x</var><sub><var>i</var></sub></div></div>
+    <div class="code"><div class="bar"><span>mean_loop.py</span><button type="button" class="cp">복사</button></div><pre><code data-lang="py">total = 0
+for i in range(N):      # i = 1..N in the formula
+    total += x[i]
+x_bar = total / N</code></pre></div>
+  </div>
+  <p class="say"><b>소리 내어 읽기:</b> "x 바는, i를 1부터 N까지 바꿔 가며 x i를 모두 더한 것에 N분의 1을 곱한 것이다."</p>
+  <p>Σ 아래의 <var>i</var>=1은 루프 변수와 시작값, 위의 <var>N</var>은 끝값, 오른쪽의 <var>x</var><sub><var>i</var></sub>는 루프 몸통에서 더하는 값입니다. 수학은 보통 1부터 세고 C와 Python은 0부터 셉니다. 번역할 때 인덱스 범위만 조심하면 됩니다.</p>
+  <p>조금 더 복잡한 것도 같은 방식입니다. 디지털 필터(FIR)의 정의는 이렇습니다.</p>
+  <div class="eq"><var>y</var><sub><var>n</var></sub> = <span class="so"><span><var>M</var>−1</span><b>Σ</b><span><var>k</var>=0</span></span> <var>h</var><sub><var>k</var></sub> · <var>x</var><sub><var>n</var>−<var>k</var></sub> <small>"n번째 출력은, 계수 h k와 k칸 전의 입력을 곱해서 M개 더한 것"</small></div>
+  <p>이건 "최근 <var>M</var>개 입력에 각각 가중치를 곱해 더한다"는 뜻입니다. 가중치가 모두 1/<var>M</var>이면 이동평균이 됩니다. 코드는 아래와 같고, 직접 실행해 확인할 수 있습니다. 이 책의 Python 예제는 모두 빌드할 때 실제로 실행해 결과를 확인한 것입니다.</p>
+
+  <py file="sigma_is_a_loop.py" check>
+import numpy as np
+
+x = [2.0, 4.0, 4.0, 5.0, 7.0, 9.0]
+N = len(x)
+
+# x_bar = (1/N) * sum_{i=1..N} x_i
+total = 0.0
+for i in range(N):
+    total += x[i]
+print("mean (loop) :", total / N, "| numpy:", np.mean(x))
+
+# y_n = sum_{k=0..M-1} h_k * x_{n-k}   (moving average when h_k = 1/M)
+h = [1 / 3, 1 / 3, 1 / 3]
+M = len(h)
+y = []
+for n in range(M - 1, N):
+    acc = 0.0
+    for k in range(M):
+        acc += h[k] * x[n - k]
+    y.append(round(acc, 3))
+print("3-tap moving average:", y)
+
+# prod_{i=1..3} (1 - p_i): probability that none of three parts fails
+p = [0.01, 0.02, 0.05]
+prod = 1.0
+for pi in p:
+    prod *= (1 - pi)
+print("prod (1 - p_i) =", round(prod, 4))
+  </py>
+
+  <h3>처음 보는 수식을 읽는 네 단계</h3>
+  <p>앞으로 어떤 수식을 만나도 이 순서로 읽으면 됩니다. 핵심은 수식을 한 번에 이해하려 하지 않고, 코드 리뷰하듯 <strong>안쪽부터 한 겹씩</strong> 벗기는 것입니다.</p>
+  <div class="ladder">
+    <div><b>1단계</b><span><strong>소리 내어 읽는다.</strong> 기호 사전을 보며 한 기호도 빼지 않고 말로 바꿉니다. 읽을 수 없는 기호가 있으면 그것부터 찾습니다.</span></div>
+    <div><b>2단계</b><span><strong>정체를 가린다.</strong> 무엇이 입력(변하는 값)이고, 무엇이 상수이고, 무엇이 결과인지, 각각의 단위는 무엇인지 적습니다.</span></div>
+    <div><b>3단계</b><span><strong>작은 숫자를 넣어 본다.</strong> <var>N</var> = 2, <var>x</var> = 1처럼 손으로 계산할 수 있는 값을 넣어 결과가 상식에 맞는지 봅니다.</span></div>
+    <div><b>4단계</b><span><strong>코드로 옮겨 그려 본다.</strong> 입력을 바꿔 가며 출력이 어떻게 변하는지 그래프로 봅니다. 이 책의 실습 벤치가 이 단계입니다.</span></div>
+  </div>
+  <p>연습 삼아 전기 신호의 "실효값" RMS(Root Mean Square)를 읽어 봅시다.</p>
+  <div class="eq"><var>x</var><sub>rms</sub> = √<span class="rt"><span class="fr"><span>1</span><span><var>N</var></span></span> <span class="so"><span><var>N</var></span><b>Σ</b><span><var>i</var>=1</span></span> <var>x</var><sub><var>i</var></sub><sup>2</sup></span></div>
+  <p>안쪽부터 읽으면 ① 각 값을 <strong>제곱</strong>(Square)하고 ② 그것들의 <strong>평균</strong>(Mean)을 내고 ③ <strong>루트</strong>(Root)를 씌웁니다. 이름 "Root Mean Square"는 이 순서를 바깥부터 읽은 것입니다. 수식을 코드로 옮기면 <code>sqrt(mean(x**2))</code>, 이름 순서 그대로입니다. 왜 그냥 평균을 내지 않고 제곱했다가 루트를 씌울까요? 교류처럼 +와 −를 오가는 신호는 그냥 평균 내면 0이 되어 버리기 때문입니다. 제곱하면 부호가 사라져 "얼마나 크게 흔들리는가"를 잴 수 있습니다.</p>
+
+  <div class="bench" id="xlBench">
+    <header><b>실습 벤치 1-A · 수식 ↔ 코드 번역 훈련</b><span>TRANSLATE</span></header>
+    <div class="body">
+      <p class="explain">각 수식과 같은 일을 하는 코드를 고르세요. 틀려도 해설을 보고 다시 고를 수 있습니다.</p>
+      <div id="xlItems"></div>
+      <div class="status y" id="xlScore" aria-live="polite">0 / 6 맞힘</div>
+    </div>
+  </div>
+
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong><code>x^2</code>는 제곱이 아니다</strong>: C와 Python에서 <code>^</code>는 비트 XOR입니다. 수식의 <var>x</var><sup>2</sup>를 그대로 옮기면 컴파일은 되지만 값이 엉뚱해집니다. <code>x*x</code>나 Python의 <code>x**2</code>를 쓰세요.</li>
+      <li><strong>생략된 곱셈과 우선순위</strong>: 2π<var>ft</var>는 <code>2*pi*f*t</code>이고, 1/2<var>x</var>는 보통 1/(2<var>x</var>)로 읽습니다. 애매하면 괄호를 더 칩니다.</li>
+      <li><strong>log의 밑</strong>: C의 <code>log()</code>와 Python의 <code>math.log()</code>는 자연로그(밑 <var>e</var>)입니다. 수식의 log가 상용로그(밑 10)라면 <code>log10()</code>을 써야 합니다(3장).</li>
+      <li><strong>1부터 vs 0부터</strong>: Σ 범위를 그대로 옮기면 배열 범위를 하나 넘어가기 쉽습니다.</li>
+    </ul>
+  </div>
+
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>수식은 압축된 코드다. 첨자는 배열 인덱스, Σ는 더하는 루프, Π는 곱하는 루프.</li>
+      <li>그리스 문자는 공학에서 거의 정해진 뜻이 있다. 문자를 보면 양의 종류를 짐작한다.</li>
+      <li>처음 보는 수식은 읽기 → 정체 가리기 → 작은 숫자 → 코드 순서로 안쪽부터 벗긴다.</li>
+    </ul>
+  </div>
+  <p>이제 수식을 읽을 수 있게 되었으니, 수식이 다루는 가장 기본 단위인 "함수"로 넘어갑니다. 다음 장에서는 함수를 C 함수처럼 입력과 출력을 가진 상자로 보고, 그래프를 읽는 법과 센서 보정에 쓰는 직선의 수학을 익힙니다.</p>
+
+  <div class="quiz" data-quiz="ch1"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch1" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

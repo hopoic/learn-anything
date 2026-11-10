@@ -1,0 +1,125 @@
+<!-- ============ CH9 ============ -->
+<section class="chapter col" id="ch9">
+  <div class="eyebrow">Part III · 여러 수를 한 번에 — 9장</div>
+  <h2>행렬: 변환 기계</h2>
+  <p class="goal">이 장을 마치면: 행렬 × 벡터를 "내적 여러 개"이자 "공간 변환"으로 읽을 수 있고, 회전 행렬과 동차 좌표로 로봇 좌표계와 월드 좌표계 사이를 변환하며, 변환을 곱으로 이어 붙일 때 순서가 중요하다는 것과 연립방정식을 행렬로 풀고 행렬식이 0일 때 무슨 일이 일어나는지 설명할 수 있습니다.</p>
+
+  <h3>행렬은 표, 행렬 × 벡터는 내적 여러 개</h3>
+  <p>행렬은 숫자를 직사각형으로 늘어놓은 표입니다. 2행 2열이면 2×2 행렬. 행렬에 벡터를 곱하는 규칙은 하나입니다. <strong>각 행과 벡터의 내적</strong>(8장)을 구해 위에서부터 차례로 적습니다.</p>
+  <div class="eq"><span class="mx c2"><var>a</var><var>b</var><var>c</var><var>d</var></span> <span class="mx c1"><var>x</var><var>y</var></span> = <span class="mx c1"><span><var>a x</var> + <var>b y</var></span><span><var>c x</var> + <var>d y</var></span></span> <small>1행 (<var>a</var>, <var>b</var>)와 (<var>x</var>, <var>y</var>)의 내적이 결과의 첫째 줄, 2행과의 내적이 둘째 줄</small></div>
+  <p>코드로는 이중 루프입니다. 바깥 루프가 행, 안쪽 루프가 내적입니다.</p>
+  <py file="matvec.py" check>
+A = [[2.0, 1.0],
+     [0.5, 3.0]]
+v = [1.0, 2.0]
+
+out = []
+for row in A:                    # one dot product per row
+    acc = 0.0
+    for a_ij, v_j in zip(row, v):
+        acc += a_ij * v_j
+    out.append(acc)
+print("A @ v =", out)
+  </py>
+  <p>로봇에서 바로 쓰는 예를 봅시다. 차동 구동 로봇은 전진 속도 <var>v</var>와 회전 속도 <var>ω</var>를 명령받아, 바퀴 간격이 <var>L</var>일 때 왼쪽·오른쪽 바퀴 속도를 이렇게 정합니다.</p>
+  <div class="eq"><span class="mx c1"><var>v</var><sub>L</sub><var>v</var><sub>R</sub></span> = <span class="mx c2"><span>1</span><span>−<var>L</var>/2</span><span>1</span><span>+<var>L</var>/2</span></span> <span class="mx c1"><var>v</var><var>ω</var></span> <small>왼쪽 바퀴는 <var>v</var> − <var>ωL</var>/2, 오른쪽은 <var>v</var> + <var>ωL</var>/2</small></div>
+  <p>행렬은 "입력 묶음을 출력 묶음으로 바꾸는 선형 규칙"을 한 덩어리로 적은 것입니다. 입력과 출력이 몇 개든 같은 표기로 쓸 수 있다는 것이 행렬의 힘입니다.</p>
+
+  <h3>행렬은 공간을 변형하는 기계다</h3>
+  <p>행렬을 이해하는 가장 좋은 그림은 이것입니다. <strong>행렬의 첫째 열은 가로 단위 벡터 (1, 0)이 옮겨 가는 곳, 둘째 열은 세로 단위 벡터 (0, 1)이 옮겨 가는 곳</strong>입니다. 실제로 계산해 보면 위 식에 (<var>x</var>, <var>y</var>) = (1, 0)을 넣으면 (<var>a</var>, <var>c</var>), 즉 첫째 열이 나옵니다. 나머지 모든 점은 이 두 화살표를 기준으로 비례해서 따라갑니다. 격자 전체가 평행선을 유지한 채 늘어나고, 기울고, 돕니다.</p>
+  <p>이 그림을 알면 회전 행렬을 외울 필요가 없습니다. 각도 <var>θ</var>만큼 돌리면 (1, 0)은 (cos <var>θ</var>, sin <var>θ</var>)로, (0, 1)은 (−sin <var>θ</var>, cos <var>θ</var>)로 갑니다(4장의 단위원). 이 둘을 열로 세우면 끝입니다.</p>
+  <div class="eq"><var>R</var>(<var>θ</var>) = <span class="mx c2"><span>cos <var>θ</var></span><span>−sin <var>θ</var></span><span>sin <var>θ</var></span><span>cos <var>θ</var></span></span></div>
+
+  <div class="bench" id="mxBench">
+    <header><b>실습 벤치 9-A · 행렬 변환기</b><span>MATRIX</span></header>
+    <div class="body">
+      <div class="row" id="mxPre" style="flex-wrap:wrap;gap:6px;margin-bottom:12px"><button class="btn" type="button" data-p="id">항등 (그대로)</button><button class="btn" type="button" data-p="rot">30° 회전</button><button class="btn" type="button" data-p="scale">가로 2배</button><button class="btn" type="button" data-p="shear">기울이기(전단)</button><button class="btn" type="button" data-p="flip">좌우 뒤집기</button><button class="btn" type="button" data-p="flat">납작하게</button></div>
+      <div class="ctls">
+        <div class="ctl"><label for="mxA">a (1행 1열)</label><output id="oMxA"></output><input type="range" id="mxA" min="-2" max="2" step="0.001" value="1"></div>
+        <div class="ctl"><label for="mxB">b (1행 2열)</label><output id="oMxB"></output><input type="range" id="mxB" min="-2" max="2" step="0.001" value="0"></div>
+        <div class="ctl"><label for="mxC">c (2행 1열)</label><output id="oMxC"></output><input type="range" id="mxC" min="-2" max="2" step="0.001" value="0"></div>
+        <div class="ctl"><label for="mxD">d (2행 2열)</label><output id="oMxD"></output><input type="range" id="mxD" min="-2" max="2" step="0.001" value="1"></div>
+      </div>
+      <svg class="plot" id="mxSvg" viewBox="0 0 600 340" role="img" aria-label="원래 격자와 집 모양이 행렬에 의해 변형된 모습"></svg>
+      <div class="legend"><span><i style="background:var(--accent)"></i>(1,0)이 가는 곳 = 첫째 열 (a, c)</span><span><i style="background:var(--signal)"></i>(0,1)이 가는 곳 = 둘째 열 (b, d)</span><span><i style="background:var(--muted)"></i>원래 모양</span></div>
+      <div class="readout"><div><small>행렬식 det = ad − bc (넓이 배율)</small><b id="mxDet">—</b></div><div><small>원래 넓이 1인 집 지붕 아래 사각형</small><b id="mxArea">—</b></div></div>
+      <div class="status g" id="mxNote" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>프리셋을 하나씩 눌러 보세요. 회전은 모양과 크기를 그대로 두고 돌리기만 하고, 전단은 사각형을 평행사변형으로 기울입니다. 판독값의 <strong>행렬식</strong> det = <var>ad</var> − <var>bc</var>는 넓이가 몇 배가 되는지를 알려 줍니다. 회전은 1, 가로 2배는 2입니다. 좌우 뒤집기는 −1, 음수는 "뒤집혔다"는 뜻입니다. "납작하게"를 누르면 행렬식이 0이 되고 평면 전체가 직선 하나로 짓눌립니다. 이 상태에서는 원래 어디에 있던 점인지 되돌릴 방법이 없습니다. 기억해 두세요. 잠시 뒤 연립방정식에서 다시 나옵니다.</p>
+
+  <h3>변환 이어 붙이기 = 행렬 곱, 그리고 좌표계 변환</h3>
+  <p>변환 <var>B</var>를 한 다음 <var>A</var>를 하면, 결과는 행렬 곱 <var>AB</var> 하나로 표현됩니다. 오른쪽부터 적용된다는 점, 그리고 <strong>순서를 바꾸면 결과가 달라진다</strong>(<var>AB</var> ≠ <var>BA</var>)는 점이 숫자 곱셈과 다릅니다. "돌리고 나서 옮기기"와 "옮기고 나서 돌리기"는 다른 곳에 도착합니다.</p>
+  <p>그런데 회전은 행렬 곱으로 되지만 평행이동(옮기기)은 곱셈이 아니라 덧셈입니다. 이를 하나로 합치는 요령이 <strong>동차 좌표</strong>(homogeneous coordinates)입니다. 2D 점 (<var>x</var>, <var>y</var>)에 1을 붙여 (<var>x</var>, <var>y</var>, 1)로 쓰면, 회전과 이동을 3×3 행렬 하나에 담을 수 있습니다.</p>
+  <div class="eq"><span class="mx c1"><var>x</var><sub>w</sub><var>y</var><sub>w</sub><span>1</span></span> = <span class="mx c3"><span>cos <var>ψ</var></span><span>−sin <var>ψ</var></span><var>p</var><sub>x</sub><span>sin <var>ψ</var></span><span>cos <var>ψ</var></span><var>p</var><sub>y</sub><span>0</span><span>0</span><span>1</span></span> <span class="mx c1"><var>x</var><sub>r</sub><var>y</var><sub>r</sub><span>1</span></span> <small>로봇 좌표계의 점 (<var>x</var><sub>r</sub>, <var>y</var><sub>r</sub>) → 월드 좌표계 (<var>x</var><sub>w</sub>, <var>y</var><sub>w</sub>). 로봇 자세 = 위치 (<var>p</var><sub>x</sub>, <var>p</var><sub>y</sub>), 방향 <var>ψ</var></small></div>
+  <p>라이다가 "로봇 기준 앞으로 2 m, 왼쪽으로 0.5 m에 장애물"이라고 알려 주면, 이 행렬을 곱해 지도 위의 장애물 위치를 얻습니다. 카메라 → 로봇 몸체 → 오도메트리 → 지도처럼 좌표계가 여러 단계라면 각 단계의 행렬을 차례로 곱합니다. 반대 방향(지도 → 로봇)은 <strong>역행렬</strong>입니다.</p>
+
+  <py file="frames.py" check>
+import numpy as np
+
+def pose(px, py, psi_deg):
+    """3x3 homogeneous transform: robot frame -> world frame."""
+    c, s = np.cos(np.radians(psi_deg)), np.sin(np.radians(psi_deg))
+    return np.array([[c, -s, px],
+                     [s,  c, py],
+                     [0,  0,  1]])
+
+T_world_robot = pose(3.0, 1.0, 90)             # robot at (3, 1), facing +y
+p_robot = np.array([2.0, 0.5, 1.0])            # lidar hit: 2 m ahead, 0.5 m left
+p_world = T_world_robot @ p_robot
+print("obstacle in world :", np.round(p_world[:2], 3))
+
+# Going back: the inverse transform maps world -> robot
+p_back = np.linalg.inv(T_world_robot) @ p_world
+print("back to robot     :", np.round(p_back[:2], 3))
+
+# Order matters: rotate-then-move vs move-then-rotate
+R = pose(0, 0, 90); M = pose(1, 0, 0)
+x = np.array([1.0, 0.0, 1.0])
+print("M @ R @ x (rotate first):", np.round((M @ R @ x)[:2], 3))
+print("R @ M @ x (move first)  :", np.round((R @ M @ x)[:2], 3))
+  </py>
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>ROS 2의 tf2가 관리하는 것이 바로 이 변환 행렬들의 나무(transform tree)입니다. <code>map → odom → base_link → laser</code> 각 연결이 행렬 하나이고, <code>lookupTransform</code>은 그 경로를 따라 행렬을 곱해 줍니다. 3차원에서는 4×4 동차 행렬을 쓰고, 회전 부분은 보통 쿼터니언(quaternion)이라는 네 숫자로 저장했다가 필요할 때 행렬로 바꿉니다.</p>
+  </div>
+
+  <h3>연립방정식과 역행렬</h3>
+  <p>행렬의 또 다른 큰 쓰임은 연립방정식입니다. 전자과의 메시 해석을 떠올려 봅시다. 12 V 전원과 2 Ω, 4 Ω, 6 Ω 저항으로 된 두 고리 회로에서 키르히호프 전압 법칙을 쓰면 다음 두 식이 나옵니다.</p>
+  <div class="eq">6<var>I</var><sub>1</sub> − 4<var>I</var><sub>2</sub> = 12, &nbsp; −4<var>I</var><sub>1</sub> + 10<var>I</var><sub>2</sub> = 0 &nbsp;⇔&nbsp; <span class="mx c2"><span>6</span><span>−4</span><span>−4</span><span>10</span></span> <span class="mx c1"><var>I</var><sub>1</sub><var>I</var><sub>2</sub></span> = <span class="mx c1"><span>12</span><span>0</span></span></div>
+  <p>이렇게 <var>A</var><var><b>x</b></var> = <var><b>b</b></var>로 쓰면 질문은 "행렬 <var>A</var>로 변환해서 <var><b>b</b></var>가 되는 원래 벡터 <var><b>x</b></var>는?"이 됩니다. 변환을 되돌리면 되니 <var><b>x</b></var> = <var>A</var><sup>−1</sup><var><b>b</b></var>입니다. 그리고 벤치에서 본 것처럼 <strong>행렬식이 0이면 되돌릴 수 없습니다</strong>. 연립방정식으로는 식들이 서로 독립이 아니라서(한 식이 다른 식의 배수) 해가 없거나 무수히 많은 경우입니다.</p>
+  <py file="mesh_solve.py" check>
+import numpy as np
+
+A = np.array([[ 6.0, -4.0],
+              [-4.0, 10.0]])
+b = np.array([12.0, 0.0])
+
+print("det(A) =", round(np.linalg.det(A), 6))
+I = np.linalg.solve(A, b)          # prefer solve() over inv(A) @ b
+print("I1 = %.4f A, I2 = %.4f A" % tuple(I))
+print("check A @ I =", A @ I)
+
+# A singular system: the second row is just twice the first
+S = np.array([[1.0, 2.0], [2.0, 4.0]])
+print("det(S) =", np.linalg.det(S), "-> no unique solution")
+  </py>
+
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>곱하는 순서</strong>: <code>T_map_odom @ T_odom_base</code>처럼 이름의 좌표계가 사슬처럼 이어지는지 확인하세요. 순서가 틀려도 숫자는 나오기 때문에 버그를 찾기 어렵습니다.</li>
+      <li><strong>행 우선 vs 열 우선</strong>: C 배열과 NumPy는 기본이 행 우선(row-major), Eigen과 OpenGL은 기본이 열 우선(column-major)입니다. 메모리를 그대로 넘기면 전치된 행렬이 됩니다.</li>
+      <li><strong>역행렬을 직접 구해서 곱하기</strong>: <code>inv(A) @ b</code>보다 <code>solve(A, b)</code>가 빠르고 수치적으로 안정합니다. 행렬식이 0에 가까우면(나쁜 조건) 결과가 매우 불안정해집니다.</li>
+    </ul>
+  </div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>행렬 × 벡터 = 행마다 내적. 행렬의 각 열 = 단위 벡터가 옮겨 가는 곳.</li>
+      <li>변환을 이어 붙이면 행렬 곱, 오른쪽부터 적용되고 순서가 중요하다. 동차 좌표로 회전 + 이동을 한 행렬에.</li>
+      <li><var>A</var><var><b>x</b></var> = <var><b>b</b></var>는 변환 되돌리기. 행렬식 0이면 공간이 짓눌려 되돌릴 수 없다.</li>
+    </ul>
+  </div>
+  <p>평면에서 회전을 하려면 2×2 행렬이 필요했습니다. 그런데 평면의 점을 숫자 <strong>하나</strong>로 나타내고, 회전을 곱셈 <strong>한 번</strong>으로 하는 방법이 있습니다. 다음 장의 복소수입니다. 교류 회로와 신호처리가 복소수를 쓰는 이유가 거기 있습니다.</p>
+
+  <div class="quiz" data-quiz="ch9"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch9" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

@@ -1,0 +1,127 @@
+<!-- ============ CH2 ============ -->
+<section class="chapter col" id="ch2">
+  <div class="eyebrow">Part I · 수학의 언어 — 2장</div>
+  <h2>함수와 그래프</h2>
+  <p class="goal">이 장을 마치면: 함수를 입력과 출력을 가진 상자로 보고 그래프에서 값을 읽을 수 있고, 직선 <var>y</var> = <var>ax</var> + <var>b</var>의 기울기와 절편을 단위와 함께 해석해 센서 2점 보정과 선형 보간을 할 수 있으며, 2차·지수·주기 함수의 모양을 구분하고 그래프를 옮기고 늘리는 규칙을 쓸 수 있습니다.</p>
+
+  <h3>함수는 입력을 받아 출력을 돌려주는 상자다</h3>
+  <p>1장에서 수식이 코드라고 했습니다. 그 코드의 기본 단위가 함수입니다. 수학의 함수는 C 함수와 거의 같습니다. 값을 하나 넣으면 값이 하나 나옵니다. 다만 수학의 함수는 전역 변수를 건드리지 않는 <strong>순수 함수</strong>입니다. 같은 입력을 넣으면 언제나 같은 출력이 나옵니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 150" role="img" aria-label="입력 x가 함수 상자 f를 거쳐 출력 f(x)가 되는 그림. 예: 섭씨 25도가 화씨 변환 함수를 거쳐 77도가 된다">
+      <text class="sv-m" x="20" y="40">입력</text>
+      <text class="sv-t" x="20" y="66" style="font-size:20px;font-family:var(--f-display);font-style:italic">x</text>
+      <line class="sv-ac" x1="60" y1="60" x2="200" y2="60" marker-end="url(#arwa)"/>
+      <rect class="sv-core" x="210" y="22" width="220" height="76" rx="8"/>
+      <text class="sv-core-t" x="320" y="54" text-anchor="middle">f(x) = 1.8·x + 32</text>
+      <text class="sv-core-t" x="320" y="80" text-anchor="middle" style="font-size:12px">섭씨 → 화씨</text>
+      <line class="sv-ac" x1="440" y1="60" x2="560" y2="60" marker-end="url(#arwa)"/>
+      <text class="sv-m" x="570" y="40">출력</text>
+      <text class="sv-t" x="570" y="66" style="font-size:20px;font-family:var(--f-display);font-style:italic">f(x)</text>
+      <text class="sv-m" x="80" y="128">x = 25  →</text>
+      <text class="sv-m" x="320" y="128" text-anchor="middle">1.8 × 25 + 32</text>
+      <text class="sv-m" x="470" y="128">→  f(25) = 77</text>
+    </svg>
+    <figcaption>그림 2-1. 함수 = 입력을 출력으로 바꾸는 규칙. 같은 입력에는 언제나 같은 출력이 나온다.</figcaption>
+  </figure>
+  <p><strong>그래프</strong>는 이 상자에 가능한 입력을 전부 넣어 보고, (입력, 출력) 쌍을 점으로 찍어 이은 그림입니다. 가로축(<var>x</var>축)이 입력, 세로축(<var>y</var>축)이 출력입니다. 그래프를 읽는다는 것은 "가로로 여기쯤이면 세로로 얼마인가"를 읽는 것이고, 더 중요하게는 "입력이 늘 때 출력이 어떻게 변하는가"라는 <strong>모양</strong>을 읽는 것입니다.</p>
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>써미스터 온도표처럼 함수를 계산하는 대신 표로 저장해 두는 것이 룩업 테이블(LUT)입니다. 표는 함수의 그래프에서 점 몇 개를 뽑아 둔 것이고, 점 사이 값은 아래에서 배울 선형 보간으로 채웁니다.</p>
+  </div>
+
+  <h3>직선: 기울기는 "입력이 1 늘 때 출력이 얼마나"</h3>
+  <p>가장 중요한 함수는 직선입니다. 공학에서 "선형(linear)"이라는 말이 나오면 대개 이 모양이 숨어 있습니다.</p>
+  <div class="eq"><var>y</var> = <var>a</var> · <var>x</var> + <var>b</var> <small><var>a</var>: 기울기(slope) · <var>b</var>: 절편(intercept), 즉 <var>x</var> = 0일 때의 <var>y</var></small></div>
+  <p class="say"><b>읽는 법:</b> "<var>x</var>가 1 늘 때마다 <var>y</var>는 <var>a</var>씩 늘고, 출발점은 <var>b</var>다."</p>
+  <p>기울기는 두 점 사이에서 <strong>세로 변화량 ÷ 가로 변화량</strong>, 즉 Δ<var>y</var>/Δ<var>x</var>입니다. 기울기에는 반드시 <strong>단위</strong>가 있다는 점이 중요합니다. 0°C에서 500 mV를 내고 1°C 오를 때마다 10 mV씩 오르는 온도 센서라면 <var>V</var> = 10 [mV/°C] · <var>T</var> + 500 [mV]입니다. 기울기의 단위 mV/°C를 보면 무엇을 무엇으로 나눈 값인지 바로 알 수 있습니다.</p>
+  <p>이 식을 거꾸로 풀면 전압에서 온도를 구할 수 있습니다. 양변에서 500을 빼고 10으로 나누면 <var>T</var> = (<var>V</var> − 500) / 10. 펌웨어가 하는 "변환"이 바로 이 역함수 계산입니다.</p>
+
+  <h3>두 점이면 직선이 정해진다: 2점 보정과 선형 보간</h3>
+  <p>실제 센서는 데이터시트 값과 조금씩 다릅니다. 그래서 알려진 두 조건에서 원시값(raw)을 읽어 직선을 직접 만듭니다. 예를 들어 12비트 ADC가 25.0°C에서 1240, 75.0°C에서 1860을 읽었다면 두 점 (1240, 25.0)과 (1860, 75.0)이 생깁니다.</p>
+  <div class="eq"><var>a</var> = <span class="fr"><span><var>y</var><sub>2</sub> − <var>y</var><sub>1</sub></span><span><var>x</var><sub>2</sub> − <var>x</var><sub>1</sub></span></span> = <span class="fr"><span>75.0 − 25.0</span><span>1860 − 1240</span></span> ≈ 0.0806 °C/count, &nbsp; <var>b</var> = <var>y</var><sub>1</sub> − <var>a x</var><sub>1</sub> = −75.0 °C</div>
+  <p>이제 raw = 1500이면 <var>T</var> = 0.0806 × 1500 − 75.0 ≈ 46.0°C입니다. 같은 계산을 표의 이웃한 두 점 사이에서 하면 <strong>선형 보간</strong>(lerp, linear interpolation)이 됩니다. "두 점 사이를 직선으로 이었다고 치고 그 위의 값을 읽는다"는 뜻입니다.</p>
+  <div class="eq"><var>y</var> = <var>y</var><sub>1</sub> + (<var>y</var><sub>2</sub> − <var>y</var><sub>1</sub>) · <span class="fr"><span><var>x</var> − <var>x</var><sub>1</sub></span><span><var>x</var><sub>2</sub> − <var>x</var><sub>1</sub></span></span> <small>오른쪽 분수는 "x가 두 점 사이 몇 % 지점에 있는가" (0이면 왼쪽 점, 1이면 오른쪽 점)</small></div>
+
+  <py file="two_point_calibration.py" check>
+import numpy as np
+
+# Two known points: (raw ADC count, temperature in degC)
+x1, y1 = 1240, 25.0
+x2, y2 = 1860, 75.0
+
+a = (y2 - y1) / (x2 - x1)        # slope  [degC per count]
+b = y1 - a * x1                   # intercept [degC]
+print(f"T = {a:.5f} * raw {b:+.2f}")
+print(f"raw 1500 -> {a * 1500 + b:.2f} degC")
+
+def lerp(x, xa, ya, xb, yb):
+    t = (x - xa) / (xb - xa)      # 0 at the left point, 1 at the right point
+    return ya + (yb - ya) * t
+
+# A thermistor lookup table: interpolate between neighbouring entries
+raw_tab = [800, 1200, 1600, 2000, 2400]
+deg_tab = [-10.0, 12.0, 31.0, 47.0, 61.0]
+raw = 1750
+i = np.searchsorted(raw_tab, raw) - 1
+print("table lerp :", lerp(raw, raw_tab[i], deg_tab[i], raw_tab[i + 1], deg_tab[i + 1]))
+print("np.interp  :", np.interp(raw, raw_tab, deg_tab))
+  </py>
+
+  <h3>직선이 아닌 함수들의 얼굴</h3>
+  <p>세상이 전부 직선이면 좋겠지만 그렇지 않습니다. 공학에서 자주 만나는 함수는 몇 가지 얼굴로 나뉘고, 모양을 보면 어떤 현상인지 짐작할 수 있습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>종류</th><th>식의 꼴</th><th>모양</th><th>어디서 만나나</th></tr></thead>
+    <tbody>
+      <tr><td>직선(1차)</td><td><var>ax</var> + <var>b</var></td><td>일정하게 오르거나 내림</td><td>센서 보정, 옴의 법칙 <var>V</var> = <var>IR</var></td></tr>
+      <tr><td>2차(포물선)</td><td><var>ax</var><sup>2</sup> + <var>b</var></td><td>U자, 커질수록 가파름</td><td>전력 <var>P</var> = <var>I</var><sup>2</sup><var>R</var>, 운동에너지, 제동 거리</td></tr>
+      <tr><td>지수</td><td><var>b</var> · 2<sup><var>ax</var></sup></td><td>처음엔 느리다가 폭발(또는 빠르게 사라짐)</td><td>충전·방전, 냉각, 증폭(3장, 7장)</td></tr>
+      <tr><td>주기(사인)</td><td><var>b</var> · sin(<var>ax</var>)</td><td>일정한 간격으로 반복</td><td>교류, 진동, 회전(4장)</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="bench" id="fnBench">
+    <header><b>실습 벤치 2-A · 함수 놀이터</b><span>FUNCTIONS</span></header>
+    <div class="body">
+      <div class="ctl"><span>함수 종류</span><span></span><div class="seg" id="fnType" style="grid-column:1/-1"><button type="button" data-v="lin" aria-pressed="true">직선 a·x + b</button><button type="button" data-v="quad" aria-pressed="false">2차 a·x² + b</button><button type="button" data-v="exp" aria-pressed="false">지수 b·2^(a·x)</button><button type="button" data-v="sin" aria-pressed="false">사인 b·sin(a·x)</button></div></div>
+      <div class="ctls">
+        <div class="ctl"><label for="fnA">a</label><output id="oFnA"></output><input type="range" id="fnA" min="-3" max="3" step="0.1" value="1"></div>
+        <div class="ctl"><label for="fnB">b</label><output id="oFnB"></output><input type="range" id="fnB" min="-3" max="3" step="0.1" value="0.5"></div>
+      </div>
+      <div class="ctl"><label for="fnX">입력 x를 넣어 보기</label><output id="oFnX"></output><input type="range" id="fnX" min="-4" max="4" step="0.1" value="1.5"></div>
+      <svg class="plot" id="fnSvg" viewBox="0 0 600 300" role="img" aria-label="선택한 함수의 그래프와 입력 x에 대응하는 출력 점"></svg>
+      <div class="status g" id="fnNote" aria-live="polite"></div>
+    </div>
+  </div>
+  <p>직선에서 <var>a</var>를 음수로 바꾸면 내리막이 되고, <var>a</var> = 0이면 수평선이 됩니다. 2차 함수에서 <var>a</var>가 크면 U자가 좁아지고, 지수 함수에서 <var>a</var>를 음수로 하면 "빠르게 사라지는" 감쇠 곡선이 됩니다. 사인에서 <var>a</var>를 키우면 같은 폭 안에 물결이 더 많이 들어갑니다. 아래쪽 점선이 "입력 <var>x</var>를 넣으면 출력이 얼마인가"를 그래프에서 읽는 법입니다.</p>
+
+  <h3>그래프를 옮기고 늘리는 네 가지 규칙</h3>
+  <p>어떤 함수 <var>f</var>(<var>x</var>)든 아래 네 가지 조작으로 위치와 크기를 바꿀 수 있습니다. 4장에서 사인파의 위상을 다룰 때 바로 쓰게 됩니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>바꾼 식</th><th>그래프에 일어나는 일</th><th>예</th></tr></thead>
+    <tbody>
+      <tr><td><var>f</var>(<var>x</var>) + <var>c</var></td><td>위로 <var>c</var>만큼 이동</td><td>센서 오프셋</td></tr>
+      <tr><td><var>f</var>(<var>x</var> − <var>c</var>)</td><td><strong>오른쪽</strong>으로 <var>c</var>만큼 이동 (빼는데 오른쪽!)</td><td>신호 지연</td></tr>
+      <tr><td><var>k</var> · <var>f</var>(<var>x</var>)</td><td>세로로 <var>k</var>배 늘림</td><td>증폭기 이득</td></tr>
+      <tr><td><var>f</var>(<var>kx</var>)</td><td>가로로 1/<var>k</var>배 압축</td><td>주파수를 <var>k</var>배로</td></tr>
+    </tbody>
+  </table></div>
+  <p><var>f</var>(<var>x</var> − <var>c</var>)가 오른쪽으로 가는 이유는 이렇게 생각하면 쉽습니다. 원래 <var>x</var> = 0에서 일어나던 일이 이제는 <var>x</var> − <var>c</var> = 0, 즉 <var>x</var> = <var>c</var>가 되어야 일어납니다. 같은 사건이 <var>c</var>만큼 <strong>늦게</strong> 일어나니 그래프가 오른쪽으로 밀립니다.</p>
+
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>단위 없는 기울기</strong>: 기울기 0.0806이라고만 적으면 무엇의 0.0806인지 알 수 없습니다. 항상 "°C/count"처럼 단위를 붙이세요.</li>
+      <li><strong>보정 범위 밖으로 외삽</strong>: 25–75°C에서 만든 직선을 −20°C에 그대로 쓰면, 센서가 그 범위에서 직선이 아닐 경우 오차가 커집니다. 보정 점은 실제 사용 범위의 양끝 근처에 잡습니다.</li>
+      <li><strong>정수 나눗셈</strong>: C에서 <code>(y2 - y1) / (x2 - x1)</code>를 정수로 계산하면 50/620 = 0이 됩니다. 고정소수점이라면 곱셈을 먼저 하고 나중에 나눕니다.</li>
+    </ul>
+  </div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>함수 = 입력을 출력으로 바꾸는 순수한 규칙, 그래프 = 그 규칙의 모양.</li>
+      <li>직선의 기울기 = Δ<var>y</var>/Δ<var>x</var>, 단위를 붙여 읽는다. 두 점이면 직선이 정해진다.</li>
+      <li><var>f</var>(<var>x</var> − <var>c</var>)는 오른쪽 이동, <var>k</var>·<var>f</var>는 세로로 늘림, <var>f</var>(<var>kx</var>)는 가로로 압축.</li>
+    </ul>
+  </div>
+  <p>직선은 "더해서" 늘어나는 함수입니다. 그런데 "곱해서" 늘어나는 현상, 예를 들어 비트 수가 하나 늘면 표현 범위가 두 배가 되는 일은 직선으로 다룰 수 없습니다. 다음 장에서 이런 현상을 다루는 지수와, 그것을 거꾸로 묻는 로그를 익힙니다. 데시벨도 거기서 나옵니다.</p>
+
+  <div class="quiz" data-quiz="ch2"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch2" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
