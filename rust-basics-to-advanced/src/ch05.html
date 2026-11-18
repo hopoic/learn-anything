@@ -1,0 +1,175 @@
+<!-- ============ CH5 ============ -->
+<section class="chapter col" id="ch5">
+  <div class="eyebrow">Part II · 타입으로 설계하기 — 5장</div>
+  <h2>구조체·열거형·패턴 매칭</h2>
+  <p class="goal">이 장을 마치면: 구조체에 메서드를 붙이고 <code>&amp;self</code>/<code>&amp;mut self</code>/<code>self</code> 수신자를 상황에 맞게 고를 수 있고, 데이터를 품은 열거형으로 "잘못된 상태를 표현할 수 없는" 타입을 설계할 수 있으며, <code>match</code>·<code>if let</code>·<code>let else</code>로 값을 안전하게 분해할 수 있습니다.</p>
+  <p>Part I에서 값과 소유권을 다뤘습니다. 이제 그 값들을 의미 있는 단위로 묶습니다. Rust의 데이터 모델링은 두 가지로 끝납니다. "A <b>그리고</b> B"를 표현하는 구조체, "A <b>또는</b> B"를 표현하는 열거형입니다.</p>
+
+  <h3>구조체와 impl: 데이터와 동작을 분리해 선언한다</h3>
+  <p>구조체는 C의 <code>struct</code>와 같지만 메서드를 <code>impl</code> 블록에 따로 붙입니다. 메서드의 첫 매개변수(수신자)가 그 메서드가 값을 어떻게 다루는지 선언합니다. 이것이 3–4장의 소유권 규칙과 그대로 맞물립니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>수신자</th><th>의미</th><th>호출 후 원래 값</th></tr></thead>
+    <tbody>
+      <tr><td><code>&amp;self</code></td><td>읽기만 한다</td><td>그대로 사용 가능</td></tr>
+      <tr><td><code>&amp;mut self</code></td><td>상태를 바꾼다</td><td>바뀐 채로 사용 가능</td></tr>
+      <tr><td><code>self</code></td><td>값을 소비한다(변환·종료)</td><td>이동됨 — 더 쓸 수 없음</td></tr>
+      <tr><td>(없음)</td><td>연관 함수. 보통 생성자 <code>new</code></td><td><code>Type::new()</code>로 호출</td></tr>
+    </tbody>
+  </table></div>
+<run file="structs.rs">
+#[derive(Debug, Clone, PartialEq)]
+struct Battery {
+    cells: u8,
+    voltage: f32,
+    cycles: u32,
+}
+
+impl Battery {
+    const CELL_MIN_V: f32 = 3.2;                       // associated constant
+
+    fn new(cells: u8) -> Self {                        // associated function (constructor)
+        Self { cells, voltage: cells as f32 * 4.1, cycles: 0 }   // field init shorthand
+    }
+    fn is_low(&self) -> bool {                         // read-only
+        self.voltage < self.cells as f32 * Self::CELL_MIN_V
+    }
+    fn discharge(&mut self, dv: f32) {                 // mutate in place
+        self.voltage -= dv;
+    }
+    fn recycle(self) -> String {                       // consume: battery is gone afterwards
+        format!("recycled {}S pack after {} cycles", self.cells, self.cycles)
+    }
+}
+
+struct Meters(f64);                                    // tuple struct (newtype, see ch15)
+struct Marker;                                         // unit struct: zero bytes
+
+fn main() {
+    let mut pack = Battery::new(6);
+    pack.discharge(5.5);
+    println!("{pack:?} low = {}", pack.is_low());
+    let spare = Battery { cycles: 12, ..pack.clone() };    // struct update syntax
+    println!("same pack? {}", spare == pack);
+    println!("{}", pack.recycle());
+    // pack.is_low();   // error[E0382]: pack was moved by recycle()
+    let d = Meters(2.5);
+    println!("{} m, Marker is {} bytes", d.0, std::mem::size_of::<Marker>());
+}
+</run>
+
+  <h3>열거형은 "또는"을 표현하고, 각 경우가 데이터를 품는다</h3>
+  <p>Rust의 <code>enum</code>은 C의 열거형보다 훨씬 강력합니다. 각 변형(variant)이 <strong>서로 다른 데이터</strong>를 가질 수 있습니다. C에서 태그 필드 + <code>union</code>으로 손수 만들던 "태그드 유니온"을 언어가 직접 지원하고, 태그와 데이터가 어긋나는 일을 컴파일러가 막습니다.</p>
+<c file="tagged.c">
+/* The C way: nothing stops you from reading .goal when kind == MODE_IDLE */
+enum mode_kind { MODE_IDLE, MODE_NAVIGATING, MODE_CHARGING, MODE_FAULT };
+struct mode {
+    enum mode_kind kind;
+    union {
+        struct { double x, y; } goal;   /* valid only when NAVIGATING */
+        unsigned char dock_id;          /* valid only when CHARGING   */
+        unsigned short fault_code;      /* valid only when FAULT      */
+    } u;
+};
+</c>
+<run file="robot_mode.rs">
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Mode {
+    Idle,
+    Navigating { x: f64, y: f64 },
+    Charging(u8),                // dock id
+    Fault { code: u16 },
+}
+
+enum Event { Goal(f64, f64), Arrived, Dock(u8), Error(u16), Reset }
+
+// A transition table as a single match on (state, event). Missing cases are compile errors.
+fn step(mode: Mode, ev: Event) -> Mode {
+    use Mode::*;
+    match (mode, ev) {
+        (_, Event::Error(code)) => Fault { code },
+        (Fault { .. }, Event::Reset) => Idle,
+        (Fault { .. }, _) => mode,                         // stay faulted
+        (Idle | Charging(_), Event::Goal(x, y)) => Navigating { x, y },
+        (Navigating { .. }, Event::Arrived) => Idle,
+        (Idle, Event::Dock(id)) => Charging(id),
+        (m, _) => m,                                       // ignore everything else
+    }
+}
+
+fn describe(mode: &Mode) -> String {
+    match mode {
+        Mode::Idle => "idle".to_string(),
+        Mode::Navigating { x, y } if x.abs() + y.abs() < 1.0 => format!("almost there ({x}, {y})"),
+        Mode::Navigating { x, y } => format!("going to ({x}, {y})"),
+        Mode::Charging(id @ 0..=3) => format!("charging at front dock {id}"),
+        Mode::Charging(id) => format!("charging at dock {id}"),
+        Mode::Fault { code } => format!("FAULT 0x{code:04X}"),
+    }
+}
+
+fn main() {
+    let events = [Event::Dock(2), Event::Goal(4.0, 1.5), Event::Arrived,
+                  Event::Goal(0.2, 0.3), Event::Error(0x1F), Event::Goal(1.0, 1.0), Event::Reset];
+    let mut mode = Mode::Idle;
+    for ev in events {
+        mode = step(mode, ev);
+        println!("{:<28} {:?}", describe(&mode), mode);
+    }
+}
+</run>
+  <p><code>match</code>는 <strong>모든 경우를 다뤄야</strong>(exhaustive) 컴파일됩니다. 나중에 <code>Mode</code>에 <code>Docking</code> 변형을 추가하면 이를 처리하지 않은 모든 <code>match</code>가 컴파일 오류가 되어, 고쳐야 할 곳을 컴파일러가 전부 찾아 줍니다. 위 예제에서 <code>describe</code>의 한 줄을 지우고 실행해 보세요. 그래서 실무에서는 와일드카드 <code>_</code>를 남발하지 않는 것이 좋습니다. 보호막을 스스로 끄는 셈이니까요.</p>
+
+  <h3>Option: 널 포인터 대신 "없을 수 있음"을 타입으로</h3>
+  <p>Rust에는 널이 없습니다. 값이 없을 수 있으면 <code>Option&lt;T&gt;</code>를 씁니다. 표준 라이브러리에 정의된 평범한 열거형 <code>enum Option&lt;T&gt; { None, Some(T) }</code>일 뿐이지만, <code>Option&lt;T&gt;</code>를 <code>T</code>처럼 쓰려면 반드시 꺼내는 코드를 써야 하므로 "널 체크를 잊는" 버그가 사라집니다. 꺼내는 문법도 다양합니다.</p>
+<run file="option.rs">
+fn find_dock(docks: &[(u8, f64)], max_dist: f64) -> Option<u8> {
+    docks.iter().find(|(_, d)| *d <= max_dist).map(|(id, _)| *id)
+}
+
+fn parse_speed(s: &str) -> Option<f64> {
+    let Some(num) = s.strip_suffix("m/s") else {      // let-else: bind or bail out
+        return None;
+    };
+    num.trim().parse().ok()
+}
+
+fn main() {
+    let docks = [(1, 12.0), (2, 3.5), (3, 7.0)];
+
+    match find_dock(&docks, 5.0) {
+        Some(id) => println!("nearest usable dock: {id}"),
+        None => println!("no dock in range"),
+    }
+    if let Some(id) = find_dock(&docks, 1.0) {        // only care about one case
+        println!("dock {id}");
+    } else {
+        println!("nothing within 1 m");
+    }
+    let id = find_dock(&docks, 1.0).unwrap_or(0);     // default value
+    println!("fallback id = {id}");
+
+    for s in ["1.2 m/s", "fast", "0.4m/s"] {
+        println!("{s:>8} -> {:?}", parse_speed(s));
+    }
+
+    // Niche optimization: Option<&T> has no extra tag, because a reference is never null.
+    use std::mem::size_of;
+    println!("&u64: {}  Option<&u64>: {}  Option<u64>: {}  Option<Box<u64>>: {}",
+             size_of::<&u64>(), size_of::<Option<&u64>>(), size_of::<Option<u64>>(), size_of::<Option<Box<u64>>>());
+}
+</run>
+  <p>마지막 줄의 출력을 보세요. <code>Option&lt;&amp;u64&gt;</code>는 <code>&amp;u64</code>와 같은 8바이트입니다. 참조는 절대 널이 아니므로 컴파일러가 "0 비트 패턴"을 <code>None</code>으로 씁니다(niche optimization). 즉 Rust의 <code>Option&lt;&amp;T&gt;</code>는 C의 nullable 포인터와 <strong>비용은 같고 안전은 강제</strong>됩니다.</p>
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>열거형 + <code>match</code>는 상태 기계(state machine)를 표현하기에 가장 좋은 도구입니다. 상태별 데이터를 변형 안에 넣으면 "충전 중인데 목표 좌표가 남아 있는" 같은 불가능한 상태를 <b>표현 자체를 못 하게</b> 만들 수 있습니다. 15장에서는 이 생각을 타입 수준까지 끌어올려, 잘못된 상태 전이가 컴파일 오류가 되게 만듭니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><code>.unwrap()</code>은 <code>None</code>이면 panic합니다. 프로토타입에서는 편하지만 제품 코드에서는 <code>?</code>(다음 장), <code>unwrap_or</code>, <code>let else</code>로 바꾸세요. 정말 불가능한 경우라면 이유를 적은 <code>.expect("...")</code>를 씁니다.</li>
+      <li><code>match</code>에서 변수 이름만 쓰면 그것은 "비교"가 아니라 "모든 값에 묶기"입니다. 상수와 비교하려면 <code>const</code>나 경로(<code>Mode::Idle</code>)를 쓰세요.</li>
+    </ul>
+  </div>
+  <p>다음 장에서는 <code>Option</code>의 형제 <code>Result</code>로, 실패의 <b>이유</b>까지 전달하는 오류 처리를 다룹니다.</p>
+
+  <div class="quiz" data-quiz="ch5"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch5" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

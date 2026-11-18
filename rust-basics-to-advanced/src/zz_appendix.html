@@ -1,0 +1,120 @@
+<!-- ============ APPENDIX ============ -->
+<section class="chapter col" id="glossary">
+  <div class="eyebrow">부록 A</div>
+  <h2>용어집 · C/C++↔Rust 대응표</h2>
+  <h3>C/C++에서 하던 일, Rust에서는</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>C / C++</th><th>Rust</th><th>장</th></tr></thead>
+    <tbody>
+      <tr><td><code>malloc</code>/<code>realloc</code> 배열, <code>std::vector</code></td><td><code>Vec&lt;T&gt;</code></td><td>7</td></tr>
+      <tr><td>포인터 + 길이 인자 쌍, <code>std::span</code></td><td><code>&amp;[T]</code>, <code>&amp;mut [T]</code></td><td>4</td></tr>
+      <tr><td><code>char *</code> + <code>strlen</code>, <code>std::string</code></td><td><code>String</code>, <code>&amp;str</code> (UTF-8), C 경계는 <code>CString</code>/<code>&amp;CStr</code></td><td>7·14</td></tr>
+      <tr><td>NULL 가능 포인터</td><td><code>Option&lt;&amp;T&gt;</code>, <code>Option&lt;Box&lt;T&gt;&gt;</code> (크기 동일)</td><td>5</td></tr>
+      <tr><td>-1 + <code>errno</code>, 예외</td><td><code>Result&lt;T, E&gt;</code> + <code>?</code></td><td>6</td></tr>
+      <tr><td><code>goto cleanup</code>, 소멸자(RAII)</td><td><code>Drop</code></td><td>3</td></tr>
+      <tr><td><code>std::move</code> (비파괴)</td><td>이동은 기본 동작이며 파괴적</td><td>3</td></tr>
+      <tr><td><code>const T *</code> / <code>restrict T *</code></td><td><code>&amp;T</code> / <code>&amp;mut T</code> (검증됨)</td><td>4</td></tr>
+      <tr><td>태그 + <code>union</code>, <code>std::variant</code></td><td>데이터를 품은 <code>enum</code> + <code>match</code></td><td>5</td></tr>
+      <tr><td>함수 포인터 테이블, 가상 함수</td><td><code>dyn Trait</code></td><td>8</td></tr>
+      <tr><td>템플릿 + 컨셉트</td><td>제네릭 + 트레잇 경계</td><td>8</td></tr>
+      <tr><td>콜백 + <code>void *user</code>, 람다</td><td>클로저 (<code>Fn</code>/<code>FnMut</code>/<code>FnOnce</code>)</td><td>9</td></tr>
+      <tr><td><code>unique_ptr</code> / <code>shared_ptr</code> / <code>weak_ptr</code></td><td><code>Box</code> / <code>Rc</code>·<code>Arc</code> / <code>Weak</code></td><td>11</td></tr>
+      <tr><td><code>pthread_create</code>/<code>join</code></td><td><code>thread::spawn</code>, <code>thread::scope</code></td><td>12</td></tr>
+      <tr><td><code>pthread_mutex_t</code> + 보호할 데이터</td><td><code>Mutex&lt;T&gt;</code> (데이터를 품음)</td><td>12</td></tr>
+      <tr><td><code>_Atomic</code>, <code>std::atomic</code></td><td><code>AtomicU32</code> 등 + <code>Ordering</code></td><td>12</td></tr>
+      <tr><td>상태 기계 + 콜백(이벤트 루프)</td><td><code>async</code>/<code>.await</code> + executor</td><td>13</td></tr>
+      <tr><td><code>__attribute__((packed))</code>, C 구조체 레이아웃</td><td><code>#[repr(C)]</code>, <code>#[repr(C, packed)]</code></td><td>14</td></tr>
+      <tr><td><code>volatile</code> 레지스터 접근</td><td><code>read_volatile</code>/<code>write_volatile</code>, PAC/HAL</td><td>14</td></tr>
+      <tr><td><code>typedef double meters_t;</code></td><td>newtype <code>struct Meters(f64);</code> (진짜 다른 타입)</td><td>15</td></tr>
+      <tr><td>매크로 (<code>#define</code>)</td><td><code>const</code>, 제네릭, <code>macro_rules!</code></td><td>2·15</td></tr>
+      <tr><td>make/CMake + 패키지 관리자</td><td><code>cargo</code> + crates.io</td><td>1·16</td></tr>
+    </tbody>
+  </table></div>
+  <h3>용어</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>용어</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td>크레이트(crate)</td><td>컴파일 단위. 라이브러리 하나 또는 실행 파일 하나. crates.io에 배포되는 패키지 단위이기도 하다.</td></tr>
+      <tr><td>소유권(ownership)</td><td>모든 값은 소유자 하나를 가지며, 소유자가 스코프를 벗어나면 값이 해제된다는 규칙.</td></tr>
+      <tr><td>이동(move)</td><td>소유권을 다른 변수로 넘기는 것. 원래 이름은 이후 사용할 수 없다.</td></tr>
+      <tr><td><code>Copy</code> / <code>Clone</code></td><td>비트 복사로 충분한 타입의 암묵적 복사 / 명시적 깊은 복사.</td></tr>
+      <tr><td>빌림(borrow)</td><td>소유권을 넘기지 않고 참조를 만드는 것. <code>&amp;T</code>는 공유, <code>&amp;mut T</code>는 배타.</td></tr>
+      <tr><td>빌림 검사기</td><td>"공유 XOR 변경"과 "참조는 원래 값보다 오래 살 수 없다"를 검사하는 컴파일러 단계.</td></tr>
+      <tr><td>NLL</td><td>non-lexical lifetimes. 빌림이 스코프 끝이 아니라 마지막 사용 지점에서 끝난다는 규칙.</td></tr>
+      <tr><td>라이프타임(<code>'a</code>)</td><td>참조가 유효한 구간의 이름. 참조들 사이의 관계를 시그니처에 적는 컴파일 타임 정보.</td></tr>
+      <tr><td>슬라이스 / 팻 포인터</td><td>연속 메모리 일부에 대한 참조. (포인터, 길이) 두 워드. <code>dyn Trait</code> 참조는 (포인터, vtable).</td></tr>
+      <tr><td>트레잇(trait)</td><td>타입이 구현할 수 있는 동작의 계약. 인터페이스, 연산자, 마커(Send/Sync) 모두 트레잇.</td></tr>
+      <tr><td>단형화(monomorphization)</td><td>제네릭 코드를 사용된 구체 타입마다 별도로 컴파일하는 것. 정적 디스패치.</td></tr>
+      <tr><td>dyn 호환(object safety)</td><td>트레잇을 <code>dyn Trait</code>로 쓸 수 있는 조건. 제네릭 메서드, <code>Self</code> 반환 등이 있으면 불가.</td></tr>
+      <tr><td>고아 규칙</td><td>트레잇 구현은 트레잇이나 타입 중 하나가 내 크레이트 것일 때만 가능.</td></tr>
+      <tr><td>내부 가변성</td><td><code>&amp;T</code>를 통해서도 내용을 바꿀 수 있게 하는 것(<code>Cell</code>, <code>RefCell</code>, <code>Mutex</code>, 원자 타입).</td></tr>
+      <tr><td><code>Send</code> / <code>Sync</code></td><td>다른 스레드로 옮겨도 안전 / 여러 스레드가 공유 참조를 가져도 안전.</td></tr>
+      <tr><td>Future / Waker</td><td>poll로 진행시키는 미완료 계산 / 기다리던 일이 생기면 작업을 다시 스케줄하게 하는 핸들.</td></tr>
+      <tr><td><code>Pin</code></td><td>값이 메모리에서 이동하지 않음을 보장하는 포인터 래퍼. 자기 참조 future에 필요.</td></tr>
+      <tr><td>UB</td><td>정의되지 않은 동작. safe Rust에서는 발생하지 않으며, unsafe 코드가 약속을 어길 때 생긴다.</td></tr>
+      <tr><td>Miri</td><td>MIR 인터프리터. 실행하며 UB(정렬, 범위, 별칭 규칙 위반 등)를 탐지한다.</td></tr>
+      <tr><td>niche</td><td>타입이 쓰지 않는 비트 패턴. <code>Option</code> 등이 태그 없이 이를 이용해 크기를 줄인다.</td></tr>
+      <tr><td>타입 상태(typestate)</td><td>상태를 타입 매개변수로 표현해 잘못된 상태 전이를 컴파일 오류로 만드는 패턴.</td></tr>
+      <tr><td>에디션</td><td>하위 호환을 깨지 않고 문법을 다듬는 단위(2015/2018/2021/2024). 크레이트마다 선택.</td></tr>
+      <tr><td>MSRV</td><td>minimum supported Rust version. 크레이트가 지원을 약속하는 가장 오래된 컴파일러 버전.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="chapter col" id="refs">
+  <div class="eyebrow">부록 B</div>
+  <h2>참고 자료와 다음 단계</h2>
+  <h3>공식 문서 (무료)</h3>
+  <ul>
+    <li><a href="https://doc.rust-lang.org/book/" rel="noopener">The Rust Programming Language</a> ("the book"): 공식 입문서. 이 책의 Part I–II와 겹치며 더 자세한 설명이 있다.</li>
+    <li><a href="https://doc.rust-lang.org/rust-by-example/" rel="noopener">Rust by Example</a>: 짧은 예제 위주로 문법을 훑는다.</li>
+    <li><a href="https://doc.rust-lang.org/std/" rel="noopener">표준 라이브러리 문서</a>: 각 타입의 메서드 목록과 예제. 실무에서 가장 자주 여는 페이지.</li>
+    <li><a href="https://doc.rust-lang.org/reference/" rel="noopener">The Rust Reference</a>: 언어 명세에 가장 가까운 문서.</li>
+    <li><a href="https://doc.rust-lang.org/edition-guide/" rel="noopener">The Edition Guide</a>: 2024 에디션 변경점(unsafe extern, RPIT 캡처 규칙 등).</li>
+    <li><a href="https://doc.rust-lang.org/nomicon/" rel="noopener">The Rustonomicon</a>: unsafe Rust의 규칙과 함정. 14장의 다음 단계.</li>
+    <li><a href="https://rust-lang.github.io/async-book/" rel="noopener">Asynchronous Programming in Rust</a>: 13장의 다음 단계.</li>
+    <li><a href="https://docs.rust-embedded.org/book/" rel="noopener">The Embedded Rust Book</a>: no_std, PAC/HAL, 인터럽트, 메모리 맵 I/O.</li>
+    <li><a href="https://rust-lang.github.io/api-guidelines/" rel="noopener">Rust API Guidelines</a>: 라이브러리 API 설계 체크리스트.</li>
+    <li><a href="https://rust-lang.github.io/rust-clippy/master/" rel="noopener">Clippy lints</a>: 모든 린트와 이유.</li>
+    <li><a href="https://google.github.io/comprehensive-rust/" rel="noopener">Comprehensive Rust</a>: Google Android 팀의 4일 과정 교재. Android·베어메탈·동시성 특화 과정 포함.</li>
+    <li><a href="https://marabos.nl/atomics/" rel="noopener">Rust Atomics and Locks</a> (Mara Bos): 원자 연산·메모리 순서·락 구현. 온라인 무료 공개.</li>
+  </ul>
+  <h3>책</h3>
+  <ul>
+    <li>Jon Gjengset, <i>Rust for Rustaceans</i> (No Starch Press, 2021): 중급에서 고급으로 가는 설계 감각. 이 책 Part III–IV의 다음 단계.</li>
+    <li>Jim Blandy, Jason Orendorff, Leonora Tindall, <i>Programming Rust</i> (2nd ed., O'Reilly, 2021): 시스템 프로그래머 관점의 두꺼운 레퍼런스.</li>
+    <li>Tim McNamara, <i>Rust in Action</i> (Manning, 2021): 시스템 프로그래밍 프로젝트 중심.</li>
+  </ul>
+  <h3>생태계와 도구</h3>
+  <ul>
+    <li><a href="https://releases.rs" rel="noopener">releases.rs</a> / <a href="https://blog.rust-lang.org/releases/" rel="noopener">Rust 릴리스 공지</a>: 6주마다 나오는 안정판의 변경 사항.</li>
+    <li><a href="https://tokio.rs/tokio/tutorial" rel="noopener">Tokio 튜토리얼</a>, <a href="https://embassy.dev" rel="noopener">Embassy</a>: 서버용과 임베디드용 async 런타임.</li>
+    <li><a href="https://github.com/ros2-rust/ros2_rust" rel="noopener">ros2_rust (rclrs)</a>: ROS 2의 Rust 클라이언트 라이브러리.</li>
+    <li><a href="https://ferrocene.dev" rel="noopener">Ferrocene</a>: ISO 26262·IEC 61508 인증을 받은 Rust 툴체인. 안전 필수 시스템용.</li>
+    <li><a href="https://rust-for-linux.com" rel="noopener">Rust for Linux</a>: 리눅스 커널의 Rust 지원 현황과 드라이버.</li>
+    <li><a href="https://github.com/rust-lang/miri" rel="noopener">Miri</a>, <a href="https://github.com/rust-fuzz/cargo-fuzz" rel="noopener">cargo-fuzz</a>, <a href="https://github.com/tokio-rs/loom" rel="noopener">loom</a>, <a href="https://github.com/proptest-rs/proptest" rel="noopener">proptest</a>: 14·16장의 검증 도구.</li>
+  </ul>
+  <h3>이 책의 실행 엔진</h3>
+  <ul>
+    <li><a href="https://play.rust-lang.org" rel="noopener">Rust Playground</a>: Rust 프로젝트가 운영하는 공식 온라인 실행 환경. 이 책의 기본 엔진이며 Miri도 제공한다.</li>
+    <li><a href="https://godbolt.org" rel="noopener">Compiler Explorer</a>: 코드가 어떤 어셈블리로 바뀌는지 볼 수 있다. 9·16장의 "반복자는 비용이 0인가?"를 직접 확인할 때 좋다.</li>
+    <li><a href="https://wandbox.org" rel="noopener">Wandbox</a>: 여러 언어·버전의 컴파일러를 제공하는 온라인 실행 서비스.</li>
+  </ul>
+</section>
+
+<section class="chapter col" id="playground">
+  <div class="eyebrow">부록 C</div>
+  <h2>코드 놀이터</h2>
+  <p>자유롭게 코드를 써 보는 곳입니다. 편집 내용은 이 브라우저에 자동 저장되고, <code>Ctrl/⌘ + Enter</code>로 실행됩니다. 에디션과 debug/release는 왼쪽 목차 아래 실행 엔진 상자에서 바꿉니다.</p>
+<run file="playground.rs">
+use std::collections::BTreeMap;
+
+fn main() {
+    let todo = ["read chapter 4 again", "run the Miri examples", "extend minibus with a Battery topic"];
+    let plan: BTreeMap<usize, &str> = todo.iter().enumerate().map(|(i, t)| (i + 1, *t)).collect();
+    for (n, task) in &plan {
+        println!("{n}. {task}");
+    }
+}
+</run>
+</section>

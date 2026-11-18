@@ -1,0 +1,165 @@
+<!-- ============ CH9 ============ -->
+<section class="chapter col" id="ch9">
+  <div class="eyebrow">Part II · 타입으로 설계하기 — 9장</div>
+  <h2>클로저와 반복자</h2>
+  <p class="goal">이 장을 마치면: 클로저가 환경을 어떻게 캡처하는지(빌림·가변 빌림·이동)와 그에 따른 <code>Fn</code>/<code>FnMut</code>/<code>FnOnce</code>를 구분할 수 있고, 반복자 어댑터 체인이 <b>게으르게</b>(lazy) 원소 하나씩 당겨 처리된다는 것을 설명할 수 있으며, 직접 <code>Iterator</code>를 구현해 표준 어댑터를 공짜로 얻을 수 있습니다.</p>
+  <p>8장에서 트레잇을 배웠습니다. 클로저와 반복자는 트레잇이 실제로 얼마나 강력한지 보여 주는 예입니다. 둘 다 <strong>제네릭 + 단형화</strong>로 컴파일되므로, 고수준으로 써도 손으로 짠 루프와 같은 기계어가 나옵니다.</p>
+
+  <h3>클로저는 환경을 캡처하는 익명 구조체다</h3>
+  <p><code>|x| x + offset</code> 같은 클로저는 컴파일러가 만드는 이름 없는 구조체입니다. 본문에서 쓰는 바깥 변수(<code>offset</code>)를 필드로 담고, 호출 연산을 구현합니다. 어떻게 담는지는 <strong>본문이 그 변수를 어떻게 쓰는지</strong>로 자동 결정됩니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>본문이 하는 일</th><th>캡처 방식</th><th>구현하는 트레잇</th><th>몇 번 호출?</th></tr></thead>
+    <tbody>
+      <tr><td>읽기만</td><td><code>&amp;T</code></td><td><code>Fn</code></td><td>몇 번이든, 동시에도</td></tr>
+      <tr><td>바꾼다</td><td><code>&amp;mut T</code></td><td><code>FnMut</code></td><td>몇 번이든, 한 번에 하나씩</td></tr>
+      <tr><td>소유권을 가져가 소비</td><td>값(이동)</td><td><code>FnOnce</code></td><td>한 번만</td></tr>
+    </tbody>
+  </table></div>
+  <p>세 트레잇은 포함 관계입니다. <code>Fn</code>이면 <code>FnMut</code>이고, <code>FnMut</code>이면 <code>FnOnce</code>입니다. 함수를 받는 쪽은 <strong>가장 약한 요구</strong>를 쓰는 것이 좋습니다. 한 번만 부를 거면 <code>FnOnce</code>를 받으세요. 그래야 호출자가 가장 많은 종류의 클로저를 넘길 수 있습니다. <code>move</code> 키워드는 본문이 빌리기만 해도 <strong>강제로 값을 이동</strong>해 담게 합니다. 클로저를 다른 스레드로 보내거나 함수 밖으로 반환할 때 필요합니다(12장).</p>
+<run file="closures.rs">
+fn apply_n<F: FnMut()>(n: usize, mut f: F) { for _ in 0..n { f(); } }
+fn run_once<F: FnOnce() -> String>(f: F) -> String { f() }
+
+// Returning closures: `impl Fn` (static) or Box<dyn Fn> (dynamic).
+fn make_scaler(k: f64) -> impl Fn(f64) -> f64 { move |x| x * k }
+fn make_filter(kind: &str) -> Box<dyn Fn(f64) -> bool> {
+    match kind {
+        "positive" => Box::new(|x| x > 0.0),
+        _ => Box::new(|x| x.is_finite()),
+    }
+}
+
+fn main() {
+    let offset = 0.5;
+    let add = |x: f64| x + offset;                 // Fn: borrows `offset`
+    println!("add(1) = {}", add(1.0));
+
+    let mut count = 0;
+    apply_n(3, || count += 1);                     // FnMut: mutably borrows `count`
+    println!("count = {count}");
+
+    let log = String::from("calibration done");
+    let consume = move || log + "!";               // FnOnce: moves `log` and consumes it
+    println!("{}", run_once(consume));
+    // println!("{log}");                          // error: `log` was moved into the closure
+
+    let to_cm = make_scaler(100.0);
+    let keep = make_filter("positive");
+    let data = [0.12, -0.4, 0.33];
+    let cm: Vec<f64> = data.iter().copied().filter(|x| keep(*x)).map(&to_cm).collect();
+    println!("cm = {cm:?}");
+}
+</run>
+
+  <h3>반복자는 게으르다: 원소 하나씩 끝까지 당긴다</h3>
+  <p><code>Iterator</code> 트레잇의 필수 메서드는 하나뿐입니다. <code>fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt;</code>. <code>map</code>, <code>filter</code>, <code>take</code> 같은 어댑터는 다른 반복자를 감싸는 작은 구조체일 뿐, 만들 때는 <strong>아무 일도 하지 않습니다</strong>. <code>collect</code>, <code>sum</code>, <code>for</code> 같은 소비자가 <code>next()</code>를 부를 때, 체인의 맨 끝에서 맨 앞까지 원소 <b>하나</b>를 당겨 와 끝까지 통과시킵니다. 중간 배열이 생기지 않고, <code>take(2)</code>가 만족되면 앞쪽 원소는 아예 계산하지 않습니다.</p>
+  <div class="bench" id="b-iter">
+    <header><b>실습 벤치 9-A · 반복자 체인 속으로</b><span>STEPPER · PULL-BASED</span></header>
+    <div class="body">
+      <div class="srcview" id="itSrc"></div>
+      <div class="pipe" id="itPipe"></div>
+      <div class="conout" id="itOut" aria-live="polite"></div>
+      <p class="explain" id="itEx"></p>
+      <div class="row"><button type="button" class="btn" id="itPrev">◀ 이전</button><button type="button" class="btn pri" id="itNext">다음 ▶</button><button type="button" class="btn" id="itReset">처음으로</button><span class="tokc" id="itStep"></span></div>
+    </div>
+  </div>
+<run file="lazy.rs">
+fn main() {
+    let result: Vec<u32> = (1..=6)
+        .inspect(|x| println!("  source yields {x}"))
+        .map(|x| { println!("    map {x} -> {}", x * x); x * x })
+        .filter(|x| { let keep = x % 2 == 0; println!("      filter {x}: {keep}"); keep })
+        .take(2)
+        .collect();
+    println!("result = {result:?}   (5 and 6 were never produced)");
+
+    let lazy = (1..).map(|x| x * 10);          // an infinite iterator: fine, nothing runs yet
+    let first: Vec<_> = lazy.take(3).collect();
+    println!("first of infinite = {first:?}");
+}
+</run>
+
+  <h3>자주 쓰는 어댑터와 소유권 세 갈래</h3>
+  <p>컬렉션에서 반복자를 얻는 방법은 세 가지이고, 소유권 규칙과 정확히 대응합니다. <code>iter()</code>는 <code>&amp;T</code>를, <code>iter_mut()</code>는 <code>&amp;mut T</code>를, <code>into_iter()</code>는 컬렉션을 소비하며 <code>T</code>를 내놓습니다. <code>for x in &amp;v</code>는 <code>v.iter()</code>, <code>for x in v</code>는 <code>v.into_iter()</code>입니다.</p>
+<run file="adapters.rs">
+#[derive(Debug)]
+struct Reading { sensor: &'static str, value: f64, ok: bool }
+
+fn main() {
+    let rs = vec![
+        Reading { sensor: "imu", value: 0.98, ok: true },
+        Reading { sensor: "lidar", value: 12.4, ok: false },
+        Reading { sensor: "imu", value: 1.02, ok: true },
+        Reading { sensor: "cam", value: 30.0, ok: true },
+    ];
+
+    let healthy = rs.iter().filter(|r| r.ok).count();
+    let imu_mean = {
+        let (sum, n) = rs.iter().filter(|r| r.sensor == "imu")
+            .fold((0.0, 0), |(s, n), r| (s + r.value, n + 1));
+        sum / n as f64
+    };
+    let names: Vec<_> = rs.iter().map(|r| r.sensor).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
+    let first_bad = rs.iter().position(|r| !r.ok);
+    let all_positive = rs.iter().all(|r| r.value > 0.0);
+    println!("healthy={healthy} imu_mean={imu_mean:.2} names={names:?} first_bad={first_bad:?} all>0={all_positive}");
+
+    // zip + windows: deltas between consecutive samples
+    let t = [0.0, 0.1, 0.25, 0.4];
+    let x = [0.0, 0.05, 0.2, 0.3];
+    let v: Vec<f64> = t.windows(2).zip(x.windows(2))
+        .map(|(tw, xw)| (xw[1] - xw[0]) / (tw[1] - tw[0])).collect();
+    println!("velocities = {v:.2?}");
+
+    // chunks + flat_map: split a byte stream into 3-byte frames and flatten fields
+    let bytes = [1u8, 2, 3, 4, 5, 6, 7];
+    let sums: Vec<u32> = bytes.chunks(3).map(|c| c.iter().map(|&b| b as u32).sum()).collect();
+    println!("chunk sums = {sums:?}");
+
+    // into_iter consumes: partition into owned vectors
+    let (good, bad): (Vec<Reading>, Vec<Reading>) = rs.into_iter().partition(|r| r.ok);
+    println!("good={} bad={:?}", good.len(), bad);
+}
+</run>
+
+  <h3>직접 만든 반복자도 일급 시민</h3>
+  <p><code>next()</code> 하나만 구현하면 <code>map</code>, <code>filter</code>, <code>zip</code>, <code>sum</code> 등 70개가 넘는 메서드를 공짜로 얻습니다. 하드웨어 레지스터를 순회하거나, 링 버퍼를 읽거나, 프로토콜 프레임을 하나씩 잘라내는 코드를 반복자로 만들면 나머지 표준 도구와 자연스럽게 맞물립니다.</p>
+<run file="custom_iter.rs">
+/// Yields fixed-point samples from a simple linear-feedback shift register (a fake noise source).
+struct Lfsr { state: u16 }
+
+impl Iterator for Lfsr {
+    type Item = u16;
+    fn next(&mut self) -> Option<u16> {
+        let bit = (self.state ^ (self.state >> 2) ^ (self.state >> 3) ^ (self.state >> 5)) & 1;
+        self.state = (self.state >> 1) | (bit << 15);
+        Some(self.state)                       // infinite: never returns None
+    }
+}
+
+fn main() {
+    let noise = Lfsr { state: 0xACE1 };
+    let samples: Vec<u16> = noise.take(5).collect();
+    println!("{samples:04X?}");
+
+    let mean = Lfsr { state: 0xACE1 }.take(1000).map(|x| x as f64).sum::<f64>() / 1000.0;
+    println!("mean of 1000 samples = {mean:.0} (ideal ~32768)");
+
+    let above = Lfsr { state: 1 }.take(64).filter(|&x| x > 0x8000).count();
+    println!("{above} of 64 samples above midscale");
+}
+</run>
+  <div class="call sys"><span class="lab">성능 엔지니어의 눈으로</span>
+    <p>반복자 체인은 컴파일 후 손으로 쓴 <code>for</code> 루프와 사실상 같은 기계어가 됩니다. 단형화로 모든 클로저가 인라인되고, <code>iter()</code>는 범위를 이미 알고 있어 인덱스 범위 검사도 생략됩니다. 오히려 <code>for i in 0..v.len() { v[i] }</code>가 매 접근마다 범위 검사를 해야 해서 느릴 수 있습니다. 확신이 서지 않으면 Compiler Explorer에서 두 버전의 어셈블리를 비교해 보세요.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>어댑터만 만들고 소비하지 않으면 아무 일도 일어나지 않습니다. 컴파일러가 <code>unused_must_use</code>로 "iterators are lazy"라고 경고합니다.</li>
+      <li><code>collect()</code>는 결과 타입을 알아야 합니다. <code>let v: Vec&lt;_&gt; = ...</code>나 터보피시 <code>collect::&lt;Vec&lt;_&gt;&gt;()</code>로 알려 주세요. <code>Result&lt;Vec&lt;T&gt;, E&gt;</code>로 collect하면 첫 오류에서 멈추는 것까지 됩니다.</li>
+    </ul>
+  </div>
+  <p>Part II가 끝났습니다. 이제 지금까지 슬쩍 넘어간 것, 함수 시그니처에 붙는 <code>'a</code>를 정면으로 다룰 차례입니다. 다음 장은 라이프타임입니다.</p>
+
+  <div class="quiz" data-quiz="ch9"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch9" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

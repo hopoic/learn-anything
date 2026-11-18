@@ -1,0 +1,132 @@
+<!-- ============ CH4 ============ -->
+<section class="chapter col" id="ch4">
+  <div class="eyebrow">Part I · 기초 — 4장</div>
+  <h2>빌림과 슬라이스</h2>
+  <p class="goal">이 장을 마치면: 공유 참조(<code>&amp;T</code>)와 가변 참조(<code>&amp;mut T</code>)의 규칙을 "공유 XOR 변경"으로 설명할 수 있고, 빌림 검사기 오류(E0499, E0502, E0505, E0106)를 보고 원인을 짚어 고칠 수 있으며, <code>&amp;str</code>과 <code>&amp;[T]</code> 슬라이스를 매개변수로 쓰는 API를 설계할 수 있습니다.</p>
+  <p>3장에서 값을 넘기면 소유권이 넘어간다고 했습니다. 빌림은 소유권은 그대로 두고 <strong>잠시 접근 권한만</strong> 빌려주는 것입니다.</p>
+
+  <h3>규칙은 하나: 공유하거나, 변경하거나</h3>
+  <p>참조에는 두 종류가 있습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>참조</th><th>할 수 있는 것</th><th>동시에 몇 개</th></tr></thead>
+    <tbody>
+      <tr><td><code>&amp;T</code> 공유 참조</td><td>읽기</td><td>여러 개 가능</td></tr>
+      <tr><td><code>&amp;mut T</code> 가변(배타) 참조</td><td>읽기 + 쓰기</td><td><b>단 하나</b>, 그동안 다른 참조 없음</td></tr>
+    </tbody>
+  </table></div>
+  <p>즉 어떤 값에 대해 <strong>"여러 명이 읽기" 또는 "한 명이 쓰기" 중 하나만</strong> 허용됩니다(aliasing XOR mutability). 그리고 <strong>참조는 원래 값보다 오래 살 수 없습니다.</strong> 이 두 문장이 빌림 검사기(borrow checker)가 확인하는 전부입니다. 단순하지만, 이것만으로 반복자 무효화, 해제 후 사용, 데이터 경쟁이 한꺼번에 사라집니다.</p>
+<run file="borrow_basics.rs">
+fn total(ranges: &Vec<f32>) -> f32 {          // borrow: read-only access
+    ranges.iter().sum()
+}
+
+fn clip(ranges: &mut Vec<f32>, max: f32) {     // mutable borrow: exclusive access
+    for r in ranges.iter_mut() {
+        if *r > max { *r = max; }               // *r: write through the reference
+    }
+}
+
+fn main() {
+    let mut scan = vec![1.2, 30.0, 0.8, 12.5];
+    let a = &scan;                              // any number of shared borrows...
+    let b = &scan;
+    println!("sum = {}, len = {}", total(a), b.len());
+    // a and b are not used after this line, so their borrows end here (NLL)
+
+    clip(&mut scan, 10.0);                      // ...or one mutable borrow
+    println!("clipped = {scan:?}");             // the owner is still `scan`
+}
+</run>
+  <p>주석의 <strong>NLL(non-lexical lifetimes)</strong>이 중요합니다. 빌림은 변수의 스코프 끝까지가 아니라 <strong>마지막으로 사용된 지점까지만</strong> 유효합니다. 그래서 위 코드에서 <code>a</code>, <code>b</code>가 아직 스코프 안에 있는데도 <code>&amp;mut scan</code>이 허용됩니다.</p>
+
+  <h3>빌림 검사기가 막아 주는 진짜 버그</h3>
+  <p>대표적인 오류를 직접 보겠습니다. 벡터의 원소를 참조로 들고 있는 동안 <code>push</code>를 하면 컴파일되지 않습니다. 처음에는 과잉 규제처럼 보이지만, <code>push</code>가 용량을 넘겨 버퍼를 재할당하면 그 참조는 <strong>해제된 메모리</strong>를 가리키게 됩니다. C++에서 <code>std::vector</code> 반복자 무효화로 알려진 바로 그 버그입니다.</p>
+<run file="invalidate.rs" expect="error">
+fn main() {
+    let mut waypoints = vec![(0.0, 0.0), (1.0, 2.0)];
+    let first = &waypoints[0];          // shared borrow of an element...
+    waypoints.push((3.0, 4.0));         // error[E0502]: mutable borrow while shared borrow is alive
+    println!("first = {first:?}");      // ...which is still used here
+}
+</run>
+<cpp file="same_bug.cpp">
+// The same program in C++ compiles, then reads freed memory if push_back reallocates.
+std::vector<std::pair<double, double>> waypoints{{0, 0}, {1, 2}};
+const auto& first = waypoints[0];
+waypoints.push_back({3, 4});            // may reallocate: `first` now dangles
+std::printf("%f\n", first.first);       // undefined behavior
+</cpp>
+  <p>고치는 방법은 대개 셋 중 하나입니다. (1) 참조를 쓰는 일을 변경 전에 끝낸다, (2) 참조 대신 값을 복사해 둔다(<code>let first = waypoints[0];</code> — 튜플이 <code>Copy</code>라서 가능), (3) 인덱스를 들고 있다가 필요할 때 다시 접근한다. 오류 예제를 <b>편집</b>해서 세 가지를 모두 시도해 보세요.</p>
+  <p>참조가 원래 값보다 오래 살려는 경우도 막습니다. 함수가 지역 변수의 참조를 반환하려 하면 컴파일러는 "빌려 온 값이 어디서 왔는지 알 수 없다"(E0106)고 거부합니다. 해법은 소유한 값을 반환하는 것입니다.</p>
+<run file="dangle.rs" expect="error">
+fn make_label() -> &str {               // error[E0106]: missing lifetime specifier
+    let s = String::from("front-lidar");
+    &s                                  // s is dropped at the end of this function
+}
+
+fn main() {
+    println!("{}", make_label());
+}
+</run>
+
+  <h3>판정 훈련: 컴파일될까?</h3>
+  <p>규칙을 머리로 아는 것과 코드를 보고 즉시 판정하는 것은 다릅니다. 아래 벤치로 빌림 검사기처럼 생각하는 연습을 해 보세요.</p>
+  <div class="bench" id="b-borrow">
+    <header><b>실습 벤치 4-A · 빌림 검사기처럼 생각하기</b><span>CLASSIFY · 9 SNIPPETS</span></header>
+    <div class="body">
+      <div id="borrowList"></div>
+      <div class="row"><button type="button" class="btn" id="borrowListReset">다시 풀기</button></div>
+      <div class="status" id="borrowScore"></div>
+    </div>
+  </div>
+
+  <h3>슬라이스: 포인터 + 길이를 한 타입으로</h3>
+  <p><strong>슬라이스</strong>는 연속된 메모리의 일부를 빌리는 참조입니다. <code>&amp;[T]</code>는 배열·벡터의 일부, <code>&amp;str</code>은 UTF-8 문자열의 일부입니다. 내부적으로는 <strong>(포인터, 길이) 두 워드</strong>로 된 "팻 포인터"(fat pointer)라서, C에서 늘 따로 넘기던 <code>buf</code>와 <code>len</code>이 한 값이 되고, 범위를 벗어난 접근은 검사됩니다.</p>
+<run file="slices.rs">
+// Take &[u8] / &str, not &Vec<u8> / &String: callers can pass arrays, vectors, or sub-ranges.
+fn checksum(frame: &[u8]) -> u8 {
+    frame.iter().fold(0u8, |acc, b| acc ^ b)
+}
+
+fn first_word(s: &str) -> &str {
+    match s.find(' ') {
+        Some(i) => &s[..i],
+        None => s,
+    }
+}
+
+fn main() {
+    let packet: Vec<u8> = vec![0xA5, 0x01, 0x04, 0x10, 0x20, 0x30, 0x40];
+    let header = &packet[..3];                    // &[u8], len 3
+    let payload = &packet[3..];                   // &[u8], len 4
+    println!("header {header:02X?} payload {payload:02X?} xor {:#04X}", checksum(payload));
+
+    let fixed: [u8; 4] = [1, 2, 3, 4];
+    println!("array xor = {}", checksum(&fixed)); // &[u8; 4] coerces to &[u8]
+
+    let cmd = String::from("MOVE 1.5 0.0");
+    let verb = first_word(&cmd);                  // &String coerces to &str
+    println!("verb = {verb}, literal = {}", first_word("STOP now"));
+
+    println!("size of &[u8] = {} bytes, size of &u8 = {} bytes",
+             std::mem::size_of::<&[u8]>(), std::mem::size_of::<&u8>());
+
+    let (left, right) = packet.split_at(2);       // two non-overlapping borrows
+    println!("{left:?} | {right:?}");
+}
+</run>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p><code>&amp;T</code>는 "널이 될 수 없고, 정렬되어 있고, 가리키는 값이 살아 있다는 것이 증명된" 포인터입니다. <code>&amp;mut T</code>는 거기에 더해 <code>restrict</code>가 <b>컴파일러에 의해 검증된</b> 포인터입니다. 그래서 Rust 컴파일러는 C에서 <code>restrict</code>를 붙여야 얻는 최적화를 기본으로 얻습니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>매개변수를 <code>&amp;String</code>이나 <code>&amp;Vec&lt;T&gt;</code>로 받지 마세요. <code>&amp;str</code>, <code>&amp;[T]</code>가 더 일반적이고 비용은 같습니다. clippy도 이를 경고합니다(<code>ptr_arg</code>).</li>
+      <li>문자열 슬라이스 인덱스는 <b>바이트 위치</b>입니다. 한글처럼 여러 바이트로 된 문자의 중간을 자르면 panic합니다(7장).</li>
+      <li>"빌림 검사기와 싸운다"고 느껴지면 대개 데이터 구조가 소유 관계를 흐리고 있다는 신호입니다. 누가 무엇을 소유하는지부터 다시 그려 보세요.</li>
+    </ul>
+  </div>
+  <p>Part I이 끝났습니다. 소유권과 빌림이라는 규칙을 손에 쥐었으니, 다음 장부터는 그 규칙 위에서 데이터를 표현하는 도구, 구조체와 열거형으로 넘어갑니다.</p>
+
+  <div class="quiz" data-quiz="ch4"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch4" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

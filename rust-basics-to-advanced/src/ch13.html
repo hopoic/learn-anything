@@ -1,0 +1,216 @@
+<!-- ============ CH13 ============ -->
+<section class="chapter col" id="ch13">
+  <div class="eyebrow">Part III · 고급 메커니즘 — 13장</div>
+  <h2>async/await의 내부</h2>
+  <p class="goal">이 장을 마치면: <code>Future</code> 트레잇의 <code>poll</code>과 <code>Waker</code>가 협력하는 방식을 설명할 수 있고, <code>async fn</code>이 상태 기계로 컴파일된다는 것과 그래서 "만들기만 하면 아무 일도 안 한다"는 것을 이해하며, 표준 라이브러리만으로 작은 executor를 만들어 여러 작업을 한 스레드에서 번갈아 돌릴 수 있습니다.</p>
+  <p>12장의 스레드는 OS가 선점형으로 스케줄합니다. 스레드마다 스택(Rust 기본 2 MiB)이 필요하고 문맥 전환 비용이 있어서, 연결 수만 개를 스레드 하나씩으로 다루기는 어렵습니다. async는 반대 방향입니다. 작업이 <strong>스스로 "지금은 더 할 게 없다"고 양보</strong>하는 협력형 다중 작업이고, 각 작업은 스택 대신 <strong>필요한 상태만 담은 작은 구조체</strong>입니다.</p>
+
+  <h3>Future는 "아직 안 끝난 계산"이고, poll로 한 걸음씩 민다</h3>
+<rs file="core::future::Future">
+pub trait Future {
+    type Output;
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
+}
+pub enum Poll<T> { Ready(T), Pending }
+</rs>
+  <p>계약은 단순합니다. executor가 <code>poll</code>을 부르면 future는 할 수 있는 만큼 진행하고, 끝났으면 <code>Ready(값)</code>, 무언가(소켓 데이터, 타이머, 다른 작업)를 기다려야 하면 <code>Pending</code>을 돌려줍니다. 이때 <strong><code>cx</code>에 든 <code>Waker</code>를 그 "무언가"에 맡겨 둡니다</strong>. 기다리던 일이 생기면 누군가 <code>waker.wake()</code>를 부르고, executor는 그 작업을 다시 poll합니다. 바쁜 대기(busy polling)가 없습니다.</p>
+  <p>직접 future를 하나 구현하고, 그것을 돌리는 가장 작은 executor <code>block_on</code>을 만들어 보겠습니다. 표준 라이브러리만 씁니다.</p>
+<run file="manual_future.rs">
+use std::future::Future;
+use std::pin::{pin, Pin};
+use std::sync::Arc;
+use std::task::{Context, Poll, Wake, Waker};
+use std::thread::{self, Thread};
+
+/// A hand-written future: needs `left` more polls before it completes.
+struct Countdown { left: u32 }
+
+impl Future for Countdown {
+    type Output = &'static str;
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if self.left == 0 {
+            return Poll::Ready("liftoff");
+        }
+        println!("  poll: {} left -> Pending", self.left);
+        self.left -= 1;
+        cx.waker().wake_by_ref();     // "poll me again soon" (a real future would hand the waker to an I/O driver)
+        Poll::Pending
+    }
+}
+
+/// The smallest useful executor: poll, and park the thread until someone calls wake().
+struct ThreadWaker(Thread);
+impl Wake for ThreadWaker {
+    fn wake(self: Arc<Self>) { self.0.unpark(); }
+}
+
+fn block_on<F: Future>(fut: F) -> F::Output {
+    let mut fut = pin!(fut);
+    let waker = Waker::from(Arc::new(ThreadWaker(thread::current())));
+    let mut cx = Context::from_waker(&waker);
+    loop {
+        match fut.as_mut().poll(&mut cx) {
+            Poll::Ready(v) => return v,
+            Poll::Pending => thread::park(),   // sleep until wake() unparks us
+        }
+    }
+}
+
+async fn launch() -> String {
+    let word = Countdown { left: 3 }.await;   // .await = "poll this until Ready, yielding Pending upward"
+    format!("{word}!")
+}
+
+fn main() {
+    let fut = launch();                       // creating a future runs NOTHING yet
+    println!("future created, size = {} bytes", std::mem::size_of_val(&fut));
+    println!("result = {}", block_on(fut));
+}
+</run>
+  <p>출력에서 두 가지를 확인하세요. <code>launch()</code>를 호출한 직후에는 아무것도 출력되지 않습니다. <code>async fn</code>은 호출하면 future 값만 만들고, <strong>poll되기 전에는 한 줄도 실행하지 않습니다</strong>(게으름, 9장의 반복자와 같은 성질). 그리고 future의 크기가 몇 바이트에 불과합니다. 스택이 아니라 <code>.await</code> 지점을 넘어 살아남아야 하는 지역 변수만 담은 구조체이기 때문입니다.</p>
+
+  <h3>async fn은 상태 기계로 컴파일된다</h3>
+  <p>컴파일러는 <code>async fn</code>을 열거형 상태 기계로 바꿉니다. 각 <code>.await</code>가 상태 하나이고, 그 지점에서 살아 있는 지역 변수가 그 상태의 필드입니다. <code>poll</code>은 현재 상태에서 다음 <code>.await</code>까지 실행하고, 하위 future가 <code>Pending</code>이면 그대로 <code>Pending</code>을 위로 전달합니다.</p>
+<rs file="what_the_compiler_generates.rs">
+// async fn launch() -> String { let word = Countdown { left: 3 }.await; format!("{word}!") }
+// becomes, conceptually:
+enum LaunchFuture {
+    Start,
+    WaitingCountdown { inner: Countdown },    // locals alive across the .await live here
+    Done,
+}
+impl Future for LaunchFuture {
+    type Output = String;
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<String> {
+        loop {
+            match *self {
+                Start => *self = WaitingCountdown { inner: Countdown { left: 3 } },
+                WaitingCountdown { ref mut inner } => match Pin::new(inner).poll(cx) {
+                    Poll::Pending => return Poll::Pending,
+                    Poll::Ready(word) => { *self = Done; return Poll::Ready(format!("{word}!")); }
+                },
+                Done => panic!("polled after completion"),
+            }
+        }
+    }
+}
+</rs>
+  <p>여기서 <code>Pin</code>이 등장하는 이유가 나옵니다. 상태 기계의 한 필드가 같은 구조체의 다른 필드를 참조할 수 있습니다(<code>let buf = [0; 64]; read(&amp;mut buf).await</code>처럼). 이런 <strong>자기 참조 구조체</strong>는 메모리에서 옮겨지면 내부 포인터가 깨집니다. <code>Pin&lt;&amp;mut Self&gt;</code>는 "한 번 poll된 future는 더 이상 이동되지 않는다"는 약속을 타입으로 표현한 것입니다. 일상적인 async 코드에서는 <code>pin!</code>이나 <code>Box::pin</code>을 쓸 때 말고는 거의 신경 쓸 일이 없습니다.</p>
+
+  <h3>executor 안을 들여다보기</h3>
+  <p>실제 런타임(tokio, embassy 등)의 핵심은 "깨어난 작업의 큐"입니다. 작업을 poll하고, <code>Pending</code>이면 내려놓고, wake되면 다시 큐에 넣습니다. 아래 벤치로 두 작업이 한 스레드에서 번갈아 실행되는 과정을 따라가 보세요.</p>
+  <div class="bench" id="b-exec">
+    <header><b>실습 벤치 13-A · executor의 한 사이클</b><span>STEPPER · 9 STEPS</span></header>
+    <div class="body">
+      <div class="split">
+        <div class="srcview" id="exSrc"></div>
+        <div>
+          <div class="panelbox"><h5>실행 큐 (왼쪽부터 poll)</h5><div class="queue" id="exQueue"></div></div>
+          <div class="panelbox" style="margin-top:8px"><h5>작업 상태</h5><div id="exTasks"></div></div>
+        </div>
+      </div>
+      <p class="explain" id="exEx"></p>
+      <div class="row"><button type="button" class="btn" id="exPrev">◀ 이전</button><button type="button" class="btn pri" id="exNext">다음 ▶</button><button type="button" class="btn" id="exReset">처음으로</button><span class="tokc" id="exStep"></span></div>
+    </div>
+  </div>
+  <p>이제 실제로 동작하는 작은 다중 작업 executor입니다. <code>spawn</code>된 작업들이 채널(큐)로 들어오고, <code>Wake</code> 구현이 작업을 다시 큐에 넣습니다. 모든 작업이 끝나 송신자가 사라지면 루프가 끝납니다.</p>
+<run file="mini_executor.rs">
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::mpsc::{channel, Sender};
+use std::sync::{Arc, Mutex};
+use std::task::{Context, Poll, Wake, Waker};
+
+type BoxFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
+
+struct Task {
+    name: &'static str,
+    future: Mutex<Option<BoxFuture>>,
+    queue: Sender<Arc<Task>>,
+}
+
+impl Wake for Task {
+    fn wake(self: Arc<Self>) {
+        let q = self.queue.clone();
+        let _ = q.send(self);                 // re-schedule: push back onto the run queue
+    }
+}
+
+/// A future that returns Pending once, waking itself: "let others run".
+struct YieldNow(bool);
+impl Future for YieldNow {
+    type Output = ();
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        if self.0 { return Poll::Ready(()); }
+        self.0 = true;
+        cx.waker().wake_by_ref();
+        Poll::Pending
+    }
+}
+fn yield_now() -> YieldNow { YieldNow(false) }
+
+async fn sensor(name: &'static str, samples: u32) {
+    for i in 1..=samples {
+        println!("{name:>6}: sample {i}/{samples}");
+        yield_now().await;                    // cooperative: give the CPU back
+    }
+    println!("{name:>6}: done");
+}
+
+fn main() {
+    let (tx, rx) = channel::<Arc<Task>>();
+    let spawn = |name, fut: BoxFuture| {
+        tx.send(Arc::new(Task { name, future: Mutex::new(Some(fut)), queue: tx.clone() })).unwrap();
+    };
+    spawn("imu", Box::pin(sensor("imu", 3)));
+    spawn("lidar", Box::pin(sensor("lidar", 2)));
+    spawn("log", Box::pin(async { println!("   log: one-shot task"); }));
+    drop(tx);                                 // only tasks hold senders now
+
+    let mut polls = 0;
+    while let Ok(task) = rx.recv() {          // ends when all tasks (and their senders) are gone
+        let mut slot = task.future.lock().unwrap();
+        if let Some(mut fut) = slot.take() {
+            polls += 1;
+            let waker = Waker::from(task.clone());
+            let mut cx = Context::from_waker(&waker);
+            if fut.as_mut().poll(&mut cx).is_pending() {
+                *slot = Some(fut);            // not finished: keep it for the next wake
+            } else {
+                println!("        [{} completed]", task.name);
+            }
+        }
+    }
+    println!("executor idle after {polls} polls");
+}
+</run>
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>async는 서버만의 기술이 아닙니다. <b>Embassy</b>는 마이크로컨트롤러에서 힙 없이 async를 돌리는 프레임워크로, 각 작업의 상태 기계 크기가 컴파일 타임에 정해지므로 정적 메모리에 배치됩니다. 인터럽트 핸들러가 waker를 깨우고, 깨울 작업이 없으면 코어를 WFI로 재웁니다. RTOS의 태스크·세마포어로 하던 일을 스택 없이 하는 셈입니다.</p>
+  </div>
+  <h3>실무 런타임에서 지킬 것</h3>
+<rs file="tokio_sketch.rs">
+// With tokio (not runnable here): the same ideas, production-grade.
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let (a, b) = tokio::join!(read_imu(), read_lidar());              // run concurrently, wait for both
+    tokio::select! {                                                  // first one wins, the other is DROPPED
+        frame = next_frame() => handle(frame?),
+        _ = tokio::time::sleep(Duration::from_millis(100)) => warn_timeout(),
+    }
+    let h = tokio::spawn(async move { heavy_io().await });           // needs Send + 'static, like thread::spawn
+    let crc = tokio::task::spawn_blocking(move || crc32(&big)).await?; // CPU-bound work off the async threads
+    Ok(())
+}
+</rs>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><b>async 안에서 블로킹하기</b>: <code>std::thread::sleep</code>, 동기 파일 I/O, 무거운 계산은 executor 스레드를 붙잡아 다른 모든 작업을 멈춥니다. 비동기 버전이나 <code>spawn_blocking</code>을 쓰세요.</li>
+      <li><b>취소 = drop</b>: <code>select!</code>에서 진 future나 타임아웃된 future는 <code>.await</code> 지점에서 그냥 drop됩니다. "절반만 쓴 버퍼"처럼 중간 상태를 남기지 않도록, await 지점 사이의 불변식을 신경 쓰세요(cancel safety).</li>
+      <li><b>std <code>Mutex</code> 가드를 <code>.await</code> 너머로 들고 가기</b>: 가드는 <code>Send</code>가 아니라 멀티스레드 런타임에서 컴파일 오류가 나고, 단일 스레드에서는 교착의 원인이 됩니다. 가드를 await 전에 drop하거나 async용 Mutex를 쓰세요.</li>
+    </ul>
+  </div>
+  <p>Part III가 끝났습니다. 지금까지는 컴파일러가 모든 것을 증명해 주는 safe Rust였습니다. 다음 장에서는 그 증명을 우리가 대신 책임지는 <code>unsafe</code>와, C 세계와 만나는 FFI로 들어갑니다.</p>
+
+  <div class="quiz" data-quiz="ch13"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch13" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

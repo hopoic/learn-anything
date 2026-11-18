@@ -1,0 +1,135 @@
+<!-- ============ CH3 ============ -->
+<section class="chapter col" id="ch3">
+  <div class="eyebrow">Part I · 기초 — 3장</div>
+  <h2>소유권: 값에는 주인이 하나</h2>
+  <p class="goal">이 장을 마치면: 소유권 세 규칙을 말할 수 있고, 어떤 대입이 이동(move)이고 어떤 것이 복사(copy)인지 판별할 수 있으며, 값이 언제 해제(drop)되는지 코드만 보고 예측할 수 있습니다.</p>
+  <p>2장의 정수는 대입하면 복사되는 단순한 값이었습니다. 힙 메모리를 가진 값은 다릅니다. 복사가 비싸고, 무엇보다 "누가 해제할 것인가"라는 질문이 생깁니다. 소유권은 그 질문에 대한 Rust의 답입니다.</p>
+
+  <h3>세 가지 규칙이 전부다</h3>
+  <div class="call key"><span class="lab">소유권 규칙</span>
+    <ol style="margin:0;padding-left:22px">
+      <li>모든 값에는 <b>소유자</b>(owner)라고 부르는 변수가 하나 있다.</li>
+      <li>한 시점에 소유자는 <b>정확히 하나</b>다.</li>
+      <li>소유자가 스코프를 벗어나면 값은 <b>해제(drop)</b>된다.</li>
+    </ol>
+  </div>
+  <p><code>String</code>을 예로 들면, 변수 자체는 스택에 있는 24바이트(64비트 기준) 구조체입니다. 힙 버퍼를 가리키는 포인터, 현재 길이, 용량. 실제 문자 데이터는 힙에 있습니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 200" role="img" aria-label="String의 스택 헤더와 힙 버퍼, 그리고 이동 후의 상태">
+      <text class="sv-m" x="20" y="20">스택</text><text class="sv-m" x="420" y="20">힙</text>
+      <rect class="sv-r2" x="20" y="30" width="170" height="82" rx="6"/>
+      <text class="sv-t" x="30" y="50" font-weight="600">s1 : String</text>
+      <text class="sv-m" x="30" y="72">ptr ─────────▶</text><text class="sv-m" x="30" y="88">len = 5</text><text class="sv-m" x="30" y="104">cap = 8</text>
+      <rect class="sv-r0" x="20" y="125" width="170" height="60" rx="6" stroke-dasharray="4 3"/>
+      <text class="sv-t" x="30" y="147" font-weight="600">s2 = s1 이후</text>
+      <text class="sv-m" x="30" y="167">s1: 이동됨 (사용 불가)</text>
+      <rect class="sv-r3" x="420" y="45" width="200" height="40" rx="6"/>
+      <text class="sv-t" x="432" y="70" font-family="var(--f-mono)">h e l l o · · ·</text>
+      <path class="sv-ac" d="M150 68 L415 65"/>
+      <path class="sv-ln" d="M190 150 C300 150 330 90 415 75" stroke-dasharray="4 3"/>
+      <text class="sv-m" x="250" y="135">s2가 같은 버퍼를 넘겨받음</text>
+    </svg>
+    <figcaption>그림 3-1. <code>let s2 = s1;</code>은 24바이트 헤더만 복사하고 힙은 건드리지 않습니다. 그 대신 s1을 무효로 만들어 해제가 한 번만 일어나게 합니다.</figcaption>
+  </figure>
+
+  <h3>대입은 이동이다: 컴파일러가 이전 이름을 지운다</h3>
+  <p><code>let s2 = s1;</code>을 C처럼 생각하면 포인터가 두 개가 되어, 둘 다 스코프를 벗어날 때 같은 버퍼를 두 번 해제하는 문제가 생깁니다. Rust는 이 대입을 <strong>이동(move)</strong>으로 정의합니다. 바이트는 복사되지만 <strong>소유권은 s2로 넘어가고, s1은 그 시점부터 쓸 수 없는 이름</strong>이 됩니다. 이후 s1을 쓰면 컴파일 오류(E0382)입니다. 런타임 비용은 0이고, 검사는 전부 컴파일 타임에 끝납니다.</p>
+<run file="move_error.rs" expect="error">
+fn consume(s: String) -> usize {
+    s.len()
+}   // s is dropped here
+
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1;                      // move: ownership goes to s2
+    println!("{s2}");
+    println!("{s1}");                 // error[E0382]: borrow of moved value: `s1`
+
+    let name = String::from("lidar");
+    let n = consume(name);            // passing by value also moves
+    println!("{n} {name}");           // error[E0382] again
+}
+</run>
+  <p>이 예제를 실행해서 메시지를 읽어 보세요. 컴파일러는 "어디서 이동했는지"와 "<code>.clone()</code>을 고려하라"는 제안까지 보여 줍니다. 진짜 복사가 필요하면 <code>clone()</code>을 명시적으로 부릅니다. Rust에서는 비싼 복사가 항상 코드에 드러납니다.</p>
+  <p>반대로 <code>i32</code>, <code>f64</code>, <code>bool</code>, <code>char</code>, 그리고 이들만으로 된 튜플·배열처럼 힙 자원이 없고 비트 복사가 곧 완전한 복사인 타입은 <code>Copy</code> 트레잇을 구현합니다. <code>Copy</code> 타입의 대입은 이동이 아니라 복사라서 원래 변수를 계속 쓸 수 있습니다.</p>
+<run file="copy_clone.rs">
+#[derive(Debug, Clone, Copy)]
+struct Pose { x: f32, y: f32, theta: f32 }   // plain data: can be Copy
+
+#[derive(Debug, Clone)]
+struct Scan { ranges: Vec<f32> }             // owns heap memory: Clone only
+
+fn main() {
+    let p1 = Pose { x: 1.0, y: 2.0, theta: 0.5 };
+    let p2 = p1;                             // copy: p1 is still usable
+    println!("{p1:?} {p2:?} heading sum = {}", p1.theta + p2.theta + p1.x * p2.y);
+
+    let s1 = Scan { ranges: vec![1.2, 1.3, 9.9] };
+    let s2 = s1.clone();                     // explicit deep copy
+    let s3 = s1;                             // move
+    println!("{:?} {:?}", s2.ranges, s3.ranges);
+}
+</run>
+
+  <h3>한 단계씩 따라가 보기</h3>
+  <p>아래 벤치에서 변수가 값을 소유하고, 넘기고, 해제하는 과정을 한 줄씩 진행해 보세요. 오른쪽 패널의 "소유자" 열이 언제 바뀌는지, 언제 힙 블록이 사라지는지에 주목하세요.</p>
+  <div class="bench" id="b-own">
+    <header><b>실습 벤치 3-A · 소유권 따라가기</b><span>STEPPER · 9 STEPS</span></header>
+    <div class="body">
+      <div class="split">
+        <div class="srcview" id="ownSrc"></div>
+        <div>
+          <div class="panelbox"><h5>변수 → 소유한 힙 값</h5><div id="ownVars"></div></div>
+          <div class="conout" id="ownOut" aria-live="polite"></div>
+        </div>
+      </div>
+      <p class="explain" id="ownEx"></p>
+      <div class="row"><button type="button" class="btn" id="ownPrev">◀ 이전</button><button type="button" class="btn pri" id="ownNext">다음 ▶</button><button type="button" class="btn" id="ownReset">처음으로</button><span class="tokc" id="ownStep"></span></div>
+    </div>
+  </div>
+
+  <h3>Drop은 결정적이고, 역순이다</h3>
+  <p>소유자가 스코프를 벗어나는 순간 컴파일러가 넣어 둔 <code>drop</code> 호출이 실행됩니다. 시점은 GC처럼 "언젠가"가 아니라 코드에서 정확히 보이는 닫는 중괄호입니다. 같은 스코프의 변수는 <strong>선언의 역순</strong>으로 해제됩니다. 타입에 <code>Drop</code> 트레잇을 구현하면 해제 시점에 원하는 정리 코드를 넣을 수 있고, 이것이 파일·소켓·락을 자동으로 닫는 Rust식 RAII입니다.</p>
+<run file="drop_order.rs">
+struct Tracer(&'static str);
+
+impl Drop for Tracer {
+    fn drop(&mut self) {
+        println!("  drop {}", self.0);
+    }
+}
+
+fn make() -> Tracer {
+    let t = Tracer("made in make()");
+    t                                   // moved out to the caller: NOT dropped here
+}
+
+fn main() {
+    let _a = Tracer("a");
+    {
+        let _b = Tracer("b");
+        let _c = Tracer("c");
+        println!("leaving inner scope");
+    }                                   // c, then b
+    let m = make();
+    let moved = m;                      // moving does not drop anything
+    drop(moved);                        // std::mem::drop: drop early, explicitly
+    let _ = Tracer("underscore");       // `let _ =` does not bind: dropped immediately
+    println!("end of main");
+}                                       // a
+</run>
+  <div class="call sys"><span class="lab">C++ 개발자의 눈으로</span>
+    <p>C++의 <code>std::move</code>는 "옮겨도 된다"는 캐스팅일 뿐이고, 옮겨진 객체는 "유효하지만 지정되지 않은" 상태로 남아 소멸자가 여전히 호출됩니다. Rust의 이동은 <b>파괴적 이동</b>입니다. 옮겨진 쪽은 컴파일러가 이름 자체를 무효화하고 소멸자도 부르지 않습니다. 그래서 이동 생성자를 직접 쓸 일이 없고, use-after-move가 컴파일 오류가 됩니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><b>컴파일 오류를 <code>.clone()</code>으로 덮기</b>: 처음엔 괜찮지만, 큰 버퍼를 루프에서 복제하면 성능이 무너집니다. 대부분은 다음 장의 <b>빌림</b>(<code>&amp;</code>)이 정답입니다.</li>
+      <li><code>let _guard = lock();</code>과 <code>let _ = lock();</code>은 다릅니다. 후자는 값을 바인딩하지 않아 <b>즉시 drop</b>되므로 락이 바로 풀립니다.</li>
+      <li>Drop 순서에 의존하는 코드(예: 버퍼보다 먼저 닫혀야 하는 핸들)는 필드 선언 순서도 의미가 있습니다. 구조체 필드는 <b>선언 순서대로</b> drop됩니다.</li>
+    </ul>
+  </div>
+  <p>함수에 값을 넘길 때마다 소유권이 넘어가면 불편합니다. 함수가 잠깐 들여다보기만 하면 되는 경우가 대부분이니까요. 다음 장의 빌림(borrowing)이 그 해법입니다.</p>
+
+  <div class="quiz" data-quiz="ch3"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch3" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

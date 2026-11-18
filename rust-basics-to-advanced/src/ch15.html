@@ -1,0 +1,209 @@
+<!-- ============ CH15 ============ -->
+<section class="chapter col" id="ch15">
+  <div class="eyebrow">Part IV · 고급 엔지니어의 Rust — 15장</div>
+  <h2>타입 수준 설계와 매크로</h2>
+  <p class="goal">이 장을 마치면: newtype으로 단위·ID 혼동을 컴파일 오류로 만들 수 있고, <code>PhantomData</code>와 제로 크기 타입으로 타입 상태(typestate) 패턴을 구현해 잘못된 상태 전이를 막을 수 있으며, const 제네릭으로 크기가 타입에 박힌 버퍼를 만들고, <code>macro_rules!</code>로 반복 코드를 생성할 수 있습니다.</p>
+  <p>5장에서 "잘못된 상태를 표현할 수 없게" 열거형을 설계했습니다. 이 장은 그 생각을 끝까지 밀어붙입니다. 고급 Rust 엔지니어의 코드가 다른 이유는 대개 여기 있습니다. <strong>규칙을 문서나 런타임 검사 대신 타입에 넣어, 어기면 컴파일이 안 되게</strong> 만드는 것입니다. 그리고 이 모든 것이 런타임 비용 0입니다.</p>
+
+  <h3>newtype: 같은 f64라도 미터와 피트는 다른 타입이다</h3>
+  <p>필드 하나짜리 튜플 구조체로 기존 타입을 감싸면, 메모리 표현은 같지만 <strong>타입 검사에서는 완전히 다른 타입</strong>이 됩니다. 단위 혼동(화성 기후 궤도선 사고로 유명한 바로 그 버그), 서로 다른 ID 공간(<code>RobotId</code>와 <code>TaskId</code>) 혼동, 검증된 값과 검증 안 된 값의 혼동을 막을 수 있습니다. 8장의 고아 규칙을 피해 남의 타입에 트레잇을 구현할 때도 씁니다.</p>
+<run file="newtype.rs" expect="error">
+use std::ops::Add;
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+struct Meters(f64);
+#[derive(Debug, Clone, Copy)]
+struct Feet(f64);
+
+impl Add for Meters { type Output = Meters; fn add(self, o: Meters) -> Meters { Meters(self.0 + o.0) } }
+impl From<Feet> for Meters { fn from(f: Feet) -> Meters { Meters(f.0 * 0.3048) } }
+
+/// A speed that has been validated once; the field is private outside its module.
+mod safe_speed {
+    #[derive(Debug, Clone, Copy)]
+    pub struct Speed(f64);
+    impl Speed {
+        pub fn new(v: f64) -> Option<Speed> { (0.0..=1.5).contains(&v).then_some(Speed(v)) }
+        pub fn get(self) -> f64 { self.0 }
+    }
+}
+use safe_speed::Speed;
+
+fn set_speed(s: Speed) { println!("speed set to {} m/s", s.get()); }  // can't receive an unchecked f64
+
+fn main() {
+    let a = Meters(10.0);
+    let b = Feet(3.0);
+    let total = a + Meters::from(b);              // explicit conversion: fine
+    println!("total = {total:?}");
+    if let Some(s) = Speed::new(0.8) { set_speed(s); }
+    println!("Speed::new(3.0) = {:?}", Speed::new(3.0));
+
+    let oops = a + b;                             // error[E0308]: expected `Meters`, found `Feet`
+    set_speed(2.0);                               // error[E0308]: expected `Speed`, found floating-point number
+    let forged = safe_speed::Speed(9.9);          // error[E0603]: tuple struct constructor is private
+}
+</run>
+
+  <h3>타입 상태: 상태를 타입 매개변수로 만들기</h3>
+  <p>GPIO 핀은 출력 모드일 때만 <code>set_high()</code>할 수 있고, 입력 모드일 때만 <code>is_high()</code>를 읽을 수 있습니다. 런타임 검사로 하면 잘못된 호출이 실행 중에 오류가 됩니다. <strong>타입 상태 패턴</strong>은 상태를 제네릭 매개변수로 만들어, 상태마다 다른 메서드 집합을 갖게 합니다. 상태 전이 메서드는 <code>self</code>를 소비하고 새 상태의 값을 돌려주므로, 이전 상태의 값은 더 이상 쓸 수 없습니다(3장의 이동). <code>embedded-hal</code> 생태계의 HAL들이 바로 이 방식입니다.</p>
+<run file="typestate.rs">
+use std::marker::PhantomData;
+
+// Zero-sized marker types: they exist only at compile time.
+struct Input;
+struct Output;
+struct Unconfigured;
+
+struct Pin<Mode> {
+    num: u8,
+    _mode: PhantomData<Mode>,     // "this Pin is parameterized by Mode" without storing one
+}
+
+impl Pin<Unconfigured> {
+    fn take(num: u8) -> Self { Pin { num, _mode: PhantomData } }
+    fn into_output(self) -> Pin<Output> { println!("  pin{}: MODER <- output", self.num); Pin { num: self.num, _mode: PhantomData } }
+    fn into_input(self) -> Pin<Input> { println!("  pin{}: MODER <- input", self.num); Pin { num: self.num, _mode: PhantomData } }
+}
+impl Pin<Output> {
+    fn set_high(&mut self) { println!("  pin{}: ODR bit set", self.num); }
+    fn into_input(self) -> Pin<Input> { println!("  pin{}: MODER <- input", self.num); Pin { num: self.num, _mode: PhantomData } }
+}
+impl Pin<Input> {
+    fn is_high(&self) -> bool { self.num % 2 == 0 }   // stand-in for reading IDR
+}
+
+fn main() {
+    let led = Pin::take(5);
+    let mut led = led.into_output();
+    led.set_high();
+    // led.is_high();          // error[E0599]: no method named `is_high` found for `Pin<Output>`
+    let button = Pin::take(4).into_input();
+    println!("button pressed = {}", button.is_high());
+    let led_as_input = led.into_input();
+    // led.set_high();         // error[E0382]: `led` was moved by into_input()
+    println!("pin5 now reads {}", led_as_input.is_high());
+    println!("size_of::<Pin<Output>>() = {} byte (PhantomData costs nothing)", std::mem::size_of::<Pin<Output>>());
+}
+</run>
+  <div class="bench" id="b-ts">
+    <header><b>실습 벤치 15-A · 타입 상태 기계 조작하기</b><span>SIMULATOR</span></header>
+    <div class="body">
+      <p class="explain" style="min-height:0">변수 <code>p</code>에 메서드를 차례로 호출해 보세요. 컴파일러가 어떤 호출을 허락하는지, 그때 <code>p</code>의 타입이 어떻게 바뀌는지 보여 줍니다.</p>
+      <div class="tsstate" id="tsState"></div>
+      <div class="row" id="tsBtns"></div>
+      <pre class="lycode" id="tsCode"></pre>
+      <div class="status" id="tsRes"></div>
+      <div class="row"><button type="button" class="btn" id="tsReset">처음부터</button></div>
+    </div>
+  </div>
+
+  <h3>const 제네릭: 크기가 타입에 들어간다</h3>
+  <p><code>[T; N]</code>의 <code>N</code>처럼, 직접 만든 타입도 상수를 매개변수로 받을 수 있습니다. 힙 없이 동작해야 하는 임베디드 링 버퍼, 고정 크기 행렬, 프레임 버퍼에 쓰기 좋습니다. 크기가 다른 버퍼는 다른 타입이라 섞어 쓸 수 없고, 크기 조건을 컴파일 타임에 검사할 수도 있습니다.</p>
+<run file="const_generics.rs">
+/// Fixed-capacity ring buffer: no heap, capacity is part of the type.
+struct Ring<T: Copy + Default, const N: usize> {
+    buf: [T; N],
+    head: usize,
+    len: usize,
+}
+
+impl<T: Copy + Default, const N: usize> Ring<T, N> {
+    const ASSERT_POW2: () = assert!(N.is_power_of_two(), "capacity must be a power of two");
+
+    fn new() -> Self {
+        let () = Self::ASSERT_POW2;               // evaluated at compile time per N
+        Ring { buf: [T::default(); N], head: 0, len: 0 }
+    }
+    fn push(&mut self, v: T) -> Option<T> {       // returns the overwritten oldest value
+        let idx = (self.head + self.len) & (N - 1);
+        if self.len == N {
+            let old = self.buf[self.head];
+            self.buf[self.head] = v;
+            self.head = (self.head + 1) & (N - 1);
+            Some(old)
+        } else {
+            self.buf[idx] = v;
+            self.len += 1;
+            None
+        }
+    }
+    fn iter(&self) -> impl Iterator<Item = T> + '_ {
+        (0..self.len).map(move |i| self.buf[(self.head + i) & (N - 1)])
+    }
+}
+
+fn main() {
+    let mut hist: Ring<u16, 4> = Ring::new();
+    for v in [10, 20, 30, 40, 50, 60] {
+        if let Some(dropped) = hist.push(v) { print!("(drop {dropped}) "); }
+    }
+    println!("\ncontents = {:?}", hist.iter().collect::<Vec<_>>());
+    println!("size_of::<Ring<u16, 4>>() = {} bytes, all on the stack", std::mem::size_of::<Ring<u16, 4>>());
+    // let bad: Ring<u8, 6> = Ring::new();   // compile-time error: capacity must be a power of two
+}
+</run>
+
+  <h3>선언적 매크로: 반복되는 코드를 생성한다</h3>
+  <p><code>macro_rules!</code>는 토큰 패턴을 받아 코드를 생성하는 "예시 기반" 매크로입니다. C 전처리기와 달리 <strong>문법 트리 단위로 동작</strong>하고 위생적(hygienic)이어서, 매크로 안의 지역 변수가 바깥 이름과 섞이지 않습니다. 레지스터 정의, 테스트 케이스, 반복적인 트레잇 구현에 자주 씁니다. 더 강력한 <strong>절차적 매크로</strong>(<code>#[derive(Serialize)]</code> 같은)는 별도 크레이트에서 Rust 코드로 토큰을 변환하는 함수입니다.</p>
+<run file="macros.rs">
+/// Generate a register type with named bit fields: get/set methods and a Debug dump.
+macro_rules! bitfield_reg {
+    ($name:ident : $t:ty { $($field:ident @ $bit:literal),+ $(,)? }) => {
+        #[derive(Clone, Copy, Default)]
+        struct $name($t);
+        impl $name {
+            $(
+                #[allow(dead_code)]
+                fn $field(&self) -> bool { self.0 >> $bit & 1 == 1 }
+            )+
+            fn set(&mut self, bit: u32, on: bool) {
+                if on { self.0 |= 1 << bit } else { self.0 &= !(1 << bit) }
+            }
+        }
+        impl std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                let mut d = f.debug_struct(stringify!($name));
+                $( d.field(stringify!($field), &self.$field()); )+
+                d.finish()
+            }
+        }
+    };
+}
+
+bitfield_reg!(MotorStatus: u8 { enabled @ 0, fault @ 1, overheat @ 2, homed @ 7 });
+
+/// A tiny `hashmap!{ k => v, ... }` literal.
+macro_rules! hashmap {
+    ($($k:expr => $v:expr),* $(,)?) => {{
+        let mut m = std::collections::HashMap::new();
+        $( m.insert($k, $v); )*
+        m
+    }};
+}
+
+fn main() {
+    let mut s = MotorStatus::default();
+    s.set(0, true);
+    s.set(7, true);
+    println!("{s:?} raw={:#010b}", s.0);
+    let gains = hashmap! { "kp" => 1.2, "ki" => 0.05, "kd" => 0.3 };
+    let mut keys: Vec<_> = gains.keys().copied().collect();
+    keys.sort();
+    println!("gains keys = {keys:?}, kp = {}", gains["kp"]);
+}
+</run>
+  <div class="call sys"><span class="lab">시스템 엔지니어의 눈으로</span>
+    <p>C에서 비트필드 매크로와 <code>#define REG_FAULT (1u &lt;&lt; 1)</code>로 하던 일을 Rust는 타입과 매크로로 합니다. 차이는 잘못 쓰면 컴파일 오류가 난다는 것입니다. 실제 PAC는 이보다 훨씬 정교해서, 읽기 전용 비트에 쓰거나 다른 레지스터의 필드를 섞으면 컴파일되지 않습니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>타입 수준 설계는 강력하지만 과하면 API가 읽기 어렵고 컴파일 오류가 길어집니다. "사용자가 실수할 가능성 × 실수의 비용"이 큰 곳(하드웨어 상태, 단위, 보안 경계)에 집중하세요.</li>
+      <li>매크로는 함수와 제네릭으로 안 될 때 씁니다. 디버깅이 어렵고 IDE 지원도 약해집니다. <code>cargo expand</code>로 생성된 코드를 확인할 수 있습니다.</li>
+    </ul>
+  </div>
+  <p>언어 기능은 여기까지입니다. 다음 장은 그것들을 실제 제품으로 묶는 법, 크레이트 구조·테스트·도구·성능 측정을 다룹니다.</p>
+
+  <div class="quiz" data-quiz="ch15"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch15" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

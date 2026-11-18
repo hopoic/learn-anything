@@ -1,0 +1,141 @@
+<!-- ============ CH7 ============ -->
+<section class="chapter col" id="ch7">
+  <div class="eyebrow">Part II · 타입으로 설계하기 — 7장</div>
+  <h2>컬렉션과 문자열</h2>
+  <p class="goal">이 장을 마치면: <code>Vec</code>, <code>VecDeque</code>, <code>HashMap</code>, <code>BTreeMap</code>, <code>HashSet</code> 중 상황에 맞는 것을 고를 수 있고, <code>entry</code> API로 "있으면 갱신, 없으면 삽입"을 한 번의 조회로 쓸 수 있으며, <code>String</code>/<code>&amp;str</code>이 UTF-8 바이트라는 사실에서 나오는 규칙(바이트 길이, 문자 경계)을 설명할 수 있습니다.</p>
+  <p>6장까지 데이터 하나를 다루는 법을 익혔습니다. 실제 프로그램은 데이터를 모아서 다룹니다. 표준 컬렉션은 모두 <strong>자기 원소를 소유</strong>하므로, 3–4장의 규칙이 그대로 적용됩니다.</p>
+
+  <h3>기본은 Vec, 나머지는 이유가 있을 때</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>컬렉션</th><th>언제</th><th>C/C++ 대응</th></tr></thead>
+    <tbody>
+      <tr><td><code>Vec&lt;T&gt;</code></td><td>기본값. 연속 메모리, 끝에 추가 O(1)</td><td><code>malloc</code>+<code>realloc</code> 배열, <code>std::vector</code></td></tr>
+      <tr><td><code>[T; N]</code></td><td>크기가 컴파일 타임에 고정, 힙 없음</td><td>C 배열, <code>std::array</code></td></tr>
+      <tr><td><code>VecDeque&lt;T&gt;</code></td><td>양 끝 삽입·삭제(작업 큐, 링 버퍼)</td><td>링 버퍼, <code>std::deque</code></td></tr>
+      <tr><td><code>HashMap&lt;K, V&gt;</code></td><td>키로 빠른 조회, 순서 무관</td><td><code>std::unordered_map</code></td></tr>
+      <tr><td><code>BTreeMap&lt;K, V&gt;</code></td><td>키 순서대로 순회, 범위 조회</td><td><code>std::map</code></td></tr>
+      <tr><td><code>HashSet</code> / <code>BTreeSet</code></td><td>중복 없는 집합</td><td><code>std::unordered_set</code> / <code>std::set</code></td></tr>
+      <tr><td><code>BinaryHeap&lt;T&gt;</code></td><td>우선순위 큐(최댓값 먼저)</td><td><code>std::priority_queue</code></td></tr>
+    </tbody>
+  </table></div>
+<run file="collections.rs">
+use std::collections::{BTreeMap, HashMap, VecDeque};
+
+fn main() {
+    // Vec: capacity grows geometrically; reserve up front when you know the size.
+    let mut v: Vec<u32> = Vec::new();
+    let mut last_cap = 0;
+    for i in 0..40 {
+        v.push(i);
+        if v.capacity() != last_cap {
+            print!("len {:>2} -> cap {:<3}| ", v.len(), v.capacity());
+            last_cap = v.capacity();
+        }
+    }
+    println!();
+    let pre: Vec<u8> = Vec::with_capacity(1500);       // one allocation for an MTU-sized frame
+    println!("with_capacity: len {} cap {}", pre.len(), pre.capacity());
+
+    // Indexing panics when out of range; get() returns Option.
+    println!("v.get(99) = {:?}, v[3] = {}", v.get(99), v[3]);
+
+    // VecDeque as a bounded history buffer.
+    let mut hist: VecDeque<f32> = VecDeque::with_capacity(3);
+    for r in [1.0, 2.0, 3.0, 4.0, 5.0] {
+        if hist.len() == 3 { hist.pop_front(); }
+        hist.push_back(r);
+    }
+    println!("last 3 = {hist:?}, mean = {}", hist.iter().sum::<f32>() / hist.len() as f32);
+
+    // HashMap + entry API: one lookup for "insert or update".
+    let log = "lidar imu lidar cam imu lidar odom";
+    let mut counts: HashMap<&str, u32> = HashMap::new();
+    for topic in log.split_whitespace() {
+        *counts.entry(topic).or_insert(0) += 1;
+    }
+    // BTreeMap keeps keys sorted: printing is deterministic.
+    let sorted: BTreeMap<_, _> = counts.iter().map(|(k, v)| (*k, *v)).collect();
+    println!("{sorted:?}");
+    let busiest = counts.iter().max_by_key(|&(_, n)| *n).map(|(k, _)| *k);
+    println!("busiest topic = {busiest:?}");
+
+    // Range queries are where BTreeMap shines: timestamps -> events.
+    let mut events = BTreeMap::new();
+    for (t, e) in [(100, "start"), (250, "obstacle"), (310, "replan"), (900, "arrive")] {
+        events.insert(t, e);
+    }
+    let window: Vec<_> = events.range(200..400).collect();
+    println!("events in [200, 400): {window:?}");
+}
+</run>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><code>HashMap</code>의 순회 순서는 정해져 있지 않고 실행마다 달라질 수 있습니다(해시 시드가 무작위라 DoS에 강합니다). 출력이나 테스트가 순서에 의존하면 <code>BTreeMap</code>을 쓰거나 정렬하세요.</li>
+      <li>컬렉션을 순회하는 동안(빌린 동안) 같은 컬렉션에 삽입할 수 없습니다. 4장의 반복자 무효화 규칙입니다. 바꿀 목록을 따로 모아 두었다가 순회 후 적용하거나, <code>retain</code>/<code>extend</code> 같은 메서드를 쓰세요.</li>
+    </ul>
+  </div>
+
+  <h3>String은 UTF-8 바이트 벡터다</h3>
+  <p><code>String</code>은 내부적으로 <code>Vec&lt;u8&gt;</code>이고, 항상 <strong>유효한 UTF-8</strong>이라는 불변식을 지킵니다. <code>&amp;str</code>은 그 바이트의 슬라이스입니다. 여기서 세 가지 규칙이 나옵니다.</p>
+  <ol class="steps">
+    <li><code>len()</code>은 <strong>바이트 수</strong>입니다. 영문자는 1바이트, 한글 음절은 3바이트, 이모지는 보통 4바이트입니다.</li>
+    <li><code>s[i]</code>처럼 정수로 인덱싱할 수 없습니다. "i번째 문자"를 찾으려면 앞에서부터 세어야 하므로 O(1)인 척하지 않는 것입니다.</li>
+    <li>범위 슬라이스 <code>&amp;s[a..b]</code>는 가능하지만, <code>a</code>와 <code>b</code>가 <strong>문자 경계</strong>가 아니면 panic합니다.</li>
+  </ol>
+  <div class="bench" id="b-utf8">
+    <header><b>실습 벤치 7-A · UTF-8 바이트 들여다보기</b><span>INSPECTOR</span></header>
+    <div class="body">
+      <label class="lbl" for="u8In">문자열</label>
+      <input id="u8In" class="tin" type="text" value="로봇 Rust 🦀!" spellcheck="false" autocomplete="off">
+      <div class="u8grid" id="u8Grid" aria-live="polite"></div>
+      <div class="row" style="margin-top:10px"><label class="lbl" for="u8Cut">슬라이스 &amp;s[..n]</label><input id="u8Cut" type="range" min="0" max="10" value="3" style="flex:1;accent-color:var(--accent)"><output id="u8CutV" class="kv"></output></div>
+      <div class="status" id="u8Res"></div>
+    </div>
+  </div>
+<run file="strings.rs" expect="panic">
+fn main() {
+    let s = String::from("로봇 Rust");
+    println!("len (bytes) = {}, chars = {}", s.len(), s.chars().count());
+
+    for (i, ch) in s.char_indices() {               // byte offset + char
+        print!("[{i}:{ch}] ");
+    }
+    println!();
+    println!("bytes = {:02X?}", &s.as_bytes()[..6]);
+
+    // Safe ways to cut text:
+    let first_char: String = s.chars().take(1).collect();
+    let cut = s.char_indices().nth(2).map(|(i, _)| &s[..i]).unwrap_or(&s);
+    println!("first char = {first_char}, first two chars = {cut:?}");
+    println!("is_char_boundary(1) = {}, (3) = {}", s.is_char_boundary(1), s.is_char_boundary(3));
+
+    let mut owned = String::with_capacity(32);
+    owned.push_str("mode=");
+    owned += "auto";                                // String += &str
+    let msg = format!("{owned}; v={:.1}", 0.75);
+    println!("{msg}, upper = {}", msg.to_uppercase());
+
+    println!("now cutting at byte 1 ...");
+    let bad = &s[..1];                              // panics: byte 1 is inside '로'
+    println!("{bad}");
+}
+</run>
+  <p>문자열 타입이 여럿인 이유도 같은 원리입니다. 각자 다른 불변식을 지킵니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>타입</th><th>소유</th><th>불변식</th><th>쓰는 곳</th></tr></thead>
+    <tbody>
+      <tr><td><code>String</code> / <code>&amp;str</code></td><td>소유 / 빌림</td><td>유효한 UTF-8</td><td>일반 텍스트</td></tr>
+      <tr><td><code>Vec&lt;u8&gt;</code> / <code>&amp;[u8]</code></td><td>소유 / 빌림</td><td>없음(임의 바이트)</td><td>프로토콜 프레임, 파일 내용</td></tr>
+      <tr><td><code>CString</code> / <code>&amp;CStr</code></td><td>소유 / 빌림</td><td>끝에 NUL, 중간에 NUL 없음</td><td>C 함수에 넘길 때(14장)</td></tr>
+      <tr><td><code>OsString</code> / <code>&amp;OsStr</code></td><td>소유 / 빌림</td><td>OS 네이티브 인코딩</td><td>환경 변수, 명령줄 인자</td></tr>
+      <tr><td><code>PathBuf</code> / <code>&amp;Path</code></td><td>소유 / 빌림</td><td>경로 구분자 규칙</td><td>파일 경로</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call sys"><span class="lab">시스템 엔지니어의 눈으로</span>
+    <p>시리얼이나 CAN으로 들어온 데이터는 <code>&amp;[u8]</code>로 다루고, 사람이 읽을 텍스트가 필요할 때만 <code>std::str::from_utf8(bytes)</code>로 검증해 <code>&amp;str</code>로 바꾸세요. 이 함수는 복사 없이 검증만 하고 <code>Result</code>를 돌려줍니다. 깨진 바이트를 대체 문자로 바꿔도 되면 <code>String::from_utf8_lossy</code>를 씁니다.</p>
+  </div>
+  <p>지금까지 <code>Vec&lt;T&gt;</code>, <code>Option&lt;T&gt;</code>, <code>Result&lt;T, E&gt;</code>를 써 왔습니다. 꺾쇠 안의 <code>T</code>가 무엇인지, 어떻게 직접 만드는지가 다음 장의 주제인 제네릭과 트레잇입니다.</p>
+
+  <div class="quiz" data-quiz="ch7"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch7" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

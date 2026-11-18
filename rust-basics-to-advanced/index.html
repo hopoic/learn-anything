@@ -1,0 +1,3253 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rust 교본 — 기초부터 고급 엔지니어까지</title>
+<meta name="description" content="소유권과 빌림부터 트레잇, 라이프타임, 동시성, async 내부, unsafe·FFI, 타입 수준 설계까지. 모든 예제를 브라우저에서 진짜 rustc로 실행하며 배우는 인터랙티브 Rust 교본.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/book.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23A8431A'/%3E%3Ctext x='32' y='42' font-size='28' text-anchor='middle' fill='white' font-family='monospace'%3ERs%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<div class="shell">
+<aside class="toc" aria-label="목차">
+  <details id="tocd" open>
+    <summary>목차 <span class="meter" id="meter">0 / 17 완료</span></summary>
+    <ol id="tocl">
+      <li class="part">Part I · 기초</li>
+      <li><a href="#ch1"><span class="n">01</span>Rust 지도와 첫 프로그램<span class="chk" data-c="ch1"></span></a></li>
+      <li><a href="#ch2"><span class="n">02</span>값·타입·제어 흐름<span class="chk" data-c="ch2"></span></a></li>
+      <li><a href="#ch3"><span class="n">03</span>소유권: 값에는 주인이 하나<span class="chk" data-c="ch3"></span></a></li>
+      <li><a href="#ch4"><span class="n">04</span>빌림과 슬라이스<span class="chk" data-c="ch4"></span></a></li>
+      <li class="part">Part II · 타입으로 설계하기</li>
+      <li><a href="#ch5"><span class="n">05</span>구조체·열거형·패턴 매칭<span class="chk" data-c="ch5"></span></a></li>
+      <li><a href="#ch6"><span class="n">06</span>오류 처리: Result와 ?<span class="chk" data-c="ch6"></span></a></li>
+      <li><a href="#ch7"><span class="n">07</span>컬렉션과 문자열<span class="chk" data-c="ch7"></span></a></li>
+      <li><a href="#ch8"><span class="n">08</span>제네릭과 트레잇<span class="chk" data-c="ch8"></span></a></li>
+      <li><a href="#ch9"><span class="n">09</span>클로저와 반복자<span class="chk" data-c="ch9"></span></a></li>
+      <li class="part">Part III · 고급 메커니즘</li>
+      <li><a href="#ch10"><span class="n">10</span>라이프타임<span class="chk" data-c="ch10"></span></a></li>
+      <li><a href="#ch11"><span class="n">11</span>스마트 포인터와 내부 가변성<span class="chk" data-c="ch11"></span></a></li>
+      <li><a href="#ch12"><span class="n">12</span>두려움 없는 동시성<span class="chk" data-c="ch12"></span></a></li>
+      <li><a href="#ch13"><span class="n">13</span>async/await의 내부<span class="chk" data-c="ch13"></span></a></li>
+      <li class="part">Part IV · 고급 엔지니어의 Rust</li>
+      <li><a href="#ch14"><span class="n">14</span>unsafe·FFI·메모리 레이아웃<span class="chk" data-c="ch14"></span></a></li>
+      <li><a href="#ch15"><span class="n">15</span>타입 수준 설계와 매크로<span class="chk" data-c="ch15"></span></a></li>
+      <li><a href="#ch16"><span class="n">16</span>크레이트·테스트·성능<span class="chk" data-c="ch16"></span></a></li>
+      <li><a href="#ch17"><span class="n">17</span>실전: 미니 로봇 메시지 버스<span class="chk" data-c="ch17"></span></a></li>
+      <li class="part">부록</li>
+      <li><a href="#glossary"><span class="n">A</span>용어집 · C/C++↔Rust 대응표</a></li>
+      <li><a href="#refs"><span class="n">B</span>참고 자료와 다음 단계</a></li>
+      <li><a href="#playground"><span class="n">C</span>코드 놀이터</a></li>
+    </ol>
+  </details>
+  <div class="engine">
+    <label for="engineSel">실행 엔진</label>
+    <select id="engineSel">
+      <option value="auto">자동 (Playground → CE → Wandbox)</option>
+      <option value="playground">Rust Playground (공식)</option>
+      <option value="godbolt">Compiler Explorer</option>
+      <option value="wandbox">Wandbox</option>
+    </select>
+    <div class="row"><select id="edSel" aria-label="에디션"><option value="2024" selected>edition 2024</option><option value="2021">edition 2021</option></select><select id="modeSel" aria-label="빌드 모드"><option value="debug" selected>debug</option><option value="release">release</option></select></div>
+    <div class="es" id="engineStatus"></div>
+  </div>
+  <button class="theme-btn" id="themeBtn" type="button">테마 전환 (시스템 / 라이트 / 다크)</button>
+</aside>
+
+<main>
+<header class="cover col">
+  <div class="kicker">Field Manual · Rust · 2026 Edition</div>
+  <h1>Rust 교본 <small>기초부터 고급 엔지니어까지</small></h1>
+  <div class="formula" aria-label="Rust equals Ownership plus Borrowing plus Types plus Traits">
+    <span class="term">Rust</span><span class="op">=</span><span class="term h">소유권</span><span class="op">+</span><span class="term h">빌림</span><span class="op">+</span><span class="term">타입</span><span class="op">+</span><span class="term">트레잇</span>
+  </div>
+  <p class="lede">Rust는 “메모리 안전”과 “C 수준의 성능”을 동시에 약속합니다. 비결은 런타임 검사가 아니라, 소유권·빌림·타입이라는 몇 가지 규칙을 컴파일러가 끝까지 따지는 데 있습니다. 이 책은 그 규칙을 기초부터 하나씩 손으로 확인하고, 라이프타임·동시성·async 내부·unsafe·타입 수준 설계까지 올라가 실무 고급 엔지니어가 쓰는 Rust에 닿도록 만들었습니다. 모든 <code>▶ 실행</code> 버튼은 진짜 rustc를 돌립니다.</p>
+  <div class="stats"><span><b>17</b>개 장</span><span><b>53</b>개 실행 예제</span><span><b>13</b>개 실습 벤치</span><span><b>34</b>개 확인 문제</span><span><b>1</b>개 완성 프로젝트</span></div>
+</header>
+
+<section class="col" id="howto" style="padding-block:8px 8px">
+  <div class="call key"><span class="lab">이 책 사용법</span>
+    <ul>
+      <li><b>▶ 실행</b>: 예제를 컴파일하고 실행합니다. <b>편집</b>을 누르면 코드를 고칠 수 있고, 편집 중에는 <code>Ctrl/⌘ + Enter</code>로 바로 실행됩니다. <b>원래대로</b>를 누르면 처음 코드로 돌아갑니다.</li>
+      <li><span class="std x-error">컴파일 오류 예제</span> 표시가 붙은 예제는 <b>일부러 컴파일되지 않는</b> 코드입니다. Rust 공부의 절반은 컴파일러 오류 메시지를 읽는 일이니, 실행해서 메시지를 읽고 직접 고쳐 보세요.</li>
+      <li><b>실행 엔진</b>(왼쪽 목차 아래): 기본값 <b>자동</b>은 공식 Rust Playground를 먼저 쓰고, 응답이 없으면 Compiler Explorer, Wandbox 순으로 넘어갑니다. 모두 무료 온라인 서비스라 인터넷 연결이 필요하고, 가끔 몇 초에서 수십 초 걸릴 수 있습니다.</li>
+      <li><b>Miri</b> 버튼이 있는 예제(14장)는 Playground의 Miri 인터프리터로 실행해 정의되지 않은 동작(UB)을 잡아냅니다.</li>
+      <li>책 전체는 <b>Rust 2024 에디션</b>, 표준 라이브러리만으로 씁니다. 모든 실행 예제는 rustc 1.97(edition 2024)로 컴파일·실행해 검증했습니다.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ CH1 ============ -->
+<section class="chapter col" id="ch1">
+  <div class="eyebrow">Part I · 기초 — 1장</div>
+  <h2>Rust 지도와 첫 프로그램</h2>
+  <p class="goal">이 장을 마치면: Rust가 어떤 종류의 버그를 컴파일 타임에 막고 어떤 것은 막지 않는지 구분할 수 있고, <code>cargo</code>로 프로젝트를 만들고 빌드·실행·검사하는 기본 흐름을 설명할 수 있으며, <code>println!</code> 포맷 문법으로 값을 출력할 수 있습니다.</p>
+
+  <h3>Rust가 푸는 문제는 하나다: 안전과 제어를 함께 갖는 것</h3>
+  <p>시스템 프로그래밍 언어는 오랫동안 두 진영 중 하나를 골라야 했습니다. C와 C++은 메모리 배치와 성능을 완전히 제어하게 해 주는 대신, 해제한 메모리 사용(use-after-free), 이중 해제, 버퍼 오버플로, 데이터 경쟁 같은 버그를 프로그래머가 스스로 막아야 합니다. Java나 Go 같은 언어는 가비지 컬렉터(GC)로 안전을 얻는 대신 런타임과 예측하기 어려운 정지 시간을 받아들입니다.</p>
+  <p>Rust는 세 번째 길을 택했습니다. <strong>메모리를 언제 해제할지, 누가 무엇을 언제 바꿀 수 있는지를 타입 시스템의 규칙으로 표현하고, 컴파일러가 그 규칙을 컴파일 타임에 검사</strong>합니다. 규칙을 통과한 프로그램은 GC 없이도 메모리 오류와 데이터 경쟁이 없습니다. 이 책의 2–4장이 그 규칙(소유권과 빌림)이고, 나머지는 그 위에 쌓은 표현력입니다.</p>
+  <p>이것이 실무에서 왜 중요한지는 숫자가 말해 줍니다. Microsoft와 Chromium 팀은 각자 보안 취약점의 약 70%가 메모리 안전성 문제라고 보고했고, 리눅스 커널은 6.1(2022년 12월)부터 Rust로 드라이버를 쓸 수 있게 되었습니다. Android 팀은 새 코드를 메모리 안전 언어로 쓰면서 메모리 안전 취약점의 비율이 크게 줄었다고 발표했습니다. 임베디드 쪽에서도 <code>no_std</code> 환경과 <code>embedded-hal</code> 생태계가 자리를 잡았고, 안전 인증용 컴파일러(Ferrocene)도 나왔습니다.</p>
+
+  <figure class="fig">
+    <svg viewBox="0 0 640 210" role="img" aria-label="C, GC 언어, Rust의 안전성과 제어 비교">
+      <rect class="sv-r0" x="10" y="20" width="190" height="170" rx="8"/>
+      <text class="sv-t" x="105" y="48" text-anchor="middle" font-weight="600">C / C++</text>
+      <text class="sv-m" x="105" y="76" text-anchor="middle">제어: 완전</text>
+      <text class="sv-m" x="105" y="98" text-anchor="middle">안전: 프로그래머 책임</text>
+      <text class="sv-m" x="105" y="120" text-anchor="middle">런타임: 거의 없음</text>
+      <text class="sv-m" x="105" y="160" text-anchor="middle">버그가 런타임에 발견됨</text>
+      <rect class="sv-r1" x="225" y="20" width="190" height="170" rx="8"/>
+      <text class="sv-t" x="320" y="48" text-anchor="middle" font-weight="600">Java / Go / Python</text>
+      <text class="sv-m" x="320" y="76" text-anchor="middle">제어: 제한적</text>
+      <text class="sv-m" x="320" y="98" text-anchor="middle">안전: GC + 런타임 검사</text>
+      <text class="sv-m" x="320" y="120" text-anchor="middle">런타임: GC, 정지 시간</text>
+      <text class="sv-m" x="320" y="160" text-anchor="middle">비용을 런타임에 냄</text>
+      <rect class="sv-r3" x="440" y="20" width="190" height="170" rx="8"/>
+      <text class="sv-t" x="535" y="48" text-anchor="middle" font-weight="600">Rust</text>
+      <text class="sv-m" x="535" y="76" text-anchor="middle">제어: 완전 (unsafe 포함)</text>
+      <text class="sv-m" x="535" y="98" text-anchor="middle">안전: 컴파일 타임 검사</text>
+      <text class="sv-m" x="535" y="120" text-anchor="middle">런타임: 거의 없음</text>
+      <text class="sv-m" x="535" y="160" text-anchor="middle">비용을 컴파일 타임에 냄</text>
+    </svg>
+    <figcaption>그림 1-1. Rust는 비용을 "실행할 때"가 아니라 "컴파일할 때" 냅니다. 그 비용이 바로 컴파일러와 싸우는 학습 곡선입니다.</figcaption>
+  </figure>
+
+  <h3>무엇을 막고, 무엇은 막지 않는가</h3>
+  <p>Rust를 처음 배울 때 가장 흔한 오해는 "Rust로 짜면 버그가 없다"입니다. 정확히는 <strong>정의되지 않은 동작(undefined behavior, UB)으로 이어지는 특정 버그 부류</strong>를 safe Rust에서 없앱니다. 논리 오류, 교착 상태(deadlock), 메모리 누수는 여전히 가능합니다. 또 어떤 검사는 컴파일 타임이 아니라 런타임에 일어나 <code>panic</code>으로 프로그램을 멈춥니다. 아래 벤치로 감을 잡아 두면 이후 장들이 어디를 향하는지 보입니다.</p>
+  <div class="bench" id="b-guard">
+    <header><b>실습 벤치 1-A · Rust 안전 지도</b><span>CLASSIFY · 10 ITEMS</span></header>
+    <div class="body">
+      <p class="explain" style="min-height:0">safe Rust(unsafe 블록 없이)로 짠 코드에서 다음 문제는 어떻게 처리될까요?</p>
+      <div id="guardList"></div>
+      <div class="row"><button type="button" class="btn" id="guardListReset">다시 풀기</button></div>
+      <div class="status" id="guardScore"></div>
+    </div>
+  </div>
+
+  <h3>cargo: 빌드 도구이자 패키지 관리자</h3>
+  <p>Rust 툴체인은 <code>rustup</code>으로 설치하고 관리합니다. <code>rustup</code>은 컴파일러(<code>rustc</code>), 빌드 도구(<code>cargo</code>), 표준 라이브러리, 린터(<code>clippy</code>), 포매터(<code>rustfmt</code>)를 버전별로 설치합니다. 실무에서 <code>rustc</code>를 직접 부르는 일은 거의 없고, 모든 것을 <code>cargo</code>로 합니다.</p>
+<div class="code"><div class="bar"><span class="fn">terminal</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="sh">$ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh   # install rustup (Linux/macOS)
+$ cargo new hello &amp;&amp; cd hello        # creates Cargo.toml and src/main.rs
+$ cargo run                          # build (debug) and run
+$ cargo check                        # type-check only: the fastest feedback loop
+$ cargo build --release              # optimized build in target/release/
+$ cargo clippy                       # lints: hundreds of "this works, but..." hints
+$ cargo fmt                          # format the whole project
+$ cargo test                         # build and run unit/integration/doc tests
+</code></pre></div>
+<div class="code"><div class="bar"><span class="fn">Cargo.toml</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="toml">[package]
+name = "hello"
+version = "0.1.0"
+edition = "2024"          # language edition: opt-in, per crate
+
+[dependencies]
+# serde = { version = "1", features = ["derive"] }   # crates come from crates.io
+</code></pre></div>
+  <p><code>edition</code>은 Rust가 하위 호환을 깨지 않고 문법을 다듬는 장치입니다. 에디션은 크레이트(컴파일 단위)마다 따로 고르고, 서로 다른 에디션의 크레이트끼리 문제없이 링크됩니다. 2015, 2018, 2021에 이어 <strong>2024 에디션이 Rust 1.85(2025년 2월)와 함께 안정화</strong>되었고, 이 책은 2024 에디션을 기준으로 합니다.</p>
+  <div class="call sys"><span class="lab">시스템 엔지니어의 눈으로</span>
+    <p><code>cargo</code>는 make + CMake + pkg-config + 패키지 저장소를 한 도구로 합친 것에 가깝습니다. 크로스 컴파일도 <code>rustup target add aarch64-unknown-linux-gnu</code>로 타깃 표준 라이브러리를 받고 링커만 지정하면 됩니다. Jetson 같은 aarch64 보드용 빌드는 16장에서 다룹니다.</p>
+  </div>
+
+  <h3>첫 프로그램: println!은 함수가 아니라 매크로다</h3>
+  <p>첫 예제를 실행해 보세요. 이름 뒤의 <code>!</code>는 매크로 호출이라는 표시입니다. <code>println!</code>은 컴파일 타임에 포맷 문자열을 해석해서, 인자 개수나 타입이 맞지 않으면 <strong>컴파일 오류</strong>를 냅니다. C의 <code>printf("%d", "oops")</code> 같은 실수가 원천적으로 막힙니다.</p>
+<div class="code run"><div class="bar"><span class="fn">hello.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn main() {
+    let robot = "AMR-07";
+    let battery = 87.456_f64;          // underscores are allowed in number literals
+    let wheels = [0.31, 0.29, 0.30, 0.30];
+
+    println!("Hello, {robot}!");                      // inline named argument
+    println!("battery = {:.1}%", battery);            // precision
+    println!("battery = {battery:&gt;8.2}|");            // width 8, right-aligned
+    println!("wheels  = {:?}", wheels);               // {:?} = Debug formatting
+    println!("hex = {:#06x}, bin = {:#010b}", 255, 5);
+    eprintln!("this line goes to stderr");
+}
+</code></pre></div>
+  <p>포맷 지정자 중 <code>{}</code>는 사람이 읽는 표시(<code>Display</code> 트레잇), <code>{:?}</code>는 개발자용 디버그 표시(<code>Debug</code> 트레잇)를 씁니다. 배열은 <code>Display</code>가 없어 <code>{:?}</code>로만 출력됩니다. 트레잇은 8장에서 자세히 다룹니다. 지금은 "타입이 어떤 기능을 구현했는지에 따라 쓸 수 있는 포맷이 정해진다"고만 기억하세요.</p>
+  <p>이번에는 일부러 틀린 코드를 실행해 봅시다. Rust 오류 메시지는 오류 코드(<code>E0277</code> 같은), 문제 위치, 그리고 대개 고치는 방법까지 알려 줍니다. 오류 코드는 <code>rustc --explain E0277</code>로 자세한 설명을 볼 수 있습니다.</p>
+<div class="code run" data-expect="error"><div class="bar"><span class="fn">oops.rs<span class="std x-error">컴파일 오류 예제</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn main() {
+    let wheels = [0.31, 0.29];
+    println!("wheels = {}", wheels);   // arrays do not implement Display
+    println!("{} and {}", 1);          // too few arguments
+}
+</code></pre></div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <ul>
+      <li>Rust는 메모리 오류와 데이터 경쟁을 <b>컴파일 타임 규칙</b>으로 막습니다. GC가 없으니 런타임 비용도 C와 비슷합니다.</li>
+      <li>배열 범위 초과 같은 일부 검사는 <b>런타임 panic</b>이고, 논리 오류·교착·누수는 막지 않습니다.</li>
+      <li>개발은 <code>cargo check</code> → <code>cargo clippy</code> → <code>cargo test</code> 순환이 기본입니다.</li>
+    </ul>
+  </div>
+  <p>다음 장에서는 변수, 기본 타입, 제어 흐름을 C와 비교하며 빠르게 훑습니다. 겉보기엔 비슷하지만 "모든 것이 식(expression)"이라는 점과 정수 오버플로 처리 방식이 다릅니다.</p>
+
+  <div class="quiz" data-quiz="ch1"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch1" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH2 ============ -->
+<section class="chapter col" id="ch2">
+  <div class="eyebrow">Part I · 기초 — 2장</div>
+  <h2>값·타입·제어 흐름</h2>
+  <p class="goal">이 장을 마치면: 불변 기본값과 <code>mut</code>, 섀도잉의 차이를 설명할 수 있고, 정수 오버플로가 debug와 release에서 어떻게 다르게 처리되는지 알고 <code>checked_*</code>/<code>wrapping_*</code>/<code>saturating_*</code> 중 알맞은 것을 고를 수 있으며, <code>if</code>·<code>loop</code>·<code>match</code>를 값을 만드는 식으로 쓸 수 있습니다.</p>
+  <p>1장에서 Rust의 목표를 봤습니다. 이 장은 그 목표를 위한 첫 번째 습관, "명시적으로 쓰지 않으면 바뀌지도 변환되지도 않는다"를 익힙니다.</p>
+
+  <h3>기본은 불변, 바꾸려면 mut</h3>
+  <p><code>let</code>으로 만든 변수는 기본적으로 <strong>불변</strong>입니다. 값을 바꾸려면 <code>let mut</code>으로 선언해야 합니다. C에서 <code>const</code>를 붙이는 것과 정반대 기본값입니다. 코드를 읽는 사람은 <code>mut</code>가 없는 변수를 보면 "이건 안 바뀐다"고 안심할 수 있습니다.</p>
+  <p><strong>섀도잉</strong>은 같은 이름으로 새 변수를 선언하는 것입니다. 변경이 아니라 새 바인딩이라서 타입이 바뀌어도 됩니다. 파싱처럼 "같은 의미의 값이 단계별로 다른 타입을 거치는" 경우에 자연스럽습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">bindings.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">const MAX_SPEED_MPS: f64 = 1.5;          // compile-time constant, type required
+static ROBOT_NAME: &amp;str = "AMR-07";      // one fixed address for the whole program
+
+fn main() {
+    let speed = 0.8;                     // immutable, type inferred as f64
+    let mut odometer = 0.0;              // mutable
+    for _ in 0..3 {
+        odometer += speed * 0.1;
+    }
+    println!("{ROBOT_NAME}: odometer = {odometer:.2} m (limit {MAX_SPEED_MPS})");
+
+    let input = " 42 ";                  // &amp;str
+    let input = input.trim();            // shadowing: still &amp;str, new binding
+    let input: u32 = input.parse().expect("not a number"); // now a u32
+    println!("parsed = {}", input + 1);
+
+    // speed = 1.0;   // uncomment: error[E0384] cannot assign twice to immutable variable
+}
+</code></pre></div>
+
+  <h3>타입은 정확히, 변환은 명시적으로</h3>
+  <p>Rust의 기본 타입은 C와 거의 일대일로 대응하지만, 크기가 이름에 박혀 있고 <strong>암묵적 변환이 전혀 없습니다</strong>. <code>u8</code>과 <code>u32</code>를 더하려면 한쪽을 명시적으로 바꿔야 합니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Rust</th><th>C 대응</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td><code>i8 i16 i32 i64 i128</code></td><td><code>int8_t</code> … <code>int64_t</code></td><td>정수 리터럴의 기본 타입은 <code>i32</code></td></tr>
+      <tr><td><code>u8 u16 u32 u64 u128</code></td><td><code>uint8_t</code> … <code>uint64_t</code></td><td><code>u8</code>은 바이트 버퍼의 기본 단위</td></tr>
+      <tr><td><code>isize usize</code></td><td><code>ptrdiff_t</code>, <code>size_t</code></td><td>인덱스와 길이는 항상 <code>usize</code></td></tr>
+      <tr><td><code>f32 f64</code></td><td><code>float</code>, <code>double</code></td><td>실수 리터럴 기본은 <code>f64</code></td></tr>
+      <tr><td><code>bool</code></td><td><code>_Bool</code></td><td>정수와 섞이지 않음. <code>if x</code>에서 <code>x</code>는 반드시 bool</td></tr>
+      <tr><td><code>char</code></td><td>(없음)</td><td>4바이트 유니코드 스칼라 값. 바이트가 아님</td></tr>
+      <tr><td><code>(i32, f64)</code></td><td>익명 struct</td><td>튜플. <code>t.0</code>, <code>t.1</code>로 접근</td></tr>
+      <tr><td><code>[u8; 16]</code></td><td><code>uint8_t[16]</code></td><td>길이가 타입의 일부. 포인터로 붕괴하지 않음</td></tr>
+    </tbody>
+  </table></div>
+  <p>변환은 세 가지 도구로 합니다. <code>as</code>는 C 캐스트처럼 잘라 내거나 부호를 바꾸는 "무조건" 변환이고, <code>From</code>/<code>Into</code>는 손실이 없는 변환, <code>TryFrom</code>/<code>TryInto</code>는 실패할 수 있는 변환입니다. 실무에서는 <code>as</code>를 줄이고 <code>try_from</code>을 쓰는 편이 버그를 줄입니다.</p>
+<div class="code run"><div class="bar"><span class="fn">convert.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn main() {
+    let raw: i32 = 300;
+    let a = raw as u8;                         // truncates silently: 300 mod 256 = 44
+    let b = u8::try_from(raw);                 // Result&lt;u8, TryFromIntError&gt;
+    let c = u8::try_from(200_i32);
+    let wide: u64 = u64::from(7_u32);          // lossless: From is implemented
+    println!("as: {a}, try_from(300): {b:?}, try_from(200): {c:?}, from: {wide}");
+
+    let len: usize = 10;
+    let offset: i32 = -3;
+    // let pos = len + offset;                 // error: mismatched types usize and i32
+    let pos = len.checked_add_signed(offset as isize);
+    println!("pos = {pos:?}");
+}
+</code></pre></div>
+
+  <h3>정수 오버플로는 debug에서 panic, release에서 감싼다</h3>
+  <p>C에서 부호 있는 정수 오버플로는 UB입니다. Rust에서는 UB가 아닙니다. <strong>debug 빌드에서는 오버플로 검사가 켜져 panic</strong>하고, <strong>release 빌드에서는 기본적으로 2의 보수로 감쌉니다</strong>(검사 비용을 없애기 위해). 즉 "오버플로하면 버그"라는 태도는 같지만, 결과가 항상 정의되어 있습니다. 의도를 분명히 하고 싶으면 메서드를 고르세요.</p>
+<div class="code run" data-expect="panic"><div class="bar"><span class="fn">overflow.rs<span class="std x-panic">panic 예제</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn main() {
+    let x: u8 = 250;
+    println!("checked    : {:?}", x.checked_add(10));     // None on overflow
+    println!("wrapping   : {}", x.wrapping_add(10));      // 4 (mod 256)
+    println!("saturating : {}", x.saturating_add(10));    // 255 (clamped)
+    println!("overflowing: {:?}", x.overflowing_add(10)); // (4, true)
+
+    let steps: u8 = std::hint::black_box(10);  // hide the value from the optimizer
+    let y = x + steps;                         // debug build: panics here
+    println!("never printed in debug: {y}");
+}
+</code></pre></div>
+  <p>위 예제를 실행 엔진 상자에서 <b>release</b>로 바꿔 다시 실행해 보세요. 마지막 줄이 <code>4</code>를 출력합니다. 엔코더 카운터처럼 감싸는 것이 정상인 값은 <code>wrapping_*</code>, 안전 한계를 넘으면 안 되는 PWM 듀티 같은 값은 <code>saturating_*</code>, 넘으면 오류로 처리해야 하는 크기 계산은 <code>checked_*</code>가 맞습니다.</p>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><code>as</code>로 큰 값을 작은 타입에 넣으면 <b>조용히 잘립니다</b>. 실수에서 정수로의 <code>as</code>는 범위를 넘으면 포화(saturate)되고 NaN은 0이 됩니다. 센서 값 변환에는 <code>try_from</code>이나 명시적 범위 검사를 쓰세요.</li>
+      <li>"release에서는 감싸니까 괜찮다"는 생각은 금물입니다. 감싼 결과가 틀린 값이면 여전히 버그입니다. <code>Cargo.toml</code>의 <code>[profile.release] overflow-checks = true</code>로 release에서도 검사를 켤 수 있습니다.</li>
+    </ul>
+  </div>
+
+  <h3>거의 모든 것이 식이다</h3>
+  <p>Rust에서 <code>{ }</code> 블록, <code>if</code>, <code>match</code>, <code>loop</code>는 모두 <strong>값을 내는 식</strong>입니다. 블록의 마지막 줄에 세미콜론이 없으면 그 값이 블록의 값이 됩니다. 그래서 C의 삼항 연산자가 따로 없고, 함수의 마지막 식이 곧 반환값입니다. <code>loop</code>는 <code>break 값</code>으로 값을 낼 수 있고, 중첩 루프는 <code>'label</code>로 바깥 루프를 지정해 빠져나옵니다.</p>
+<div class="code run"><div class="bar"><span class="fn">expressions.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn clamp_speed(v: f64) -&gt; f64 {
+    if v &gt; 1.5 { 1.5 } else if v &lt; -1.5 { -1.5 } else { v }   // no `return`, no `;`
+}
+
+fn classify(code: u16) -&gt; &amp;'static str {
+    match code {
+        0 =&gt; "ok",
+        1..=99 =&gt; "warning",
+        100 | 200 =&gt; "known fault",
+        _ =&gt; "unknown",                 // match must be exhaustive
+    }
+}
+
+fn main() {
+    let v = clamp_speed(2.7);
+    let label = if v &gt;= 1.0 { "fast" } else { "slow" };
+    println!("v = {v}, {label}, {}", classify(200));
+
+    // loop with a value: retry until the "sensor" returns something useful
+    let mut tries = 0;
+    let reading = loop {
+        tries += 1;
+        let sample = tries * 3 % 10;
+        if sample &gt; 5 { break sample; }
+    };
+    println!("reading {reading} after {tries} tries");
+
+    // labeled break out of a nested loop
+    let grid = [[0, 0, 1], [0, 9, 0], [0, 0, 0]];
+    let found = 'search: {
+        for (r, row) in grid.iter().enumerate() {
+            for (c, &amp;cell) in row.iter().enumerate() {
+                if cell == 9 { break 'search Some((r, c)); }
+            }
+        }
+        None
+    };
+    println!("obstacle at {found:?}");
+
+    for i in (0..10).step_by(3).rev() { print!("{i} "); }
+    println!();
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p><code>for i in 0..n</code>은 C의 <code>for (i = 0; i &lt; n; i++)</code>와 같지만, 실제로는 9장에서 볼 반복자(iterator)를 소비하는 문법입니다. 인덱스를 직접 굴리는 대신 <code>for x in &amp;arr</code>이나 <code>.iter().enumerate()</code>를 쓰면 범위 검사가 필요 없어져 더 빠르고 안전한 코드가 됩니다.</p>
+  </div>
+  <p>다음 장은 Rust의 심장인 소유권입니다. 지금까지 본 정수와 실수는 "복사"되는 값이었지만, 힙 메모리를 가진 <code>String</code>부터는 이야기가 달라집니다.</p>
+
+  <div class="quiz" data-quiz="ch2"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch2" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH3 ============ -->
+<section class="chapter col" id="ch3">
+  <div class="eyebrow">Part I · 기초 — 3장</div>
+  <h2>소유권: 값에는 주인이 하나</h2>
+  <p class="goal">이 장을 마치면: 소유권 세 규칙을 말할 수 있고, 어떤 대입이 이동(move)이고 어떤 것이 복사(copy)인지 판별할 수 있으며, 값이 언제 해제(drop)되는지 코드만 보고 예측할 수 있습니다.</p>
+  <p>2장의 정수는 대입하면 복사되는 단순한 값이었습니다. 힙 메모리를 가진 값은 다릅니다. 복사가 비싸고, 무엇보다 "누가 해제할 것인가"라는 질문이 생깁니다. 소유권은 그 질문에 대한 Rust의 답입니다.</p>
+
+  <h3>세 가지 규칙이 전부다</h3>
+  <div class="call key"><span class="lab">소유권 규칙</span>
+    <ol style="margin:0;padding-left:22px">
+      <li>모든 값에는 <b>소유자</b>(owner)라고 부르는 변수가 하나 있다.</li>
+      <li>한 시점에 소유자는 <b>정확히 하나</b>다.</li>
+      <li>소유자가 스코프를 벗어나면 값은 <b>해제(drop)</b>된다.</li>
+    </ol>
+  </div>
+  <p><code>String</code>을 예로 들면, 변수 자체는 스택에 있는 24바이트(64비트 기준) 구조체입니다. 힙 버퍼를 가리키는 포인터, 현재 길이, 용량. 실제 문자 데이터는 힙에 있습니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 200" role="img" aria-label="String의 스택 헤더와 힙 버퍼, 그리고 이동 후의 상태">
+      <text class="sv-m" x="20" y="20">스택</text><text class="sv-m" x="420" y="20">힙</text>
+      <rect class="sv-r2" x="20" y="30" width="170" height="82" rx="6"/>
+      <text class="sv-t" x="30" y="50" font-weight="600">s1 : String</text>
+      <text class="sv-m" x="30" y="72">ptr ─────────▶</text><text class="sv-m" x="30" y="88">len = 5</text><text class="sv-m" x="30" y="104">cap = 8</text>
+      <rect class="sv-r0" x="20" y="125" width="170" height="60" rx="6" stroke-dasharray="4 3"/>
+      <text class="sv-t" x="30" y="147" font-weight="600">s2 = s1 이후</text>
+      <text class="sv-m" x="30" y="167">s1: 이동됨 (사용 불가)</text>
+      <rect class="sv-r3" x="420" y="45" width="200" height="40" rx="6"/>
+      <text class="sv-t" x="432" y="70" font-family="var(--f-mono)">h e l l o · · ·</text>
+      <path class="sv-ac" d="M150 68 L415 65"/>
+      <path class="sv-ln" d="M190 150 C300 150 330 90 415 75" stroke-dasharray="4 3"/>
+      <text class="sv-m" x="250" y="135">s2가 같은 버퍼를 넘겨받음</text>
+    </svg>
+    <figcaption>그림 3-1. <code>let s2 = s1;</code>은 24바이트 헤더만 복사하고 힙은 건드리지 않습니다. 그 대신 s1을 무효로 만들어 해제가 한 번만 일어나게 합니다.</figcaption>
+  </figure>
+
+  <h3>대입은 이동이다: 컴파일러가 이전 이름을 지운다</h3>
+  <p><code>let s2 = s1;</code>을 C처럼 생각하면 포인터가 두 개가 되어, 둘 다 스코프를 벗어날 때 같은 버퍼를 두 번 해제하는 문제가 생깁니다. Rust는 이 대입을 <strong>이동(move)</strong>으로 정의합니다. 바이트는 복사되지만 <strong>소유권은 s2로 넘어가고, s1은 그 시점부터 쓸 수 없는 이름</strong>이 됩니다. 이후 s1을 쓰면 컴파일 오류(E0382)입니다. 런타임 비용은 0이고, 검사는 전부 컴파일 타임에 끝납니다.</p>
+<div class="code run" data-expect="error"><div class="bar"><span class="fn">move_error.rs<span class="std x-error">컴파일 오류 예제</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn consume(s: String) -&gt; usize {
+    s.len()
+}   // s is dropped here
+
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1;                      // move: ownership goes to s2
+    println!("{s2}");
+    println!("{s1}");                 // error[E0382]: borrow of moved value: `s1`
+
+    let name = String::from("lidar");
+    let n = consume(name);            // passing by value also moves
+    println!("{n} {name}");           // error[E0382] again
+}
+</code></pre></div>
+  <p>이 예제를 실행해서 메시지를 읽어 보세요. 컴파일러는 "어디서 이동했는지"와 "<code>.clone()</code>을 고려하라"는 제안까지 보여 줍니다. 진짜 복사가 필요하면 <code>clone()</code>을 명시적으로 부릅니다. Rust에서는 비싼 복사가 항상 코드에 드러납니다.</p>
+  <p>반대로 <code>i32</code>, <code>f64</code>, <code>bool</code>, <code>char</code>, 그리고 이들만으로 된 튜플·배열처럼 힙 자원이 없고 비트 복사가 곧 완전한 복사인 타입은 <code>Copy</code> 트레잇을 구현합니다. <code>Copy</code> 타입의 대입은 이동이 아니라 복사라서 원래 변수를 계속 쓸 수 있습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">copy_clone.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">#[derive(Debug, Clone, Copy)]
+struct Pose { x: f32, y: f32, theta: f32 }   // plain data: can be Copy
+
+#[derive(Debug, Clone)]
+struct Scan { ranges: Vec&lt;f32&gt; }             // owns heap memory: Clone only
+
+fn main() {
+    let p1 = Pose { x: 1.0, y: 2.0, theta: 0.5 };
+    let p2 = p1;                             // copy: p1 is still usable
+    println!("{p1:?} {p2:?} heading sum = {}", p1.theta + p2.theta + p1.x * p2.y);
+
+    let s1 = Scan { ranges: vec![1.2, 1.3, 9.9] };
+    let s2 = s1.clone();                     // explicit deep copy
+    let s3 = s1;                             // move
+    println!("{:?} {:?}", s2.ranges, s3.ranges);
+}
+</code></pre></div>
+
+  <h3>한 단계씩 따라가 보기</h3>
+  <p>아래 벤치에서 변수가 값을 소유하고, 넘기고, 해제하는 과정을 한 줄씩 진행해 보세요. 오른쪽 패널의 "소유자" 열이 언제 바뀌는지, 언제 힙 블록이 사라지는지에 주목하세요.</p>
+  <div class="bench" id="b-own">
+    <header><b>실습 벤치 3-A · 소유권 따라가기</b><span>STEPPER · 9 STEPS</span></header>
+    <div class="body">
+      <div class="split">
+        <div class="srcview" id="ownSrc"></div>
+        <div>
+          <div class="panelbox"><h5>변수 → 소유한 힙 값</h5><div id="ownVars"></div></div>
+          <div class="conout" id="ownOut" aria-live="polite"></div>
+        </div>
+      </div>
+      <p class="explain" id="ownEx"></p>
+      <div class="row"><button type="button" class="btn" id="ownPrev">◀ 이전</button><button type="button" class="btn pri" id="ownNext">다음 ▶</button><button type="button" class="btn" id="ownReset">처음으로</button><span class="tokc" id="ownStep"></span></div>
+    </div>
+  </div>
+
+  <h3>Drop은 결정적이고, 역순이다</h3>
+  <p>소유자가 스코프를 벗어나는 순간 컴파일러가 넣어 둔 <code>drop</code> 호출이 실행됩니다. 시점은 GC처럼 "언젠가"가 아니라 코드에서 정확히 보이는 닫는 중괄호입니다. 같은 스코프의 변수는 <strong>선언의 역순</strong>으로 해제됩니다. 타입에 <code>Drop</code> 트레잇을 구현하면 해제 시점에 원하는 정리 코드를 넣을 수 있고, 이것이 파일·소켓·락을 자동으로 닫는 Rust식 RAII입니다.</p>
+<div class="code run"><div class="bar"><span class="fn">drop_order.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">struct Tracer(&amp;'static str);
+
+impl Drop for Tracer {
+    fn drop(&amp;mut self) {
+        println!("  drop {}", self.0);
+    }
+}
+
+fn make() -&gt; Tracer {
+    let t = Tracer("made in make()");
+    t                                   // moved out to the caller: NOT dropped here
+}
+
+fn main() {
+    let _a = Tracer("a");
+    {
+        let _b = Tracer("b");
+        let _c = Tracer("c");
+        println!("leaving inner scope");
+    }                                   // c, then b
+    let m = make();
+    let moved = m;                      // moving does not drop anything
+    drop(moved);                        // std::mem::drop: drop early, explicitly
+    let _ = Tracer("underscore");       // `let _ =` does not bind: dropped immediately
+    println!("end of main");
+}                                       // a
+</code></pre></div>
+  <div class="call sys"><span class="lab">C++ 개발자의 눈으로</span>
+    <p>C++의 <code>std::move</code>는 "옮겨도 된다"는 캐스팅일 뿐이고, 옮겨진 객체는 "유효하지만 지정되지 않은" 상태로 남아 소멸자가 여전히 호출됩니다. Rust의 이동은 <b>파괴적 이동</b>입니다. 옮겨진 쪽은 컴파일러가 이름 자체를 무효화하고 소멸자도 부르지 않습니다. 그래서 이동 생성자를 직접 쓸 일이 없고, use-after-move가 컴파일 오류가 됩니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><b>컴파일 오류를 <code>.clone()</code>으로 덮기</b>: 처음엔 괜찮지만, 큰 버퍼를 루프에서 복제하면 성능이 무너집니다. 대부분은 다음 장의 <b>빌림</b>(<code>&amp;</code>)이 정답입니다.</li>
+      <li><code>let _guard = lock();</code>과 <code>let _ = lock();</code>은 다릅니다. 후자는 값을 바인딩하지 않아 <b>즉시 drop</b>되므로 락이 바로 풀립니다.</li>
+      <li>Drop 순서에 의존하는 코드(예: 버퍼보다 먼저 닫혀야 하는 핸들)는 필드 선언 순서도 의미가 있습니다. 구조체 필드는 <b>선언 순서대로</b> drop됩니다.</li>
+    </ul>
+  </div>
+  <p>함수에 값을 넘길 때마다 소유권이 넘어가면 불편합니다. 함수가 잠깐 들여다보기만 하면 되는 경우가 대부분이니까요. 다음 장의 빌림(borrowing)이 그 해법입니다.</p>
+
+  <div class="quiz" data-quiz="ch3"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch3" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH4 ============ -->
+<section class="chapter col" id="ch4">
+  <div class="eyebrow">Part I · 기초 — 4장</div>
+  <h2>빌림과 슬라이스</h2>
+  <p class="goal">이 장을 마치면: 공유 참조(<code>&amp;T</code>)와 가변 참조(<code>&amp;mut T</code>)의 규칙을 "공유 XOR 변경"으로 설명할 수 있고, 빌림 검사기 오류(E0499, E0502, E0505, E0106)를 보고 원인을 짚어 고칠 수 있으며, <code>&amp;str</code>과 <code>&amp;[T]</code> 슬라이스를 매개변수로 쓰는 API를 설계할 수 있습니다.</p>
+  <p>3장에서 값을 넘기면 소유권이 넘어간다고 했습니다. 빌림은 소유권은 그대로 두고 <strong>잠시 접근 권한만</strong> 빌려주는 것입니다.</p>
+
+  <h3>규칙은 하나: 공유하거나, 변경하거나</h3>
+  <p>참조에는 두 종류가 있습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>참조</th><th>할 수 있는 것</th><th>동시에 몇 개</th></tr></thead>
+    <tbody>
+      <tr><td><code>&amp;T</code> 공유 참조</td><td>읽기</td><td>여러 개 가능</td></tr>
+      <tr><td><code>&amp;mut T</code> 가변(배타) 참조</td><td>읽기 + 쓰기</td><td><b>단 하나</b>, 그동안 다른 참조 없음</td></tr>
+    </tbody>
+  </table></div>
+  <p>즉 어떤 값에 대해 <strong>"여러 명이 읽기" 또는 "한 명이 쓰기" 중 하나만</strong> 허용됩니다(aliasing XOR mutability). 그리고 <strong>참조는 원래 값보다 오래 살 수 없습니다.</strong> 이 두 문장이 빌림 검사기(borrow checker)가 확인하는 전부입니다. 단순하지만, 이것만으로 반복자 무효화, 해제 후 사용, 데이터 경쟁이 한꺼번에 사라집니다.</p>
+<div class="code run"><div class="bar"><span class="fn">borrow_basics.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn total(ranges: &amp;Vec&lt;f32&gt;) -&gt; f32 {          // borrow: read-only access
+    ranges.iter().sum()
+}
+
+fn clip(ranges: &amp;mut Vec&lt;f32&gt;, max: f32) {     // mutable borrow: exclusive access
+    for r in ranges.iter_mut() {
+        if *r &gt; max { *r = max; }               // *r: write through the reference
+    }
+}
+
+fn main() {
+    let mut scan = vec![1.2, 30.0, 0.8, 12.5];
+    let a = &amp;scan;                              // any number of shared borrows...
+    let b = &amp;scan;
+    println!("sum = {}, len = {}", total(a), b.len());
+    // a and b are not used after this line, so their borrows end here (NLL)
+
+    clip(&amp;mut scan, 10.0);                      // ...or one mutable borrow
+    println!("clipped = {scan:?}");             // the owner is still `scan`
+}
+</code></pre></div>
+  <p>주석의 <strong>NLL(non-lexical lifetimes)</strong>이 중요합니다. 빌림은 변수의 스코프 끝까지가 아니라 <strong>마지막으로 사용된 지점까지만</strong> 유효합니다. 그래서 위 코드에서 <code>a</code>, <code>b</code>가 아직 스코프 안에 있는데도 <code>&amp;mut scan</code>이 허용됩니다.</p>
+
+  <h3>빌림 검사기가 막아 주는 진짜 버그</h3>
+  <p>대표적인 오류를 직접 보겠습니다. 벡터의 원소를 참조로 들고 있는 동안 <code>push</code>를 하면 컴파일되지 않습니다. 처음에는 과잉 규제처럼 보이지만, <code>push</code>가 용량을 넘겨 버퍼를 재할당하면 그 참조는 <strong>해제된 메모리</strong>를 가리키게 됩니다. C++에서 <code>std::vector</code> 반복자 무효화로 알려진 바로 그 버그입니다.</p>
+<div class="code run" data-expect="error"><div class="bar"><span class="fn">invalidate.rs<span class="std x-error">컴파일 오류 예제</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn main() {
+    let mut waypoints = vec![(0.0, 0.0), (1.0, 2.0)];
+    let first = &amp;waypoints[0];          // shared borrow of an element...
+    waypoints.push((3.0, 4.0));         // error[E0502]: mutable borrow while shared borrow is alive
+    println!("first = {first:?}");      // ...which is still used here
+}
+</code></pre></div>
+<div class="code"><div class="bar"><span class="fn">same_bug.cpp</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="cpp">// The same program in C++ compiles, then reads freed memory if push_back reallocates.
+std::vector&lt;std::pair&lt;double, double&gt;&gt; waypoints{{0, 0}, {1, 2}};
+const auto&amp; first = waypoints[0];
+waypoints.push_back({3, 4});            // may reallocate: `first` now dangles
+std::printf("%f\n", first.first);       // undefined behavior
+</code></pre></div>
+  <p>고치는 방법은 대개 셋 중 하나입니다. (1) 참조를 쓰는 일을 변경 전에 끝낸다, (2) 참조 대신 값을 복사해 둔다(<code>let first = waypoints[0];</code> — 튜플이 <code>Copy</code>라서 가능), (3) 인덱스를 들고 있다가 필요할 때 다시 접근한다. 오류 예제를 <b>편집</b>해서 세 가지를 모두 시도해 보세요.</p>
+  <p>참조가 원래 값보다 오래 살려는 경우도 막습니다. 함수가 지역 변수의 참조를 반환하려 하면 컴파일러는 "빌려 온 값이 어디서 왔는지 알 수 없다"(E0106)고 거부합니다. 해법은 소유한 값을 반환하는 것입니다.</p>
+<div class="code run" data-expect="error"><div class="bar"><span class="fn">dangle.rs<span class="std x-error">컴파일 오류 예제</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn make_label() -&gt; &amp;str {               // error[E0106]: missing lifetime specifier
+    let s = String::from("front-lidar");
+    &amp;s                                  // s is dropped at the end of this function
+}
+
+fn main() {
+    println!("{}", make_label());
+}
+</code></pre></div>
+
+  <h3>판정 훈련: 컴파일될까?</h3>
+  <p>규칙을 머리로 아는 것과 코드를 보고 즉시 판정하는 것은 다릅니다. 아래 벤치로 빌림 검사기처럼 생각하는 연습을 해 보세요.</p>
+  <div class="bench" id="b-borrow">
+    <header><b>실습 벤치 4-A · 빌림 검사기처럼 생각하기</b><span>CLASSIFY · 9 SNIPPETS</span></header>
+    <div class="body">
+      <div id="borrowList"></div>
+      <div class="row"><button type="button" class="btn" id="borrowListReset">다시 풀기</button></div>
+      <div class="status" id="borrowScore"></div>
+    </div>
+  </div>
+
+  <h3>슬라이스: 포인터 + 길이를 한 타입으로</h3>
+  <p><strong>슬라이스</strong>는 연속된 메모리의 일부를 빌리는 참조입니다. <code>&amp;[T]</code>는 배열·벡터의 일부, <code>&amp;str</code>은 UTF-8 문자열의 일부입니다. 내부적으로는 <strong>(포인터, 길이) 두 워드</strong>로 된 "팻 포인터"(fat pointer)라서, C에서 늘 따로 넘기던 <code>buf</code>와 <code>len</code>이 한 값이 되고, 범위를 벗어난 접근은 검사됩니다.</p>
+<div class="code run"><div class="bar"><span class="fn">slices.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">// Take &amp;[u8] / &amp;str, not &amp;Vec&lt;u8&gt; / &amp;String: callers can pass arrays, vectors, or sub-ranges.
+fn checksum(frame: &amp;[u8]) -&gt; u8 {
+    frame.iter().fold(0u8, |acc, b| acc ^ b)
+}
+
+fn first_word(s: &amp;str) -&gt; &amp;str {
+    match s.find(' ') {
+        Some(i) =&gt; &amp;s[..i],
+        None =&gt; s,
+    }
+}
+
+fn main() {
+    let packet: Vec&lt;u8&gt; = vec![0xA5, 0x01, 0x04, 0x10, 0x20, 0x30, 0x40];
+    let header = &amp;packet[..3];                    // &amp;[u8], len 3
+    let payload = &amp;packet[3..];                   // &amp;[u8], len 4
+    println!("header {header:02X?} payload {payload:02X?} xor {:#04X}", checksum(payload));
+
+    let fixed: [u8; 4] = [1, 2, 3, 4];
+    println!("array xor = {}", checksum(&amp;fixed)); // &amp;[u8; 4] coerces to &amp;[u8]
+
+    let cmd = String::from("MOVE 1.5 0.0");
+    let verb = first_word(&amp;cmd);                  // &amp;String coerces to &amp;str
+    println!("verb = {verb}, literal = {}", first_word("STOP now"));
+
+    println!("size of &amp;[u8] = {} bytes, size of &amp;u8 = {} bytes",
+             std::mem::size_of::&lt;&amp;[u8]&gt;(), std::mem::size_of::&lt;&amp;u8&gt;());
+
+    let (left, right) = packet.split_at(2);       // two non-overlapping borrows
+    println!("{left:?} | {right:?}");
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p><code>&amp;T</code>는 "널이 될 수 없고, 정렬되어 있고, 가리키는 값이 살아 있다는 것이 증명된" 포인터입니다. <code>&amp;mut T</code>는 거기에 더해 <code>restrict</code>가 <b>컴파일러에 의해 검증된</b> 포인터입니다. 그래서 Rust 컴파일러는 C에서 <code>restrict</code>를 붙여야 얻는 최적화를 기본으로 얻습니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>매개변수를 <code>&amp;String</code>이나 <code>&amp;Vec&lt;T&gt;</code>로 받지 마세요. <code>&amp;str</code>, <code>&amp;[T]</code>가 더 일반적이고 비용은 같습니다. clippy도 이를 경고합니다(<code>ptr_arg</code>).</li>
+      <li>문자열 슬라이스 인덱스는 <b>바이트 위치</b>입니다. 한글처럼 여러 바이트로 된 문자의 중간을 자르면 panic합니다(7장).</li>
+      <li>"빌림 검사기와 싸운다"고 느껴지면 대개 데이터 구조가 소유 관계를 흐리고 있다는 신호입니다. 누가 무엇을 소유하는지부터 다시 그려 보세요.</li>
+    </ul>
+  </div>
+  <p>Part I이 끝났습니다. 소유권과 빌림이라는 규칙을 손에 쥐었으니, 다음 장부터는 그 규칙 위에서 데이터를 표현하는 도구, 구조체와 열거형으로 넘어갑니다.</p>
+
+  <div class="quiz" data-quiz="ch4"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch4" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH5 ============ -->
+<section class="chapter col" id="ch5">
+  <div class="eyebrow">Part II · 타입으로 설계하기 — 5장</div>
+  <h2>구조체·열거형·패턴 매칭</h2>
+  <p class="goal">이 장을 마치면: 구조체에 메서드를 붙이고 <code>&amp;self</code>/<code>&amp;mut self</code>/<code>self</code> 수신자를 상황에 맞게 고를 수 있고, 데이터를 품은 열거형으로 "잘못된 상태를 표현할 수 없는" 타입을 설계할 수 있으며, <code>match</code>·<code>if let</code>·<code>let else</code>로 값을 안전하게 분해할 수 있습니다.</p>
+  <p>Part I에서 값과 소유권을 다뤘습니다. 이제 그 값들을 의미 있는 단위로 묶습니다. Rust의 데이터 모델링은 두 가지로 끝납니다. "A <b>그리고</b> B"를 표현하는 구조체, "A <b>또는</b> B"를 표현하는 열거형입니다.</p>
+
+  <h3>구조체와 impl: 데이터와 동작을 분리해 선언한다</h3>
+  <p>구조체는 C의 <code>struct</code>와 같지만 메서드를 <code>impl</code> 블록에 따로 붙입니다. 메서드의 첫 매개변수(수신자)가 그 메서드가 값을 어떻게 다루는지 선언합니다. 이것이 3–4장의 소유권 규칙과 그대로 맞물립니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>수신자</th><th>의미</th><th>호출 후 원래 값</th></tr></thead>
+    <tbody>
+      <tr><td><code>&amp;self</code></td><td>읽기만 한다</td><td>그대로 사용 가능</td></tr>
+      <tr><td><code>&amp;mut self</code></td><td>상태를 바꾼다</td><td>바뀐 채로 사용 가능</td></tr>
+      <tr><td><code>self</code></td><td>값을 소비한다(변환·종료)</td><td>이동됨 — 더 쓸 수 없음</td></tr>
+      <tr><td>(없음)</td><td>연관 함수. 보통 생성자 <code>new</code></td><td><code>Type::new()</code>로 호출</td></tr>
+    </tbody>
+  </table></div>
+<div class="code run"><div class="bar"><span class="fn">structs.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">#[derive(Debug, Clone, PartialEq)]
+struct Battery {
+    cells: u8,
+    voltage: f32,
+    cycles: u32,
+}
+
+impl Battery {
+    const CELL_MIN_V: f32 = 3.2;                       // associated constant
+
+    fn new(cells: u8) -&gt; Self {                        // associated function (constructor)
+        Self { cells, voltage: cells as f32 * 4.1, cycles: 0 }   // field init shorthand
+    }
+    fn is_low(&amp;self) -&gt; bool {                         // read-only
+        self.voltage &lt; self.cells as f32 * Self::CELL_MIN_V
+    }
+    fn discharge(&amp;mut self, dv: f32) {                 // mutate in place
+        self.voltage -= dv;
+    }
+    fn recycle(self) -&gt; String {                       // consume: battery is gone afterwards
+        format!("recycled {}S pack after {} cycles", self.cells, self.cycles)
+    }
+}
+
+struct Meters(f64);                                    // tuple struct (newtype, see ch15)
+struct Marker;                                         // unit struct: zero bytes
+
+fn main() {
+    let mut pack = Battery::new(6);
+    pack.discharge(5.5);
+    println!("{pack:?} low = {}", pack.is_low());
+    let spare = Battery { cycles: 12, ..pack.clone() };    // struct update syntax
+    println!("same pack? {}", spare == pack);
+    println!("{}", pack.recycle());
+    // pack.is_low();   // error[E0382]: pack was moved by recycle()
+    let d = Meters(2.5);
+    println!("{} m, Marker is {} bytes", d.0, std::mem::size_of::&lt;Marker&gt;());
+}
+</code></pre></div>
+
+  <h3>열거형은 "또는"을 표현하고, 각 경우가 데이터를 품는다</h3>
+  <p>Rust의 <code>enum</code>은 C의 열거형보다 훨씬 강력합니다. 각 변형(variant)이 <strong>서로 다른 데이터</strong>를 가질 수 있습니다. C에서 태그 필드 + <code>union</code>으로 손수 만들던 "태그드 유니온"을 언어가 직접 지원하고, 태그와 데이터가 어긋나는 일을 컴파일러가 막습니다.</p>
+<div class="code"><div class="bar"><span class="fn">tagged.c</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="c">/* The C way: nothing stops you from reading .goal when kind == MODE_IDLE */
+enum mode_kind { MODE_IDLE, MODE_NAVIGATING, MODE_CHARGING, MODE_FAULT };
+struct mode {
+    enum mode_kind kind;
+    union {
+        struct { double x, y; } goal;   /* valid only when NAVIGATING */
+        unsigned char dock_id;          /* valid only when CHARGING   */
+        unsigned short fault_code;      /* valid only when FAULT      */
+    } u;
+};
+</code></pre></div>
+<div class="code run"><div class="bar"><span class="fn">robot_mode.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">#[derive(Debug, Clone, Copy, PartialEq)]
+enum Mode {
+    Idle,
+    Navigating { x: f64, y: f64 },
+    Charging(u8),                // dock id
+    Fault { code: u16 },
+}
+
+enum Event { Goal(f64, f64), Arrived, Dock(u8), Error(u16), Reset }
+
+// A transition table as a single match on (state, event). Missing cases are compile errors.
+fn step(mode: Mode, ev: Event) -&gt; Mode {
+    use Mode::*;
+    match (mode, ev) {
+        (_, Event::Error(code)) =&gt; Fault { code },
+        (Fault { .. }, Event::Reset) =&gt; Idle,
+        (Fault { .. }, _) =&gt; mode,                         // stay faulted
+        (Idle | Charging(_), Event::Goal(x, y)) =&gt; Navigating { x, y },
+        (Navigating { .. }, Event::Arrived) =&gt; Idle,
+        (Idle, Event::Dock(id)) =&gt; Charging(id),
+        (m, _) =&gt; m,                                       // ignore everything else
+    }
+}
+
+fn describe(mode: &amp;Mode) -&gt; String {
+    match mode {
+        Mode::Idle =&gt; "idle".to_string(),
+        Mode::Navigating { x, y } if x.abs() + y.abs() &lt; 1.0 =&gt; format!("almost there ({x}, {y})"),
+        Mode::Navigating { x, y } =&gt; format!("going to ({x}, {y})"),
+        Mode::Charging(id @ 0..=3) =&gt; format!("charging at front dock {id}"),
+        Mode::Charging(id) =&gt; format!("charging at dock {id}"),
+        Mode::Fault { code } =&gt; format!("FAULT 0x{code:04X}"),
+    }
+}
+
+fn main() {
+    let events = [Event::Dock(2), Event::Goal(4.0, 1.5), Event::Arrived,
+                  Event::Goal(0.2, 0.3), Event::Error(0x1F), Event::Goal(1.0, 1.0), Event::Reset];
+    let mut mode = Mode::Idle;
+    for ev in events {
+        mode = step(mode, ev);
+        println!("{:&lt;28} {:?}", describe(&amp;mode), mode);
+    }
+}
+</code></pre></div>
+  <p><code>match</code>는 <strong>모든 경우를 다뤄야</strong>(exhaustive) 컴파일됩니다. 나중에 <code>Mode</code>에 <code>Docking</code> 변형을 추가하면 이를 처리하지 않은 모든 <code>match</code>가 컴파일 오류가 되어, 고쳐야 할 곳을 컴파일러가 전부 찾아 줍니다. 위 예제에서 <code>describe</code>의 한 줄을 지우고 실행해 보세요. 그래서 실무에서는 와일드카드 <code>_</code>를 남발하지 않는 것이 좋습니다. 보호막을 스스로 끄는 셈이니까요.</p>
+
+  <h3>Option: 널 포인터 대신 "없을 수 있음"을 타입으로</h3>
+  <p>Rust에는 널이 없습니다. 값이 없을 수 있으면 <code>Option&lt;T&gt;</code>를 씁니다. 표준 라이브러리에 정의된 평범한 열거형 <code>enum Option&lt;T&gt; { None, Some(T) }</code>일 뿐이지만, <code>Option&lt;T&gt;</code>를 <code>T</code>처럼 쓰려면 반드시 꺼내는 코드를 써야 하므로 "널 체크를 잊는" 버그가 사라집니다. 꺼내는 문법도 다양합니다.</p>
+<div class="code run"><div class="bar"><span class="fn">option.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn find_dock(docks: &amp;[(u8, f64)], max_dist: f64) -&gt; Option&lt;u8&gt; {
+    docks.iter().find(|(_, d)| *d &lt;= max_dist).map(|(id, _)| *id)
+}
+
+fn parse_speed(s: &amp;str) -&gt; Option&lt;f64&gt; {
+    let Some(num) = s.strip_suffix("m/s") else {      // let-else: bind or bail out
+        return None;
+    };
+    num.trim().parse().ok()
+}
+
+fn main() {
+    let docks = [(1, 12.0), (2, 3.5), (3, 7.0)];
+
+    match find_dock(&amp;docks, 5.0) {
+        Some(id) =&gt; println!("nearest usable dock: {id}"),
+        None =&gt; println!("no dock in range"),
+    }
+    if let Some(id) = find_dock(&amp;docks, 1.0) {        // only care about one case
+        println!("dock {id}");
+    } else {
+        println!("nothing within 1 m");
+    }
+    let id = find_dock(&amp;docks, 1.0).unwrap_or(0);     // default value
+    println!("fallback id = {id}");
+
+    for s in ["1.2 m/s", "fast", "0.4m/s"] {
+        println!("{s:&gt;8} -&gt; {:?}", parse_speed(s));
+    }
+
+    // Niche optimization: Option&lt;&amp;T&gt; has no extra tag, because a reference is never null.
+    use std::mem::size_of;
+    println!("&amp;u64: {}  Option&lt;&amp;u64&gt;: {}  Option&lt;u64&gt;: {}  Option&lt;Box&lt;u64&gt;&gt;: {}",
+             size_of::&lt;&amp;u64&gt;(), size_of::&lt;Option&lt;&amp;u64&gt;&gt;(), size_of::&lt;Option&lt;u64&gt;&gt;(), size_of::&lt;Option&lt;Box&lt;u64&gt;&gt;&gt;());
+}
+</code></pre></div>
+  <p>마지막 줄의 출력을 보세요. <code>Option&lt;&amp;u64&gt;</code>는 <code>&amp;u64</code>와 같은 8바이트입니다. 참조는 절대 널이 아니므로 컴파일러가 "0 비트 패턴"을 <code>None</code>으로 씁니다(niche optimization). 즉 Rust의 <code>Option&lt;&amp;T&gt;</code>는 C의 nullable 포인터와 <strong>비용은 같고 안전은 강제</strong>됩니다.</p>
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>열거형 + <code>match</code>는 상태 기계(state machine)를 표현하기에 가장 좋은 도구입니다. 상태별 데이터를 변형 안에 넣으면 "충전 중인데 목표 좌표가 남아 있는" 같은 불가능한 상태를 <b>표현 자체를 못 하게</b> 만들 수 있습니다. 15장에서는 이 생각을 타입 수준까지 끌어올려, 잘못된 상태 전이가 컴파일 오류가 되게 만듭니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><code>.unwrap()</code>은 <code>None</code>이면 panic합니다. 프로토타입에서는 편하지만 제품 코드에서는 <code>?</code>(다음 장), <code>unwrap_or</code>, <code>let else</code>로 바꾸세요. 정말 불가능한 경우라면 이유를 적은 <code>.expect("...")</code>를 씁니다.</li>
+      <li><code>match</code>에서 변수 이름만 쓰면 그것은 "비교"가 아니라 "모든 값에 묶기"입니다. 상수와 비교하려면 <code>const</code>나 경로(<code>Mode::Idle</code>)를 쓰세요.</li>
+    </ul>
+  </div>
+  <p>다음 장에서는 <code>Option</code>의 형제 <code>Result</code>로, 실패의 <b>이유</b>까지 전달하는 오류 처리를 다룹니다.</p>
+
+  <div class="quiz" data-quiz="ch5"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch5" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH6 ============ -->
+<section class="chapter col" id="ch6">
+  <div class="eyebrow">Part II · 타입으로 설계하기 — 6장</div>
+  <h2>오류 처리: Result와 ?</h2>
+  <p class="goal">이 장을 마치면: 복구 가능한 오류(<code>Result</code>)와 복구 불가능한 오류(<code>panic!</code>)를 구분해 쓸 수 있고, <code>?</code> 연산자가 무엇으로 펼쳐지는지 설명할 수 있으며, 라이브러리용 오류 열거형과 <code>From</code> 변환을 직접 설계할 수 있습니다.</p>
+  <p>5장의 <code>Option</code>은 "값이 없을 수 있음"을 표현했습니다. 이 장의 <code>Result</code>는 "실패할 수 있고, 실패하면 그 이유가 이것"을 표현합니다.</p>
+
+  <h3>오류도 그냥 값이다</h3>
+  <p>Rust에는 예외가 없습니다. 실패할 수 있는 함수는 <code>Result&lt;T, E&gt;</code>를 반환합니다. 정의는 <code>enum Result&lt;T, E&gt; { Ok(T), Err(E) }</code> 한 줄입니다. C의 "-1 반환 + <code>errno</code>"와 비슷하지만, 성공 값과 오류 값이 한 타입에 묶여 있어 <strong>오류를 확인하지 않고 성공 값을 꺼낼 방법이 없습니다</strong>. <code>Result</code>를 그냥 버리면 컴파일러가 <code>unused_must_use</code> 경고를 냅니다.</p>
+  <p>반대로 <code>panic!</code>은 "이 프로그램은 버그 상태다, 더 진행하면 안 된다"는 선언입니다. 기본 동작은 스택을 되감으며(unwind) 지역 값들을 drop하고 스레드를 끝내는 것이고, <code>panic = "abort"</code>로 설정하면 즉시 중단합니다. 펌웨어에서는 보통 abort를 씁니다.</p>
+  <div class="ladder">
+    <div><b>버그</b><span><code>panic!</code>, <code>assert!</code>, <code>unreachable!</code> — 계약 위반, 불변식 파괴. 복구가 아니라 수정 대상.</span></div>
+    <div><b>없음</b><span><code>Option&lt;T&gt;</code> — 값이 없는 것이 정상적인 결과. 이유가 필요 없음.</span></div>
+    <div><b>실패</b><span><code>Result&lt;T, E&gt;</code> — 예상 가능한 실패. 호출자가 이유를 보고 결정.</span></div>
+  </div>
+
+  <h3>?는 "실패면 즉시 반환"을 한 글자로 쓴 것</h3>
+  <p>실패할 수 있는 단계가 여러 개면 <code>match</code>가 중첩되어 코드가 오른쪽으로 밀려납니다. <code>?</code> 연산자가 이를 해결합니다. <code>expr?</code>는 대략 다음 코드로 펼쳐집니다.</p>
+<div class="code"><div class="bar"><span class="fn">question_mark_desugared.rs</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="rust">// `let v = expr?;` is roughly:
+let v = match expr {
+    Ok(v) =&gt; v,
+    Err(e) =&gt; return Err(From::from(e)),   // note the From conversion: see below
+};
+</code></pre></div>
+<div class="code run"><div class="bar"><span class="fn">question_mark.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::num::ParseIntError;
+
+// "id=17;rate=200" -&gt; (17, 200)
+fn parse_pair(s: &amp;str) -&gt; Result&lt;(u32, u32), String&gt; {
+    let (left, right) = s.split_once(';').ok_or("missing ';'")?;     // Option -&gt; Result
+    let id = field(left, "id")?;
+    let rate = field(right, "rate")?;
+    Ok((id, rate))
+}
+
+fn field(part: &amp;str, key: &amp;str) -&gt; Result&lt;u32, String&gt; {
+    let value = part
+        .strip_prefix(key)
+        .and_then(|rest| rest.strip_prefix('='))
+        .ok_or_else(|| format!("expected '{key}=...' in {part:?}"))?;
+    value.parse::&lt;u32&gt;().map_err(|e: ParseIntError| format!("{key}: {e}"))
+}
+
+fn main() {
+    for input in ["id=17;rate=200", "id=17", "id=x;rate=1", "id=3;speed=9"] {
+        match parse_pair(input) {
+            Ok((id, rate)) =&gt; println!("{input:&lt;16} ok  id={id} rate={rate}"),
+            Err(e) =&gt; println!("{input:&lt;16} err {e}"),
+        }
+    }
+}
+</code></pre></div>
+  <p><code>Option</code>에도 <code>?</code>를 쓸 수 있습니다(함수가 <code>Option</code>을 반환할 때). <code>Option</code>을 <code>Result</code>로 바꿀 때는 <code>ok_or</code>, 그 반대는 <code>.ok()</code>를 씁니다. 위 예제처럼 오류를 <code>String</code>으로 만드는 것은 빠르지만, 호출자가 오류 종류에 따라 다르게 대응할 수 없습니다. 라이브러리라면 오류를 타입으로 설계해야 합니다.</p>
+
+  <h3>오류를 열거형으로 설계하고 From으로 잇는다</h3>
+  <p>실무 패턴은 이렇습니다. 모듈마다 오류 열거형을 만들고, <code>Display</code>와 <code>std::error::Error</code>를 구현하고, 하위 오류에서 <code>From</code>을 구현합니다. 그러면 <code>?</code>가 하위 오류를 자동으로 상위 오류로 변환해 줍니다(위 펼침 코드의 <code>From::from(e)</code>).</p>
+<div class="code run"><div class="bar"><span class="fn">error_enum.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::fmt;
+use std::num::ParseFloatError;
+
+#[derive(Debug)]
+enum ConfigError {
+    MissingKey(&amp;'static str),
+    BadNumber { key: &amp;'static str, source: ParseFloatError },
+    OutOfRange { key: &amp;'static str, value: f64, max: f64 },
+}
+
+impl fmt::Display for ConfigError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            ConfigError::MissingKey(k) =&gt; write!(f, "missing key `{k}`"),
+            ConfigError::BadNumber { key, source } =&gt; write!(f, "`{key}` is not a number ({source})"),
+            ConfigError::OutOfRange { key, value, max } =&gt; write!(f, "`{key}` = {value} exceeds {max}"),
+        }
+    }
+}
+
+impl std::error::Error for ConfigError {
+    fn source(&amp;self) -&gt; Option&lt;&amp;(dyn std::error::Error + 'static)&gt; {
+        match self {
+            ConfigError::BadNumber { source, .. } =&gt; Some(source),   // keep the cause chain
+            _ =&gt; None,
+        }
+    }
+}
+
+struct Limits { max_speed: f64, max_accel: f64 }
+
+fn get(text: &amp;str, key: &amp;'static str) -&gt; Result&lt;f64, ConfigError&gt; {
+    let line = text.lines()
+        .find_map(|l| l.strip_prefix(key)?.strip_prefix('='))
+        .ok_or(ConfigError::MissingKey(key))?;
+    line.trim().parse().map_err(|source| ConfigError::BadNumber { key, source })
+}
+
+fn load(text: &amp;str) -&gt; Result&lt;Limits, ConfigError&gt; {
+    let max_speed = get(text, "max_speed")?;
+    if max_speed &gt; 2.0 {
+        return Err(ConfigError::OutOfRange { key: "max_speed", value: max_speed, max: 2.0 });
+    }
+    Ok(Limits { max_speed, max_accel: get(text, "max_accel")? })
+}
+
+// An application-level error that wraps library errors; `?` converts via From.
+#[derive(Debug)]
+enum AppError { Config(ConfigError), Io(String) }
+impl From&lt;ConfigError&gt; for AppError {
+    fn from(e: ConfigError) -&gt; Self { AppError::Config(e) }
+}
+
+fn start(cfg: &amp;str) -&gt; Result&lt;(), AppError&gt; {
+    let lim = load(cfg)?;                       // ConfigError -&gt; AppError automatically
+    if lim.max_accel &lt;= 0.0 { return Err(AppError::Io("actuator offline".into())); }
+    println!("  started: speed &lt;= {}, accel &lt;= {}", lim.max_speed, lim.max_accel);
+    Ok(())
+}
+
+fn main() {
+    for cfg in ["max_speed=1.2\nmax_accel=0.5", "max_speed=1.2", "max_speed=fast\nmax_accel=1",
+                "max_speed=3\nmax_accel=1", "max_speed=1\nmax_accel=0"] {
+        println!("{:?}", cfg.replace('\n', "; "));
+        match start(cfg) {
+            Ok(()) =&gt; {}
+            Err(AppError::Config(e)) =&gt; {
+                println!("  config error: {e}");
+                if let Some(cause) = std::error::Error::source(&amp;e) { println!("    caused by: {cause}"); }
+            }
+            Err(AppError::Io(msg)) =&gt; println!("  io error: {msg}"),
+        }
+    }
+}
+</code></pre></div>
+  <p>이 보일러플레이트는 실무에서 크레이트가 대신 써 줍니다. 라이브러리에서는 <code>thiserror</code>로 <code>#[derive(Error)]</code>와 <code>#[error("...")]</code> 속성만 달고, 애플리케이션의 <code>main</code> 근처에서는 <code>anyhow::Result</code>로 아무 오류나 담아 문맥(<code>.context("...")</code>)을 붙여 올립니다. 이 책은 표준 라이브러리만 쓰기 때문에 손으로 썼지만, 구조는 똑같습니다.</p>
+<div class="code"><div class="bar"><span class="fn">with_crates.rs</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="rust">// Library crate: precise, matchable errors.
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigError {
+    #[error("missing key `{0}`")]
+    MissingKey(&amp;'static str),
+    #[error("`{key}` is not a number")]
+    BadNumber { key: &amp;'static str, #[source] source: std::num::ParseFloatError },
+}
+
+// Application: any error, with human-readable context.
+use anyhow::Context;
+
+fn main() -&gt; anyhow::Result&lt;()&gt; {
+    let text = std::fs::read_to_string("robot.toml").context("reading robot.toml")?;
+    let _limits = load(&amp;text).context("validating limits")?;
+    Ok(())
+}
+</code></pre></div>
+
+  <h3>무엇을 써야 할까</h3>
+  <div class="bench" id="b-err">
+    <header><b>실습 벤치 6-A · 오류 처리 정책 고르기</b><span>CLASSIFY · 7 CASES</span></header>
+    <div class="body">
+      <div id="errList"></div>
+      <div class="row"><button type="button" class="btn" id="errListReset">다시 풀기</button></div>
+      <div class="status" id="errScore"></div>
+    </div>
+  </div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>리눅스 커널 스타일의 "음수 errno 반환 + <code>goto out</code>" 패턴이 하던 일을 <code>Result</code> + <code>?</code> + <code>Drop</code>이 나눠 맡습니다. 오류 전파는 <code>?</code>가, 정리는 Drop이 하므로 함수 본문에는 정상 경로만 남습니다. 커널의 Rust 바인딩도 <code>Result&lt;T, kernel::error::Error&gt;</code>로 errno를 감쌉니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>라이브러리 함수 안에서 <code>unwrap()</code>/<code>panic!</code>으로 입력 오류를 처리하지 마세요. 호출자는 그 실패를 복구할 기회를 잃습니다.</li>
+      <li>오류 타입을 <code>String</code>으로 통일하면 호출자가 <code>match</code>할 수 없습니다. 최소한 열거형으로, 그리고 원인(<code>source</code>)을 잃지 마세요.</li>
+      <li><code>main</code>도 <code>Result&lt;(), E&gt;</code>를 반환할 수 있습니다. <code>Err</code>면 종료 코드 1과 함께 <code>Debug</code> 형식으로 출력됩니다.</li>
+    </ul>
+  </div>
+  <p>다음 장에서는 표준 컬렉션과 문자열을 다룹니다. 특히 <code>String</code>이 왜 바이트 인덱싱을 막는지가 핵심입니다.</p>
+
+  <div class="quiz" data-quiz="ch6"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch6" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH7 ============ -->
+<section class="chapter col" id="ch7">
+  <div class="eyebrow">Part II · 타입으로 설계하기 — 7장</div>
+  <h2>컬렉션과 문자열</h2>
+  <p class="goal">이 장을 마치면: <code>Vec</code>, <code>VecDeque</code>, <code>HashMap</code>, <code>BTreeMap</code>, <code>HashSet</code> 중 상황에 맞는 것을 고를 수 있고, <code>entry</code> API로 "있으면 갱신, 없으면 삽입"을 한 번의 조회로 쓸 수 있으며, <code>String</code>/<code>&amp;str</code>이 UTF-8 바이트라는 사실에서 나오는 규칙(바이트 길이, 문자 경계)을 설명할 수 있습니다.</p>
+  <p>6장까지 데이터 하나를 다루는 법을 익혔습니다. 실제 프로그램은 데이터를 모아서 다룹니다. 표준 컬렉션은 모두 <strong>자기 원소를 소유</strong>하므로, 3–4장의 규칙이 그대로 적용됩니다.</p>
+
+  <h3>기본은 Vec, 나머지는 이유가 있을 때</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>컬렉션</th><th>언제</th><th>C/C++ 대응</th></tr></thead>
+    <tbody>
+      <tr><td><code>Vec&lt;T&gt;</code></td><td>기본값. 연속 메모리, 끝에 추가 O(1)</td><td><code>malloc</code>+<code>realloc</code> 배열, <code>std::vector</code></td></tr>
+      <tr><td><code>[T; N]</code></td><td>크기가 컴파일 타임에 고정, 힙 없음</td><td>C 배열, <code>std::array</code></td></tr>
+      <tr><td><code>VecDeque&lt;T&gt;</code></td><td>양 끝 삽입·삭제(작업 큐, 링 버퍼)</td><td>링 버퍼, <code>std::deque</code></td></tr>
+      <tr><td><code>HashMap&lt;K, V&gt;</code></td><td>키로 빠른 조회, 순서 무관</td><td><code>std::unordered_map</code></td></tr>
+      <tr><td><code>BTreeMap&lt;K, V&gt;</code></td><td>키 순서대로 순회, 범위 조회</td><td><code>std::map</code></td></tr>
+      <tr><td><code>HashSet</code> / <code>BTreeSet</code></td><td>중복 없는 집합</td><td><code>std::unordered_set</code> / <code>std::set</code></td></tr>
+      <tr><td><code>BinaryHeap&lt;T&gt;</code></td><td>우선순위 큐(최댓값 먼저)</td><td><code>std::priority_queue</code></td></tr>
+    </tbody>
+  </table></div>
+<div class="code run"><div class="bar"><span class="fn">collections.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::collections::{BTreeMap, HashMap, VecDeque};
+
+fn main() {
+    // Vec: capacity grows geometrically; reserve up front when you know the size.
+    let mut v: Vec&lt;u32&gt; = Vec::new();
+    let mut last_cap = 0;
+    for i in 0..40 {
+        v.push(i);
+        if v.capacity() != last_cap {
+            print!("len {:&gt;2} -&gt; cap {:&lt;3}| ", v.len(), v.capacity());
+            last_cap = v.capacity();
+        }
+    }
+    println!();
+    let pre: Vec&lt;u8&gt; = Vec::with_capacity(1500);       // one allocation for an MTU-sized frame
+    println!("with_capacity: len {} cap {}", pre.len(), pre.capacity());
+
+    // Indexing panics when out of range; get() returns Option.
+    println!("v.get(99) = {:?}, v[3] = {}", v.get(99), v[3]);
+
+    // VecDeque as a bounded history buffer.
+    let mut hist: VecDeque&lt;f32&gt; = VecDeque::with_capacity(3);
+    for r in [1.0, 2.0, 3.0, 4.0, 5.0] {
+        if hist.len() == 3 { hist.pop_front(); }
+        hist.push_back(r);
+    }
+    println!("last 3 = {hist:?}, mean = {}", hist.iter().sum::&lt;f32&gt;() / hist.len() as f32);
+
+    // HashMap + entry API: one lookup for "insert or update".
+    let log = "lidar imu lidar cam imu lidar odom";
+    let mut counts: HashMap&lt;&amp;str, u32&gt; = HashMap::new();
+    for topic in log.split_whitespace() {
+        *counts.entry(topic).or_insert(0) += 1;
+    }
+    // BTreeMap keeps keys sorted: printing is deterministic.
+    let sorted: BTreeMap&lt;_, _&gt; = counts.iter().map(|(k, v)| (*k, *v)).collect();
+    println!("{sorted:?}");
+    let busiest = counts.iter().max_by_key(|&amp;(_, n)| *n).map(|(k, _)| *k);
+    println!("busiest topic = {busiest:?}");
+
+    // Range queries are where BTreeMap shines: timestamps -&gt; events.
+    let mut events = BTreeMap::new();
+    for (t, e) in [(100, "start"), (250, "obstacle"), (310, "replan"), (900, "arrive")] {
+        events.insert(t, e);
+    }
+    let window: Vec&lt;_&gt; = events.range(200..400).collect();
+    println!("events in [200, 400): {window:?}");
+}
+</code></pre></div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><code>HashMap</code>의 순회 순서는 정해져 있지 않고 실행마다 달라질 수 있습니다(해시 시드가 무작위라 DoS에 강합니다). 출력이나 테스트가 순서에 의존하면 <code>BTreeMap</code>을 쓰거나 정렬하세요.</li>
+      <li>컬렉션을 순회하는 동안(빌린 동안) 같은 컬렉션에 삽입할 수 없습니다. 4장의 반복자 무효화 규칙입니다. 바꿀 목록을 따로 모아 두었다가 순회 후 적용하거나, <code>retain</code>/<code>extend</code> 같은 메서드를 쓰세요.</li>
+    </ul>
+  </div>
+
+  <h3>String은 UTF-8 바이트 벡터다</h3>
+  <p><code>String</code>은 내부적으로 <code>Vec&lt;u8&gt;</code>이고, 항상 <strong>유효한 UTF-8</strong>이라는 불변식을 지킵니다. <code>&amp;str</code>은 그 바이트의 슬라이스입니다. 여기서 세 가지 규칙이 나옵니다.</p>
+  <ol class="steps">
+    <li><code>len()</code>은 <strong>바이트 수</strong>입니다. 영문자는 1바이트, 한글 음절은 3바이트, 이모지는 보통 4바이트입니다.</li>
+    <li><code>s[i]</code>처럼 정수로 인덱싱할 수 없습니다. "i번째 문자"를 찾으려면 앞에서부터 세어야 하므로 O(1)인 척하지 않는 것입니다.</li>
+    <li>범위 슬라이스 <code>&amp;s[a..b]</code>는 가능하지만, <code>a</code>와 <code>b</code>가 <strong>문자 경계</strong>가 아니면 panic합니다.</li>
+  </ol>
+  <div class="bench" id="b-utf8">
+    <header><b>실습 벤치 7-A · UTF-8 바이트 들여다보기</b><span>INSPECTOR</span></header>
+    <div class="body">
+      <label class="lbl" for="u8In">문자열</label>
+      <input id="u8In" class="tin" type="text" value="로봇 Rust 🦀!" spellcheck="false" autocomplete="off">
+      <div class="u8grid" id="u8Grid" aria-live="polite"></div>
+      <div class="row" style="margin-top:10px"><label class="lbl" for="u8Cut">슬라이스 &amp;s[..n]</label><input id="u8Cut" type="range" min="0" max="10" value="3" style="flex:1;accent-color:var(--accent)"><output id="u8CutV" class="kv"></output></div>
+      <div class="status" id="u8Res"></div>
+    </div>
+  </div>
+<div class="code run" data-expect="panic"><div class="bar"><span class="fn">strings.rs<span class="std x-panic">panic 예제</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn main() {
+    let s = String::from("로봇 Rust");
+    println!("len (bytes) = {}, chars = {}", s.len(), s.chars().count());
+
+    for (i, ch) in s.char_indices() {               // byte offset + char
+        print!("[{i}:{ch}] ");
+    }
+    println!();
+    println!("bytes = {:02X?}", &amp;s.as_bytes()[..6]);
+
+    // Safe ways to cut text:
+    let first_char: String = s.chars().take(1).collect();
+    let cut = s.char_indices().nth(2).map(|(i, _)| &amp;s[..i]).unwrap_or(&amp;s);
+    println!("first char = {first_char}, first two chars = {cut:?}");
+    println!("is_char_boundary(1) = {}, (3) = {}", s.is_char_boundary(1), s.is_char_boundary(3));
+
+    let mut owned = String::with_capacity(32);
+    owned.push_str("mode=");
+    owned += "auto";                                // String += &amp;str
+    let msg = format!("{owned}; v={:.1}", 0.75);
+    println!("{msg}, upper = {}", msg.to_uppercase());
+
+    println!("now cutting at byte 1 ...");
+    let bad = &amp;s[..1];                              // panics: byte 1 is inside '로'
+    println!("{bad}");
+}
+</code></pre></div>
+  <p>문자열 타입이 여럿인 이유도 같은 원리입니다. 각자 다른 불변식을 지킵니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>타입</th><th>소유</th><th>불변식</th><th>쓰는 곳</th></tr></thead>
+    <tbody>
+      <tr><td><code>String</code> / <code>&amp;str</code></td><td>소유 / 빌림</td><td>유효한 UTF-8</td><td>일반 텍스트</td></tr>
+      <tr><td><code>Vec&lt;u8&gt;</code> / <code>&amp;[u8]</code></td><td>소유 / 빌림</td><td>없음(임의 바이트)</td><td>프로토콜 프레임, 파일 내용</td></tr>
+      <tr><td><code>CString</code> / <code>&amp;CStr</code></td><td>소유 / 빌림</td><td>끝에 NUL, 중간에 NUL 없음</td><td>C 함수에 넘길 때(14장)</td></tr>
+      <tr><td><code>OsString</code> / <code>&amp;OsStr</code></td><td>소유 / 빌림</td><td>OS 네이티브 인코딩</td><td>환경 변수, 명령줄 인자</td></tr>
+      <tr><td><code>PathBuf</code> / <code>&amp;Path</code></td><td>소유 / 빌림</td><td>경로 구분자 규칙</td><td>파일 경로</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call sys"><span class="lab">시스템 엔지니어의 눈으로</span>
+    <p>시리얼이나 CAN으로 들어온 데이터는 <code>&amp;[u8]</code>로 다루고, 사람이 읽을 텍스트가 필요할 때만 <code>std::str::from_utf8(bytes)</code>로 검증해 <code>&amp;str</code>로 바꾸세요. 이 함수는 복사 없이 검증만 하고 <code>Result</code>를 돌려줍니다. 깨진 바이트를 대체 문자로 바꿔도 되면 <code>String::from_utf8_lossy</code>를 씁니다.</p>
+  </div>
+  <p>지금까지 <code>Vec&lt;T&gt;</code>, <code>Option&lt;T&gt;</code>, <code>Result&lt;T, E&gt;</code>를 써 왔습니다. 꺾쇠 안의 <code>T</code>가 무엇인지, 어떻게 직접 만드는지가 다음 장의 주제인 제네릭과 트레잇입니다.</p>
+
+  <div class="quiz" data-quiz="ch7"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch7" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH8 ============ -->
+<section class="chapter col" id="ch8">
+  <div class="eyebrow">Part II · 타입으로 설계하기 — 8장</div>
+  <h2>제네릭과 트레잇</h2>
+  <p class="goal">이 장을 마치면: 트레잇을 정의·구현하고 트레잇 경계(<code>T: Trait</code>, <code>where</code>)로 제네릭 함수를 제약할 수 있고, 제네릭(정적 디스패치, 단형화)과 <code>dyn Trait</code>(동적 디스패치, vtable)의 비용과 쓰임새를 비교해 고를 수 있으며, <code>derive</code>·연산자 오버로딩·고아 규칙(orphan rule)을 설명할 수 있습니다.</p>
+  <p>7장까지 쓴 <code>Vec&lt;T&gt;</code>와 <code>Option&lt;T&gt;</code>는 모두 제네릭입니다. 이 장에서는 그 <code>T</code>에 "어떤 능력이 있어야 하는가"를 표현하는 <strong>트레잇</strong>을 배웁니다. 트레잇은 Rust에서 인터페이스, 연산자, 형변환, 스레드 안전성까지 거의 모든 추상화의 기반입니다.</p>
+
+  <h3>트레잇은 "이 타입이 할 수 있는 일"의 계약이다</h3>
+  <p>트레잇은 메서드 시그니처의 묶음입니다. 기본 구현을 줄 수 있고, 어떤 타입이든 <code>impl Trait for Type</code>으로 구현할 수 있습니다. 상속은 없습니다. 대신 여러 트레잇을 조합합니다.</p>
+<div class="code run"><div class="bar"><span class="fn">traits.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">trait Sensor {
+    fn name(&amp;self) -&gt; String;
+    fn read(&amp;mut self) -&gt; f64;
+    fn read_avg(&amp;mut self, n: u32) -&gt; f64 {           // default method: uses the required ones
+        (0..n).map(|_| self.read()).sum::&lt;f64&gt;() / n as f64
+    }
+}
+
+struct Thermistor { raw: u16 }
+struct Ultrasonic { echo_us: u32, tick: u32 }
+
+impl Sensor for Thermistor {
+    fn name(&amp;self) -&gt; String { "thermistor".into() }
+    fn read(&amp;mut self) -&gt; f64 {
+        self.raw = self.raw.wrapping_add(3);
+        25.0 + (self.raw % 10) as f64 * 0.1
+    }
+}
+
+impl Sensor for Ultrasonic {
+    fn name(&amp;self) -&gt; String { format!("ultrasonic#{}", self.tick) }
+    fn read(&amp;mut self) -&gt; f64 {
+        self.tick += 1;
+        self.echo_us as f64 * 0.0343 / 2.0             // cm
+    }
+    fn read_avg(&amp;mut self, _n: u32) -&gt; f64 { self.read() }   // override the default
+}
+
+// Generic function with a trait bound: one copy is compiled per concrete type.
+fn report&lt;S: Sensor&gt;(s: &amp;mut S) {
+    println!("{:&lt;14} avg = {:.2}", s.name(), s.read_avg(4));
+}
+
+// Same thing, `impl Trait` in argument position (sugar for a generic).
+fn report_twice(s: &amp;mut impl Sensor) { report(s); report(s); }
+
+fn main() {
+    let mut t = Thermistor { raw: 0 };
+    let mut u = Ultrasonic { echo_us: 580, tick: 0 };
+    report(&amp;mut t);
+    report_twice(&amp;mut u);
+}
+</code></pre></div>
+
+  <h3>derive와 표준 트레잇: 공짜로 얻는 능력</h3>
+  <p>자주 쓰는 표준 트레잇은 <code>#[derive(...)]</code>로 자동 구현됩니다. 어떤 트레잇을 구현했는지가 그 타입으로 할 수 있는 일을 결정합니다. <code>==</code>는 <code>PartialEq</code>, <code>{:?}</code>는 <code>Debug</code>, <code>HashMap</code> 키가 되려면 <code>Eq + Hash</code>, 정렬하려면 <code>Ord</code>가 필요합니다. <code>+</code> 같은 연산자도 <code>std::ops::Add</code> 트레잇을 구현하면 됩니다.</p>
+<div class="code run"><div class="bar"><span class="fn">derive_ops.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::collections::HashSet;
+use std::fmt;
+use std::ops::{Add, Mul};
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+struct Vec2 { x: f64, y: f64 }
+
+impl Add for Vec2 {
+    type Output = Vec2;                                  // associated type
+    fn add(self, o: Vec2) -&gt; Vec2 { Vec2 { x: self.x + o.x, y: self.y + o.y } }
+}
+impl Mul&lt;f64&gt; for Vec2 {
+    type Output = Vec2;
+    fn mul(self, k: f64) -&gt; Vec2 { Vec2 { x: self.x * k, y: self.y * k } }
+}
+impl fmt::Display for Vec2 {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        write!(f, "({:.2}, {:.2})", self.x, self.y)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+enum Priority { Low, Normal, High, Critical }           // derive Ord: declaration order
+
+// A generic function bounded by several traits, written with `where`.
+fn largest&lt;T&gt;(items: &amp;[T]) -&gt; Option&lt;&amp;T&gt;
+where
+    T: PartialOrd,
+{
+    let mut best = items.first()?;
+    for it in items { if it &gt; best { best = it; } }
+    Some(best)
+}
+
+fn main() {
+    let p = Vec2 { x: 1.0, y: 2.0 } + Vec2 { x: 0.5, y: -1.0 } * 2.0;
+    println!("p = {p}  default = {:?}", Vec2::default());
+
+    let mut queue = vec![Priority::Normal, Priority::Critical, Priority::Low, Priority::High];
+    queue.sort();
+    println!("sorted = {queue:?}, max = {:?}", largest(&amp;queue));
+    println!("largest f64 = {:?}", largest(&amp;[0.3, 9.1, 2.2]));
+
+    let unique: HashSet&lt;Priority&gt; = [Priority::Low, Priority::Low, Priority::High].into_iter().collect();
+    println!("unique count = {}", unique.len());
+}
+</code></pre></div>
+  <div class="call key"><span class="lab">고아 규칙(orphan rule)</span>
+    <p><code>impl Trait for Type</code>은 <b>트레잇이나 타입 중 적어도 하나가 내 크레이트 것</b>일 때만 쓸 수 있습니다. 그래서 남의 타입 <code>Vec&lt;u8&gt;</code>에 남의 트레잇 <code>Display</code>를 구현할 수 없습니다. 두 크레이트가 같은 구현을 따로 넣어 충돌하는 일을 막기 위한 규칙입니다. 필요하면 15장의 newtype(<code>struct Hex(Vec&lt;u8&gt;)</code>)으로 감싸서 구현합니다.</p>
+  </div>
+
+  <h3>정적 디스패치 vs 동적 디스패치</h3>
+  <p>여러 종류의 센서를 한 벡터에 담고 싶다면? 제네릭 <code>Vec&lt;T&gt;</code>는 한 가지 타입만 담습니다. 서로 다른 타입을 섞으려면 <strong>트레잇 객체</strong> <code>dyn Sensor</code>를 씁니다. 크기를 모르는 타입이라 항상 포인터 뒤에 둡니다(<code>Box&lt;dyn Sensor&gt;</code>, <code>&amp;dyn Sensor</code>).</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 220" role="img" aria-label="단형화와 vtable 비교">
+      <text class="sv-t" x="20" y="22" font-weight="600">제네릭 &lt;S: Sensor&gt; — 단형화</text>
+      <rect class="sv-r1" x="20" y="34" width="270" height="38" rx="6"/><text class="sv-m" x="30" y="58">report::&lt;Thermistor&gt;  (별도 기계어)</text>
+      <rect class="sv-r1" x="20" y="80" width="270" height="38" rx="6"/><text class="sv-m" x="30" y="104">report::&lt;Ultrasonic&gt;  (별도 기계어)</text>
+      <text class="sv-m" x="20" y="142">호출은 직접 call · 인라인 가능</text>
+      <text class="sv-m" x="20" y="160">대가: 타입 수만큼 코드가 늘어남</text>
+      <text class="sv-t" x="340" y="22" font-weight="600">dyn Sensor — vtable</text>
+      <rect class="sv-r2" x="340" y="34" width="120" height="56" rx="6"/><text class="sv-m" x="350" y="56">&amp;dyn Sensor</text><text class="sv-m" x="350" y="74">[data | vtable]</text>
+      <rect class="sv-r3" x="500" y="34" width="125" height="110" rx="6"/>
+      <text class="sv-m" x="510" y="54">vtable(Ultrasonic)</text><text class="sv-m" x="510" y="76">drop_in_place</text><text class="sv-m" x="510" y="92">size, align</text><text class="sv-m" x="510" y="108">name()</text><text class="sv-m" x="510" y="124">read() …</text>
+      <path class="sv-ac" d="M460 74 L500 74"/>
+      <text class="sv-m" x="340" y="142">호출은 간접 call · 보통 인라인 불가</text>
+      <text class="sv-m" x="340" y="160">이점: 서로 다른 타입을 한 컬렉션에</text>
+      <text class="sv-m" x="340" y="198">&amp;dyn Trait = 팻 포인터 (16바이트)</text>
+    </svg>
+    <figcaption>그림 8-1. 같은 트레잇을 두 방식으로 쓸 수 있습니다. 기본은 제네릭, 이질적인 집합이나 플러그인 구조가 필요할 때 <code>dyn</code>.</figcaption>
+  </figure>
+<div class="code run"><div class="bar"><span class="fn">dyn_dispatch.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">trait Actuator {
+    fn name(&amp;self) -&gt; &amp;str;
+    fn command(&amp;mut self, value: f64) -&gt; String;
+}
+
+struct Motor { id: u8, rpm: f64 }
+struct Gripper { closed: bool }
+
+impl Actuator for Motor {
+    fn name(&amp;self) -&gt; &amp;str { "motor" }
+    fn command(&amp;mut self, v: f64) -&gt; String { self.rpm = v * 3000.0; format!("motor{} -&gt; {} rpm", self.id, self.rpm) }
+}
+impl Actuator for Gripper {
+    fn name(&amp;self) -&gt; &amp;str { "gripper" }
+    fn command(&amp;mut self, v: f64) -&gt; String { self.closed = v &gt; 0.5; format!("gripper closed = {}", self.closed) }
+}
+
+fn main() {
+    // A heterogeneous collection: each Box&lt;dyn Actuator&gt; is (data ptr, vtable ptr).
+    let mut outputs: Vec&lt;Box&lt;dyn Actuator&gt;&gt; = vec![
+        Box::new(Motor { id: 1, rpm: 0.0 }),
+        Box::new(Gripper { closed: false }),
+        Box::new(Motor { id: 2, rpm: 0.0 }),
+    ];
+    for (i, a) in outputs.iter_mut().enumerate() {
+        let out = a.command(0.2 * (i as f64 + 1.0));   // finish the &amp;mut call first...
+        println!("{:&lt;8} {out}", a.name());              // ...then borrow again for name()
+    }
+    use std::mem::size_of;
+    println!("Box&lt;Motor&gt; = {} B, Box&lt;dyn Actuator&gt; = {} B, &amp;dyn Actuator = {} B",
+             size_of::&lt;Box&lt;Motor&gt;&gt;(), size_of::&lt;Box&lt;dyn Actuator&gt;&gt;(), size_of::&lt;&amp;dyn Actuator&gt;());
+}
+</code></pre></div>
+  <p>모든 트레잇이 <code>dyn</code>으로 쓰일 수 있는 것은 아닙니다. vtable에 담을 수 없는 메서드, 예컨대 <strong>제네릭 메서드</strong>나 <code>Self</code>를 값으로 반환하는 메서드가 있으면 그 트레잇은 "dyn 호환"(예전 용어로 object safe)이 아닙니다. 제네릭 메서드는 타입마다 다른 기계어가 필요한데 vtable에는 칸이 하나뿐이기 때문입니다.</p>
+  <div class="bench" id="b-disp">
+    <header><b>실습 벤치 8-A · 이 호출은 어떻게 디스패치될까?</b><span>CLASSIFY · 8 SNIPPETS</span></header>
+    <div class="body">
+      <div id="dispList"></div>
+      <div class="row"><button type="button" class="btn" id="dispListReset">다시 풀기</button></div>
+      <div class="status" id="dispScore"></div>
+    </div>
+  </div>
+  <div class="call sys"><span class="lab">C/C++ 개발자의 눈으로</span>
+    <p><code>dyn Trait</code>는 C의 "ops 구조체(함수 포인터 테이블) + <code>void *</code>"를 언어가 만들어 주는 것이고, C++의 가상 함수와 달리 <b>vtable 포인터가 객체 안이 아니라 참조 쪽에</b> 붙습니다. 그래서 같은 <code>Motor</code> 값을 제네릭으로도, <code>dyn</code>으로도 쓸 수 있고, 트레잇을 쓰지 않는 값에는 vtable 비용이 전혀 없습니다. 제네릭은 C++ 템플릿처럼 단형화되지만, 경계(<code>S: Sensor</code>)를 선언 시점에 검사하므로 C++20 컨셉트처럼 오류가 짧고 정확합니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>"Java처럼" 모든 것을 <code>Box&lt;dyn Trait&gt;</code>로 설계하지 마세요. 기본은 제네릭이고, 런타임에 종류가 정해지거나 코드 크기가 문제일 때 <code>dyn</code>을 씁니다. 종류가 닫혀 있으면(정해진 몇 개) <b>열거형</b>이 둘 다보다 나을 때가 많습니다.</li>
+      <li>제네릭을 깊게 중첩하면 컴파일 시간과 바이너리 크기가 커집니다. 임베디드에서는 <code>cargo bloat</code>로 단형화 비용을 확인하세요.</li>
+    </ul>
+  </div>
+  <p>트레잇의 가장 화려한 쓰임새는 반복자입니다. 다음 장에서 클로저와 함께 <code>Iterator</code> 트레잇을 열어 봅니다.</p>
+
+  <div class="quiz" data-quiz="ch8"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch8" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH9 ============ -->
+<section class="chapter col" id="ch9">
+  <div class="eyebrow">Part II · 타입으로 설계하기 — 9장</div>
+  <h2>클로저와 반복자</h2>
+  <p class="goal">이 장을 마치면: 클로저가 환경을 어떻게 캡처하는지(빌림·가변 빌림·이동)와 그에 따른 <code>Fn</code>/<code>FnMut</code>/<code>FnOnce</code>를 구분할 수 있고, 반복자 어댑터 체인이 <b>게으르게</b>(lazy) 원소 하나씩 당겨 처리된다는 것을 설명할 수 있으며, 직접 <code>Iterator</code>를 구현해 표준 어댑터를 공짜로 얻을 수 있습니다.</p>
+  <p>8장에서 트레잇을 배웠습니다. 클로저와 반복자는 트레잇이 실제로 얼마나 강력한지 보여 주는 예입니다. 둘 다 <strong>제네릭 + 단형화</strong>로 컴파일되므로, 고수준으로 써도 손으로 짠 루프와 같은 기계어가 나옵니다.</p>
+
+  <h3>클로저는 환경을 캡처하는 익명 구조체다</h3>
+  <p><code>|x| x + offset</code> 같은 클로저는 컴파일러가 만드는 이름 없는 구조체입니다. 본문에서 쓰는 바깥 변수(<code>offset</code>)를 필드로 담고, 호출 연산을 구현합니다. 어떻게 담는지는 <strong>본문이 그 변수를 어떻게 쓰는지</strong>로 자동 결정됩니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>본문이 하는 일</th><th>캡처 방식</th><th>구현하는 트레잇</th><th>몇 번 호출?</th></tr></thead>
+    <tbody>
+      <tr><td>읽기만</td><td><code>&amp;T</code></td><td><code>Fn</code></td><td>몇 번이든, 동시에도</td></tr>
+      <tr><td>바꾼다</td><td><code>&amp;mut T</code></td><td><code>FnMut</code></td><td>몇 번이든, 한 번에 하나씩</td></tr>
+      <tr><td>소유권을 가져가 소비</td><td>값(이동)</td><td><code>FnOnce</code></td><td>한 번만</td></tr>
+    </tbody>
+  </table></div>
+  <p>세 트레잇은 포함 관계입니다. <code>Fn</code>이면 <code>FnMut</code>이고, <code>FnMut</code>이면 <code>FnOnce</code>입니다. 함수를 받는 쪽은 <strong>가장 약한 요구</strong>를 쓰는 것이 좋습니다. 한 번만 부를 거면 <code>FnOnce</code>를 받으세요. 그래야 호출자가 가장 많은 종류의 클로저를 넘길 수 있습니다. <code>move</code> 키워드는 본문이 빌리기만 해도 <strong>강제로 값을 이동</strong>해 담게 합니다. 클로저를 다른 스레드로 보내거나 함수 밖으로 반환할 때 필요합니다(12장).</p>
+<div class="code run"><div class="bar"><span class="fn">closures.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn apply_n&lt;F: FnMut()&gt;(n: usize, mut f: F) { for _ in 0..n { f(); } }
+fn run_once&lt;F: FnOnce() -&gt; String&gt;(f: F) -&gt; String { f() }
+
+// Returning closures: `impl Fn` (static) or Box&lt;dyn Fn&gt; (dynamic).
+fn make_scaler(k: f64) -&gt; impl Fn(f64) -&gt; f64 { move |x| x * k }
+fn make_filter(kind: &amp;str) -&gt; Box&lt;dyn Fn(f64) -&gt; bool&gt; {
+    match kind {
+        "positive" =&gt; Box::new(|x| x &gt; 0.0),
+        _ =&gt; Box::new(|x| x.is_finite()),
+    }
+}
+
+fn main() {
+    let offset = 0.5;
+    let add = |x: f64| x + offset;                 // Fn: borrows `offset`
+    println!("add(1) = {}", add(1.0));
+
+    let mut count = 0;
+    apply_n(3, || count += 1);                     // FnMut: mutably borrows `count`
+    println!("count = {count}");
+
+    let log = String::from("calibration done");
+    let consume = move || log + "!";               // FnOnce: moves `log` and consumes it
+    println!("{}", run_once(consume));
+    // println!("{log}");                          // error: `log` was moved into the closure
+
+    let to_cm = make_scaler(100.0);
+    let keep = make_filter("positive");
+    let data = [0.12, -0.4, 0.33];
+    let cm: Vec&lt;f64&gt; = data.iter().copied().filter(|x| keep(*x)).map(&amp;to_cm).collect();
+    println!("cm = {cm:?}");
+}
+</code></pre></div>
+
+  <h3>반복자는 게으르다: 원소 하나씩 끝까지 당긴다</h3>
+  <p><code>Iterator</code> 트레잇의 필수 메서드는 하나뿐입니다. <code>fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt;</code>. <code>map</code>, <code>filter</code>, <code>take</code> 같은 어댑터는 다른 반복자를 감싸는 작은 구조체일 뿐, 만들 때는 <strong>아무 일도 하지 않습니다</strong>. <code>collect</code>, <code>sum</code>, <code>for</code> 같은 소비자가 <code>next()</code>를 부를 때, 체인의 맨 끝에서 맨 앞까지 원소 <b>하나</b>를 당겨 와 끝까지 통과시킵니다. 중간 배열이 생기지 않고, <code>take(2)</code>가 만족되면 앞쪽 원소는 아예 계산하지 않습니다.</p>
+  <div class="bench" id="b-iter">
+    <header><b>실습 벤치 9-A · 반복자 체인 속으로</b><span>STEPPER · PULL-BASED</span></header>
+    <div class="body">
+      <div class="srcview" id="itSrc"></div>
+      <div class="pipe" id="itPipe"></div>
+      <div class="conout" id="itOut" aria-live="polite"></div>
+      <p class="explain" id="itEx"></p>
+      <div class="row"><button type="button" class="btn" id="itPrev">◀ 이전</button><button type="button" class="btn pri" id="itNext">다음 ▶</button><button type="button" class="btn" id="itReset">처음으로</button><span class="tokc" id="itStep"></span></div>
+    </div>
+  </div>
+<div class="code run"><div class="bar"><span class="fn">lazy.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn main() {
+    let result: Vec&lt;u32&gt; = (1..=6)
+        .inspect(|x| println!("  source yields {x}"))
+        .map(|x| { println!("    map {x} -&gt; {}", x * x); x * x })
+        .filter(|x| { let keep = x % 2 == 0; println!("      filter {x}: {keep}"); keep })
+        .take(2)
+        .collect();
+    println!("result = {result:?}   (5 and 6 were never produced)");
+
+    let lazy = (1..).map(|x| x * 10);          // an infinite iterator: fine, nothing runs yet
+    let first: Vec&lt;_&gt; = lazy.take(3).collect();
+    println!("first of infinite = {first:?}");
+}
+</code></pre></div>
+
+  <h3>자주 쓰는 어댑터와 소유권 세 갈래</h3>
+  <p>컬렉션에서 반복자를 얻는 방법은 세 가지이고, 소유권 규칙과 정확히 대응합니다. <code>iter()</code>는 <code>&amp;T</code>를, <code>iter_mut()</code>는 <code>&amp;mut T</code>를, <code>into_iter()</code>는 컬렉션을 소비하며 <code>T</code>를 내놓습니다. <code>for x in &amp;v</code>는 <code>v.iter()</code>, <code>for x in v</code>는 <code>v.into_iter()</code>입니다.</p>
+<div class="code run"><div class="bar"><span class="fn">adapters.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">#[derive(Debug)]
+struct Reading { sensor: &amp;'static str, value: f64, ok: bool }
+
+fn main() {
+    let rs = vec![
+        Reading { sensor: "imu", value: 0.98, ok: true },
+        Reading { sensor: "lidar", value: 12.4, ok: false },
+        Reading { sensor: "imu", value: 1.02, ok: true },
+        Reading { sensor: "cam", value: 30.0, ok: true },
+    ];
+
+    let healthy = rs.iter().filter(|r| r.ok).count();
+    let imu_mean = {
+        let (sum, n) = rs.iter().filter(|r| r.sensor == "imu")
+            .fold((0.0, 0), |(s, n), r| (s + r.value, n + 1));
+        sum / n as f64
+    };
+    let names: Vec&lt;_&gt; = rs.iter().map(|r| r.sensor).collect::&lt;std::collections::BTreeSet&lt;_&gt;&gt;().into_iter().collect();
+    let first_bad = rs.iter().position(|r| !r.ok);
+    let all_positive = rs.iter().all(|r| r.value &gt; 0.0);
+    println!("healthy={healthy} imu_mean={imu_mean:.2} names={names:?} first_bad={first_bad:?} all&gt;0={all_positive}");
+
+    // zip + windows: deltas between consecutive samples
+    let t = [0.0, 0.1, 0.25, 0.4];
+    let x = [0.0, 0.05, 0.2, 0.3];
+    let v: Vec&lt;f64&gt; = t.windows(2).zip(x.windows(2))
+        .map(|(tw, xw)| (xw[1] - xw[0]) / (tw[1] - tw[0])).collect();
+    println!("velocities = {v:.2?}");
+
+    // chunks + flat_map: split a byte stream into 3-byte frames and flatten fields
+    let bytes = [1u8, 2, 3, 4, 5, 6, 7];
+    let sums: Vec&lt;u32&gt; = bytes.chunks(3).map(|c| c.iter().map(|&amp;b| b as u32).sum()).collect();
+    println!("chunk sums = {sums:?}");
+
+    // into_iter consumes: partition into owned vectors
+    let (good, bad): (Vec&lt;Reading&gt;, Vec&lt;Reading&gt;) = rs.into_iter().partition(|r| r.ok);
+    println!("good={} bad={:?}", good.len(), bad);
+}
+</code></pre></div>
+
+  <h3>직접 만든 반복자도 일급 시민</h3>
+  <p><code>next()</code> 하나만 구현하면 <code>map</code>, <code>filter</code>, <code>zip</code>, <code>sum</code> 등 70개가 넘는 메서드를 공짜로 얻습니다. 하드웨어 레지스터를 순회하거나, 링 버퍼를 읽거나, 프로토콜 프레임을 하나씩 잘라내는 코드를 반복자로 만들면 나머지 표준 도구와 자연스럽게 맞물립니다.</p>
+<div class="code run"><div class="bar"><span class="fn">custom_iter.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">/// Yields fixed-point samples from a simple linear-feedback shift register (a fake noise source).
+struct Lfsr { state: u16 }
+
+impl Iterator for Lfsr {
+    type Item = u16;
+    fn next(&amp;mut self) -&gt; Option&lt;u16&gt; {
+        let bit = (self.state ^ (self.state &gt;&gt; 2) ^ (self.state &gt;&gt; 3) ^ (self.state &gt;&gt; 5)) &amp; 1;
+        self.state = (self.state &gt;&gt; 1) | (bit &lt;&lt; 15);
+        Some(self.state)                       // infinite: never returns None
+    }
+}
+
+fn main() {
+    let noise = Lfsr { state: 0xACE1 };
+    let samples: Vec&lt;u16&gt; = noise.take(5).collect();
+    println!("{samples:04X?}");
+
+    let mean = Lfsr { state: 0xACE1 }.take(1000).map(|x| x as f64).sum::&lt;f64&gt;() / 1000.0;
+    println!("mean of 1000 samples = {mean:.0} (ideal ~32768)");
+
+    let above = Lfsr { state: 1 }.take(64).filter(|&amp;x| x &gt; 0x8000).count();
+    println!("{above} of 64 samples above midscale");
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">성능 엔지니어의 눈으로</span>
+    <p>반복자 체인은 컴파일 후 손으로 쓴 <code>for</code> 루프와 사실상 같은 기계어가 됩니다. 단형화로 모든 클로저가 인라인되고, <code>iter()</code>는 범위를 이미 알고 있어 인덱스 범위 검사도 생략됩니다. 오히려 <code>for i in 0..v.len() { v[i] }</code>가 매 접근마다 범위 검사를 해야 해서 느릴 수 있습니다. 확신이 서지 않으면 Compiler Explorer에서 두 버전의 어셈블리를 비교해 보세요.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>어댑터만 만들고 소비하지 않으면 아무 일도 일어나지 않습니다. 컴파일러가 <code>unused_must_use</code>로 "iterators are lazy"라고 경고합니다.</li>
+      <li><code>collect()</code>는 결과 타입을 알아야 합니다. <code>let v: Vec&lt;_&gt; = ...</code>나 터보피시 <code>collect::&lt;Vec&lt;_&gt;&gt;()</code>로 알려 주세요. <code>Result&lt;Vec&lt;T&gt;, E&gt;</code>로 collect하면 첫 오류에서 멈추는 것까지 됩니다.</li>
+    </ul>
+  </div>
+  <p>Part II가 끝났습니다. 이제 지금까지 슬쩍 넘어간 것, 함수 시그니처에 붙는 <code>'a</code>를 정면으로 다룰 차례입니다. 다음 장은 라이프타임입니다.</p>
+
+  <div class="quiz" data-quiz="ch9"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch9" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH10 ============ -->
+<section class="chapter col" id="ch10">
+  <div class="eyebrow">Part III · 고급 메커니즘 — 10장</div>
+  <h2>라이프타임</h2>
+  <p class="goal">이 장을 마치면: 라이프타임 매개변수 <code>'a</code>가 "참조들 사이의 관계"를 선언하는 것이지 수명을 늘리거나 줄이는 것이 아님을 설명할 수 있고, 세 가지 생략 규칙으로 언제 표기가 필요한지 판단할 수 있으며, 참조를 품은 구조체와 <code>'static</code>, <code>T: 'a</code> 경계를 올바르게 쓸 수 있습니다.</p>
+  <p>4장에서 "참조는 원래 값보다 오래 살 수 없다"고 했습니다. 함수 안에서는 컴파일러가 이를 직접 확인할 수 있습니다. 하지만 함수가 참조를 받아서 참조를 돌려줄 때, <strong>돌려주는 참조가 어느 입력에서 왔는지</strong>는 시그니처에 적혀 있어야 호출하는 쪽이 검사할 수 있습니다. 그 표기가 라이프타임입니다.</p>
+
+  <h3>'a는 수명을 바꾸지 않는다, 관계를 적는다</h3>
+<div class="code run" data-expect="error"><div class="bar"><span class="fn">longest_error.rs<span class="std x-error">컴파일 오류 예제</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">// Which input does the returned reference borrow from? The signature doesn't say.
+fn longest(a: &amp;str, b: &amp;str) -&gt; &amp;str {      // error[E0106]: missing lifetime specifier
+    if a.len() &gt;= b.len() { a } else { b }
+}
+
+fn main() {
+    println!("{}", longest("lidar", "imu"));
+}
+</code></pre></div>
+  <p>컴파일러는 함수 본문을 보고 추측하지 않습니다. 시그니처만으로 호출부를 검사해야 모듈 경계를 넘어도 검사가 빠르고 안정적이기 때문입니다. 그래서 우리가 관계를 적어 줍니다.</p>
+<div class="code run"><div class="bar"><span class="fn">longest.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">// "The result lives at most as long as BOTH inputs": 'a is the overlap of the two borrows.
+fn longest&lt;'a&gt;(a: &amp;'a str, b: &amp;'a str) -&gt; &amp;'a str {
+    if a.len() &gt;= b.len() { a } else { b }
+}
+
+// Here the result only ever comes from `text`, so `pattern` gets its own, unrelated lifetime.
+fn after&lt;'t&gt;(text: &amp;'t str, pattern: &amp;str) -&gt; Option&lt;&amp;'t str&gt; {
+    text.find(pattern).map(|i| &amp;text[i + pattern.len()..])
+}
+
+fn main() {
+    let topic = String::from("/robot/front_lidar");
+    let result;
+    {
+        let short = String::from("/imu");
+        result = longest(&amp;topic, &amp;short);
+        println!("longest = {result}");            // fine: both strings are alive here
+    }
+    // println!("{result}");                      // error: `short` does not live long enough
+
+    let tail;
+    {
+        let pat = String::from("/robot/");
+        tail = after(&amp;topic, &amp;pat);                // tied to `topic` only
+    }
+    println!("tail = {tail:?}");                   // fine: `pat` is gone, but tail never borrowed it
+}
+</code></pre></div>
+  <p><code>&lt;'a&gt;</code>는 "호출자가 정해 주는 어떤 구간"이라는 제네릭 매개변수입니다. <code>longest</code>의 시그니처는 "두 입력이 모두 유효한 구간 안에서만 결과가 유효하다"는 약속입니다. 컴파일러는 호출부에서 그 구간을 계산해 주석 처리된 줄처럼 약속을 어기는 사용을 막습니다. <strong>라이프타임 표기는 기계어에 아무 흔적도 남기지 않는</strong> 순수한 컴파일 타임 정보입니다.</p>
+
+  <h3>대부분은 생략 규칙이 대신 써 준다</h3>
+  <p>모든 참조에 라이프타임을 적으면 끔찍할 것입니다. 그래서 컴파일러는 세 가지 <strong>생략 규칙</strong>(elision rules)으로 흔한 경우를 채웁니다. 이 규칙으로 결정되지 않을 때만 직접 씁니다.</p>
+  <ol class="steps">
+    <li>입력의 각 참조는 각자 다른 라이프타임을 받는다. <code>fn f(a: &amp;T, b: &amp;U)</code> → <code>fn f&lt;'x, 'y&gt;(a: &amp;'x T, b: &amp;'y U)</code></li>
+    <li>입력 라이프타임이 <b>정확히 하나</b>면, 출력의 모든 참조가 그것을 받는다.</li>
+    <li>메서드에서 <code>&amp;self</code>나 <code>&amp;mut self</code>가 있으면, 출력은 <b><code>self</code>의 라이프타임</b>을 받는다.</li>
+  </ol>
+  <p><code>longest</code>는 입력 참조가 둘이고 <code>self</code>가 없어서 규칙 2, 3이 모두 적용되지 않았던 것입니다.</p>
+  <div class="bench" id="b-life">
+    <header><b>실습 벤치 10-A · 이 시그니처, 라이프타임을 써야 할까?</b><span>CLASSIFY · 8 SIGNATURES</span></header>
+    <div class="body">
+      <div id="lifeList"></div>
+      <div class="row"><button type="button" class="btn" id="lifeListReset">다시 풀기</button></div>
+      <div class="status" id="lifeScore"></div>
+    </div>
+  </div>
+
+  <h3>참조를 품은 구조체: 빌린 쪽보다 오래 살 수 없다</h3>
+  <p>구조체가 참조를 필드로 가지면 구조체 자체에 라이프타임 매개변수가 붙습니다. <code>Parser&lt;'a&gt;</code>는 "<code>'a</code> 동안 빌린 입력을 들고 있는 파서"이고, 파서 인스턴스는 입력보다 오래 살 수 없습니다. 이것이 <strong>제로 카피 파싱</strong>의 기반입니다. 입력 버퍼를 복사하지 않고 그 안을 가리키는 <code>&amp;str</code>/<code>&amp;[u8]</code> 조각들을 돌려줄 수 있습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">zero_copy.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">/// Splits "key=value;key=value" without allocating: every &amp;str points into the input.
+struct KvParser&lt;'a&gt; {
+    rest: &amp;'a str,
+}
+
+impl&lt;'a&gt; KvParser&lt;'a&gt; {
+    fn new(input: &amp;'a str) -&gt; Self { Self { rest: input } }
+}
+
+impl&lt;'a&gt; Iterator for KvParser&lt;'a&gt; {
+    type Item = (&amp;'a str, &amp;'a str);          // items borrow from the INPUT, not from the parser
+    fn next(&amp;mut self) -&gt; Option&lt;Self::Item&gt; {
+        while !self.rest.is_empty() {
+            let (field, rest) = self.rest.split_once(';').unwrap_or((self.rest, ""));
+            self.rest = rest;
+            if let Some((k, v)) = field.split_once('=') {
+                return Some((k.trim(), v.trim()));
+            }
+        }
+        None
+    }
+}
+
+fn main() {
+    let msg = String::from("id=7; mode=auto;garbage; speed=0.8");
+    let pairs: Vec&lt;(&amp;str, &amp;str)&gt; = KvParser::new(&amp;msg).collect();
+    println!("{pairs:?}");
+    let base = msg.as_ptr() as usize;
+    for (k, v) in &amp;pairs {
+        println!("{k:&gt;5} at byte {:&gt;2}, {v:&gt;4} at byte {:&gt;2}", k.as_ptr() as usize - base, v.as_ptr() as usize - base);
+    }
+    // drop(msg);           // uncomment: error[E0505], `pairs` still borrows from `msg`
+    println!("pairs alive = {}", pairs.len());
+}
+</code></pre></div>
+  <p>출력의 바이트 오프셋을 보면 모든 키와 값이 원본 문자열 <b>안을</b> 가리킨다는 것을 알 수 있습니다. 할당이 한 번도 없습니다. 대가는 <code>pairs</code>가 <code>msg</code>를 붙잡고 있어서 <code>msg</code>를 먼저 버릴 수 없다는 것뿐입니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 150" role="img" aria-label="입력 버퍼와 그 안을 가리키는 슬라이스들">
+      <rect class="sv-r2" x="20" y="30" width="600" height="34" rx="5"/>
+      <text class="sv-m" x="28" y="52">i d = 7 ;   m o d e = a u t o ; g a r b a g e ;   s p e e d = 0 . 8</text>
+      <text class="sv-t" x="20" y="20" font-weight="600">msg: String (힙, 한 번 할당)</text>
+      <path class="sv-ac" d="M40 110 L40 66"/><path class="sv-ac" d="M78 110 L78 66"/>
+      <path class="sv-ac" d="M128 110 L128 66"/><path class="sv-ac" d="M200 110 L200 66"/>
+      <path class="sv-ac" d="M440 110 L440 66"/><path class="sv-ac" d="M528 110 L528 66"/>
+      <text class="sv-m" x="20" y="128">pairs: Vec&lt;(&amp;'a str, &amp;'a str)&gt; — 포인터와 길이만 저장, 'a = msg를 빌린 구간</text>
+    </svg>
+    <figcaption>그림 10-1. 라이프타임은 "이 조각들은 msg가 살아 있는 동안만 유효하다"는 사실을 타입에 기록합니다.</figcaption>
+  </figure>
+
+  <h3>'static과 T: 'static은 다른 말이다</h3>
+  <p><code>&amp;'static str</code>은 "프로그램 끝까지 유효한 참조"입니다. 문자열 리터럴이 그렇습니다(실행 파일의 읽기 전용 영역에 있으니까). 한편 제네릭 경계 <code>T: 'static</code>은 "<code>T</code> 안에 <b>'static이 아닌 참조가 들어 있지 않다</b>"는 뜻입니다. <code>String</code>, <code>Vec&lt;u8&gt;</code>, <code>u32</code>처럼 아무것도 빌리지 않은 소유 타입은 모두 <code>T: 'static</code>을 만족합니다. 영원히 산다는 뜻이 아니라, <strong>원하면 영원히 들고 있어도 되는</strong> 값이라는 뜻입니다. 12장에서 <code>thread::spawn</code>이 클로저에 <code>'static</code>을 요구하는 이유가 바로 이것입니다.</p>
+<div class="code run"><div class="bar"><span class="fn">static_bound.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::fmt::Debug;
+
+fn keep_forever&lt;T: Debug + 'static&gt;(x: T) -&gt; Box&lt;dyn Debug&gt; { Box::new(x) }
+
+fn main() {
+    let owned = String::from("owned data");
+    let a = keep_forever(owned);              // String: 'static (owns its data)
+    let b = keep_forever(42_u32);
+    let c = keep_forever("a literal");        // &amp;'static str
+    println!("{a:?} {b:?} {c:?}");
+
+    let local = String::from("local");
+    let r = &amp;local;
+    // let d = keep_forever(r);               // error[E0597]: `local` does not live long enough
+    println!("{r}");
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>C에서 "이 포인터는 저 버퍼가 살아 있는 동안만 유효하다"는 사실은 주석과 코드 리뷰로만 전달됩니다. 라이프타임은 그 주석을 컴파일러가 읽을 수 있는 형태로 바꾼 것입니다. 실무 감각으로는, <b>함수 시그니처에 라이프타임이 등장하면 "반환값이 어느 입력을 빌리는가"를 문서화하는 것</b>이라고 생각하면 됩니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>컴파일 오류를 없애려고 <code>'static</code>을 여기저기 붙이지 마세요. 거의 항상 문제를 옮길 뿐입니다.</li>
+      <li>오래 살아야 하는 구조체(설정, 캐시, 스레드 간 메시지)에는 참조 대신 <b>소유 타입</b>(<code>String</code>, <code>Vec</code>, <code>Arc</code>)을 넣으세요. 참조를 품은 구조체는 짧게 살다 사라지는 "뷰"에 어울립니다.</li>
+      <li>"self를 참조하는 구조체"(자기 참조)는 safe Rust로 직접 만들 수 없습니다. 인덱스로 바꾸거나, 13장의 <code>Pin</code>이 다루는 영역입니다.</li>
+    </ul>
+  </div>
+  <p>참조로 해결되지 않는 공유가 있습니다. 여러 소유자가 같은 값을 함께 소유해야 할 때입니다. 다음 장의 스마트 포인터가 그 도구입니다.</p>
+
+  <div class="quiz" data-quiz="ch10"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch10" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH11 ============ -->
+<section class="chapter col" id="ch11">
+  <div class="eyebrow">Part III · 고급 메커니즘 — 11장</div>
+  <h2>스마트 포인터와 내부 가변성</h2>
+  <p class="goal">이 장을 마치면: <code>Box</code>, <code>Rc</code>/<code>Arc</code>, <code>Weak</code>, <code>Cell</code>, <code>RefCell</code>이 각각 소유권 규칙의 어떤 부분을 바꾸는지 설명할 수 있고, <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> 패턴과 그 런타임 비용(panic 가능성)을 이해하며, <code>Weak</code>로 순환 참조 누수를 끊을 수 있습니다.</p>
+  <p>지금까지의 규칙은 "소유자는 하나, 변경은 배타적"이었습니다. 대부분의 코드는 이 규칙 안에서 깔끔하게 짜입니다. 하지만 그래프, 트리의 부모 링크, 여러 곳에서 공유하는 캐시처럼 규칙에 딱 맞지 않는 구조도 있습니다. 스마트 포인터는 규칙을 <strong>버리는 것이 아니라, 검사를 컴파일 타임에서 런타임으로 옮기는</strong> 도구입니다.</p>
+
+  <h3>한눈에 보는 지도</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>타입</th><th>무엇을 바꾸나</th><th>비용</th><th>스레드 간</th></tr></thead>
+    <tbody>
+      <tr><td><code>Box&lt;T&gt;</code></td><td>값을 힙에 둔다. 소유자는 여전히 하나</td><td>할당 1회</td><td><code>T</code>를 따름</td></tr>
+      <tr><td><code>Rc&lt;T&gt;</code></td><td>소유자가 여럿(참조 카운트). 내용은 읽기 전용</td><td>카운트 증감(비원자)</td><td>불가</td></tr>
+      <tr><td><code>Arc&lt;T&gt;</code></td><td><code>Rc</code>와 같지만 원자적 카운트</td><td>원자 연산</td><td>가능(12장)</td></tr>
+      <tr><td><code>Weak&lt;T&gt;</code></td><td>소유하지 않는 관찰자. <code>upgrade()</code>로 확인</td><td>약한 카운트</td><td>Rc/Arc를 따름</td></tr>
+      <tr><td><code>Cell&lt;T&gt;</code></td><td><code>&amp;</code>로도 값 교체(<code>get</code>/<code>set</code>, Copy 위주)</td><td>0</td><td>불가</td></tr>
+      <tr><td><code>RefCell&lt;T&gt;</code></td><td><code>&amp;</code>로도 <code>&amp;mut</code> 대여. 규칙은 <b>런타임</b> 검사</td><td>대여 플래그, 위반 시 panic</td><td>불가(→ <code>Mutex</code>)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Box: 힙에 두기, 재귀 타입, 트레잇 객체</h3>
+  <p><code>Box&lt;T&gt;</code>는 가장 단순한 스마트 포인터입니다. 값을 힙에 두고 포인터 하나만 들고 있으며, Box가 drop되면 힙 값도 drop됩니다. 크기를 컴파일 타임에 알 수 없는 것(재귀 타입, <code>dyn Trait</code>)을 담을 때 필요합니다. 연결 리스트나 식 트리의 노드가 자기 타입을 직접 품으면 크기가 무한이 되므로, <code>Box</code>로 한 번 감쌉니다.</p>
+<div class="code run"><div class="bar"><span class="fn">boxed_tree.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">// An expression tree for a tiny "mission script": recursive, so children are boxed.
+#[derive(Debug)]
+enum Expr {
+    Num(f64),
+    Var(&amp;'static str),
+    Add(Box&lt;Expr&gt;, Box&lt;Expr&gt;),
+    Mul(Box&lt;Expr&gt;, Box&lt;Expr&gt;),
+}
+use Expr::*;
+
+fn eval(e: &amp;Expr, speed: f64) -&gt; f64 {
+    match e {
+        Num(n) =&gt; *n,
+        Var("speed") =&gt; speed,
+        Var(other) =&gt; panic!("unknown variable {other}"),
+        Add(a, b) =&gt; eval(a, speed) + eval(b, speed),     // &amp;Box&lt;Expr&gt; auto-derefs to &amp;Expr
+        Mul(a, b) =&gt; eval(a, speed) * eval(b, speed),
+    }
+}
+
+fn main() {
+    // distance = speed * 2.5 + 0.3
+    let dist = Add(Box::new(Mul(Box::new(Var("speed")), Box::new(Num(2.5)))), Box::new(Num(0.3)));
+    println!("{dist:?}");
+    println!("distance at 0.8 m/s = {:.2} m", eval(&amp;dist, 0.8));
+    println!("size_of::&lt;Expr&gt;() = {} bytes", std::mem::size_of::&lt;Expr&gt;());
+}
+</code></pre></div>
+
+  <h3>Rc + RefCell: 공유 소유와 런타임 빌림 검사</h3>
+  <p><code>Rc&lt;T&gt;</code>를 <code>clone()</code>하면 값이 복제되지 않고 <strong>참조 카운트만 1 늘어납니다</strong>. 마지막 <code>Rc</code>가 drop될 때 값이 해제됩니다. 단, <code>Rc</code>는 내용에 대해 <code>&amp;T</code>만 줍니다. 여러 소유자가 동시에 <code>&amp;mut</code>를 가지면 4장의 규칙이 깨지기 때문입니다. 공유하면서 바꾸고 싶다면 <code>RefCell</code>을 넣어 <code>Rc&lt;RefCell&lt;T&gt;&gt;</code>로 만듭니다. <code>RefCell</code>은 <code>borrow()</code>/<code>borrow_mut()</code>를 부를 때마다 4장의 규칙을 <strong>런타임에</strong> 검사하고, 위반하면 panic합니다.</p>
+<div class="code run" data-expect="panic"><div class="bar"><span class="fn">rc_refcell.rs<span class="std x-panic">panic 예제</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::cell::RefCell;
+use std::rc::Rc;
+
+#[derive(Debug)]
+struct Map { obstacles: Vec&lt;(i32, i32)&gt; }
+
+struct Planner { map: Rc&lt;RefCell&lt;Map&gt;&gt; }
+struct Perception { map: Rc&lt;RefCell&lt;Map&gt;&gt; }
+
+impl Perception {
+    fn detect(&amp;self, p: (i32, i32)) { self.map.borrow_mut().obstacles.push(p); }
+}
+impl Planner {
+    fn blocked(&amp;self, p: (i32, i32)) -&gt; bool { self.map.borrow().obstacles.contains(&amp;p) }
+}
+
+fn main() {
+    let map = Rc::new(RefCell::new(Map { obstacles: vec![] }));
+    let perception = Perception { map: Rc::clone(&amp;map) };   // Rc::clone: count += 1, no deep copy
+    let planner = Planner { map: Rc::clone(&amp;map) };
+    println!("strong_count = {}", Rc::strong_count(&amp;map));
+
+    perception.detect((3, 4));
+    println!("blocked (3,4)? {}", planner.blocked((3, 4)));
+    println!("map = {:?}", map.borrow());
+
+    // The borrow rules still apply, just at run time:
+    let reader = map.borrow();                               // shared borrow alive...
+    println!("try_borrow_mut while reading: {:?}", map.try_borrow_mut().map(|_| ()));
+    perception.detect((5, 5));                               // ...so this borrow_mut() panics
+    println!("unreachable {}", reader.obstacles.len());
+}
+</code></pre></div>
+  <p>마지막 부분이 이 패턴의 대가입니다. 컴파일러가 잡아 주던 오류가 <strong>런타임 panic</strong>(<code>already borrowed: BorrowMutError</code>)으로 바뀝니다. 그래서 <code>RefCell</code>은 "빌림 기간이 짧고 구조상 겹치지 않는다"는 것을 사람이 확신할 때만 쓰고, 확실하지 않으면 <code>try_borrow_mut</code>로 실패를 다루세요.</p>
+
+  <h3>Weak로 순환을 끊는다</h3>
+  <p>참조 카운트의 고전적 약점은 <strong>순환</strong>입니다. 부모가 자식을, 자식이 부모를 <code>Rc</code>로 가리키면 둘 다 카운트가 0이 되지 않아 영원히 해제되지 않습니다. Rust에서 메모리 누수는 "안전한" 동작이라 컴파일러가 막지 않습니다(1장 벤치). 해법은 한쪽 방향을 <code>Weak</code>로 만드는 것입니다. <code>Weak</code>는 카운트를 올리지 않고, 쓸 때마다 <code>upgrade()</code>로 값이 아직 살아 있는지 확인해 <code>Option&lt;Rc&lt;T&gt;&gt;</code>를 받습니다.</p>
+  <div class="bench" id="b-rc">
+    <header><b>실습 벤치 11-A · Rc와 Weak의 카운트</b><span>STEPPER · 8 STEPS</span></header>
+    <div class="body">
+      <div class="srcview" id="rcSrc"></div>
+      <div class="sp-grid" id="rcGrid"></div>
+      <div class="cb" id="rcCb"></div>
+      <p class="explain" id="rcEx"></p>
+      <div class="row"><button type="button" class="btn" id="rcPrev">◀ 이전</button><button type="button" class="btn pri" id="rcNext">다음 ▶</button><button type="button" class="btn" id="rcReset">처음으로</button><span class="tokc" id="rcStep"></span></div>
+    </div>
+  </div>
+<div class="code run"><div class="bar"><span class="fn">weak_tree.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::cell::RefCell;
+use std::rc::{Rc, Weak};
+
+#[derive(Debug)]
+struct Frame {
+    name: String,
+    parent: RefCell&lt;Weak&lt;Frame&gt;&gt;,          // child -&gt; parent: does NOT own
+    children: RefCell&lt;Vec&lt;Rc&lt;Frame&gt;&gt;&gt;,     // parent -&gt; children: owns
+}
+
+impl Frame {
+    fn new(name: &amp;str) -&gt; Rc&lt;Frame&gt; {
+        Rc::new(Frame { name: name.into(), parent: RefCell::new(Weak::new()), children: RefCell::new(vec![]) })
+    }
+    fn attach(parent: &amp;Rc&lt;Frame&gt;, child: Rc&lt;Frame&gt;) {
+        *child.parent.borrow_mut() = Rc::downgrade(parent);
+        parent.children.borrow_mut().push(child);
+    }
+    fn path(&amp;self) -&gt; String {
+        match self.parent.borrow().upgrade() {
+            Some(p) =&gt; format!("{}/{}", p.path(), self.name),
+            None =&gt; self.name.clone(),
+        }
+    }
+}
+
+impl Drop for Frame {
+    fn drop(&amp;mut self) { println!("  drop frame {}", self.name); }
+}
+
+fn main() {
+    let lidar = Frame::new("lidar");
+    {
+        let base = Frame::new("base_link");
+        let mast = Frame::new("mast");
+        Frame::attach(&amp;base, mast.clone());
+        Frame::attach(&amp;mast, lidar.clone());
+        println!("path = {}", lidar.path());
+        println!("base: strong={} weak={}", Rc::strong_count(&amp;base), Rc::weak_count(&amp;base));
+        println!("mast: strong={} weak={}", Rc::strong_count(&amp;mast), Rc::weak_count(&amp;mast));
+        println!("leaving scope: base and mast lose their outside owners");
+    }
+    println!("after scope, lidar.path() = {}  (parent gone, upgrade() returned None)", lidar.path());
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">C++ 개발자의 눈으로</span>
+    <p><code>Box</code> ≈ <code>unique_ptr</code>, <code>Arc</code> ≈ <code>shared_ptr</code>, <code>Weak</code> ≈ <code>weak_ptr</code>입니다. 차이는 두 가지입니다. Rust에는 단일 스레드용 <code>Rc</code>가 따로 있어 원자 연산 비용을 피할 수 있고(실수로 스레드 간에 넘기면 컴파일 오류, 12장), <code>shared_ptr&lt;T&gt;</code>와 달리 <code>Rc&lt;T&gt;</code>는 내용을 바꿀 수 없어서 공유 + 변경이 필요하면 <code>RefCell</code>을 명시해야 합니다. 비용이 드는 선택이 타입에 드러나는 셈입니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><code>Rc&lt;RefCell&lt;T&gt;&gt;</code>를 기본 설계로 쓰면 다른 언어의 객체 그래프를 흉내 내게 되고, 빌림 오류가 런타임 panic으로 바뀝니다. 먼저 <b>소유 트리 + 인덱스(<code>Vec</code> + <code>usize</code> ID)</b> 구조를 검토하세요. 그래프에는 아레나(arena) 패턴이 더 Rust답습니다.</li>
+      <li><code>borrow()</code>로 얻은 <code>Ref</code>를 오래 들고 있지 마세요. 함수 호출을 건너 살아 있으면 다른 곳의 <code>borrow_mut()</code>가 panic합니다.</li>
+    </ul>
+  </div>
+  <p>단일 스레드에서 공유를 다뤘습니다. 다음 장에서는 같은 문제를 여러 스레드로 넓힙니다. <code>Rc</code>가 <code>Arc</code>로, <code>RefCell</code>이 <code>Mutex</code>로 바뀌는 이유가 <code>Send</code>와 <code>Sync</code>입니다.</p>
+
+  <div class="quiz" data-quiz="ch11"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch11" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH12 ============ -->
+<section class="chapter col" id="ch12">
+  <div class="eyebrow">Part III · 고급 메커니즘 — 12장</div>
+  <h2>두려움 없는 동시성</h2>
+  <p class="goal">이 장을 마치면: <code>Send</code>와 <code>Sync</code>가 무엇을 보장하는지 설명하고 주요 타입의 Send/Sync 여부를 판별할 수 있으며, <code>thread::scope</code>, <code>Arc&lt;Mutex&lt;T&gt;&gt;</code>, 채널, 원자 타입 중 문제에 맞는 공유 방식을 고를 수 있고, Rust가 막아 주는 것(데이터 경쟁)과 막지 못하는 것(교착, 경쟁 조건)을 구분할 수 있습니다.</p>
+  <p>11장의 <code>Rc</code>와 <code>RefCell</code>은 단일 스레드 전용이었습니다. 이 장에서는 그 제약이 어디서 오는지, 그리고 스레드 사이에서 같은 일을 하려면 무엇을 써야 하는지 봅니다. 핵심은 새 규칙이 아니라 <strong>4장의 "공유 XOR 변경" 규칙이 스레드에도 그대로 적용된다</strong>는 것입니다.</p>
+
+  <h3>Send와 Sync: 두 개의 마커 트레잇이 전부다</h3>
+  <ul>
+    <li><strong><code>T: Send</code></strong> — <code>T</code> 값의 소유권을 다른 스레드로 <b>옮겨도</b> 안전하다.</li>
+    <li><strong><code>T: Sync</code></strong> — <code>&amp;T</code>를 여러 스레드가 <b>동시에 가져도</b> 안전하다. (정의상 <code>T: Sync</code> ⇔ <code>&amp;T: Send</code>)</li>
+  </ul>
+  <p>둘 다 메서드가 없는 마커 트레잇이고, 구성 요소가 모두 Send/Sync이면 <strong>컴파일러가 자동으로 구현</strong>합니다. 그리고 <code>thread::spawn</code>은 넘겨받는 클로저에 <code>F: Send + 'static</code>을 요구합니다. 이 두 줄의 조합으로 데이터 경쟁이 컴파일 오류가 됩니다. <code>Rc</code>는 카운트를 비원자적으로 바꾸므로 <code>Send</code>가 아니고, 따라서 <code>Rc</code>를 품은 클로저는 다른 스레드로 보낼 수 없습니다.</p>
+<div class="code run" data-expect="error"><div class="bar"><span class="fn">rc_thread.rs<span class="std x-error">컴파일 오류 예제</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::rc::Rc;
+use std::thread;
+
+fn main() {
+    let shared = Rc::new(vec![1, 2, 3]);
+    let s2 = Rc::clone(&amp;shared);
+    let h = thread::spawn(move || {          // error[E0277]: `Rc&lt;Vec&lt;i32&gt;&gt;` cannot be sent between threads safely
+        println!("{:?}", s2);
+    });
+    h.join().unwrap();
+}
+</code></pre></div>
+  <div class="bench" id="b-send">
+    <header><b>실습 벤치 12-A · Send일까 Sync일까?</b><span>CLASSIFY · 10 TYPES</span></header>
+    <div class="body">
+      <div id="sendList"></div>
+      <div class="row"><button type="button" class="btn" id="sendListReset">다시 풀기</button></div>
+      <div class="status" id="sendScore"></div>
+    </div>
+  </div>
+
+  <h3>scoped thread: 스택 데이터를 그대로 빌려주기</h3>
+  <p><code>thread::spawn</code>이 <code>'static</code>을 요구하는 이유는 새 스레드가 언제 끝날지 모르기 때문입니다. 지역 변수를 빌려주면 함수가 먼저 반환해 매달린 참조가 될 수 있습니다. <code>thread::scope</code>는 "이 블록이 끝나기 전에 안의 모든 스레드를 join한다"고 보장하므로, <strong>지역 데이터를 그냥 빌려줄 수 있습니다</strong>. 데이터를 나눠 병렬 처리하는 대부분의 경우에 가장 먼저 고려할 도구입니다.</p>
+<div class="code run"><div class="bar"><span class="fn">scoped.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::thread;
+
+fn main() {
+    let scan: Vec&lt;f32&gt; = (0..1_000).map(|i| ((i * 37) % 1000) as f32 / 100.0).collect();
+    let mut mins = [0.0f32; 4];
+
+    thread::scope(|s| {
+        // Split the data into 4 chunks and the output into 4 disjoint &amp;mut slots.
+        for (chunk, slot) in scan.chunks(250).zip(mins.iter_mut()) {
+            s.spawn(move || {
+                *slot = chunk.iter().copied().fold(f32::INFINITY, f32::min);
+            });
+        }
+    }); // all threads are joined here; borrows of `scan` and `mins` end
+
+    println!("per-chunk minimum = {mins:?}");
+    println!("global minimum    = {}", mins.iter().copied().fold(f32::INFINITY, f32::min));
+}
+</code></pre></div>
+  <p><code>mins.iter_mut()</code>가 원소마다 겹치지 않는 <code>&amp;mut</code>를 하나씩 만들어 주므로, 네 스레드가 각자 자기 칸만 씁니다. 같은 칸을 두 스레드에 주려고 하면 4장의 규칙대로 컴파일되지 않습니다. 락이 하나도 없는데 데이터 경쟁도 없습니다.</p>
+
+  <h3>공유 상태: Arc + Mutex, 그리고 원자 타입</h3>
+  <p>스레드들이 같은 값을 계속 함께 바꿔야 하면 단일 스레드의 <code>Rc&lt;RefCell&lt;T&gt;&gt;</code>에 대응하는 <code>Arc&lt;Mutex&lt;T&gt;&gt;</code>를 씁니다. Rust의 <code>Mutex</code>는 C의 pthread mutex와 결정적으로 다릅니다. <strong>보호하는 데이터를 안에 품고 있어서</strong>, 락을 잡지 않으면 데이터에 접근할 방법이 없습니다. <code>lock()</code>이 돌려주는 <code>MutexGuard</code>가 drop될 때 자동으로 풀립니다(RAII). 정수 카운터나 플래그처럼 단순한 값은 <code>Atomic*</code> 타입이 더 가볍습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">shared_state.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, RwLock};
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    let latest: Arc&lt;Mutex&lt;HashMap&lt;&amp;'static str, f64&gt;&gt;&gt; = Arc::new(Mutex::new(HashMap::new()));
+    let params = Arc::new(RwLock::new(0.5_f64));         // many readers, rare writers
+    let frames = Arc::new(AtomicU64::new(0));
+    let running = Arc::new(AtomicBool::new(true));
+
+    let mut handles = Vec::new();
+    for (topic, base) in [("imu", 1.0), ("lidar", 10.0), ("odom", 100.0)] {
+        let (latest, params, frames, running) = (latest.clone(), params.clone(), frames.clone(), running.clone());
+        handles.push(thread::spawn(move || {
+            let mut i = 0.0;
+            while running.load(Ordering::Relaxed) {
+                let gain = *params.read().unwrap();      // read lock, released at end of statement
+                {
+                    let mut map = latest.lock().unwrap(); // the ONLY way to reach the map
+                    map.insert(topic, base + i * gain);
+                }                                         // guard dropped: unlocked
+                frames.fetch_add(1, Ordering::Relaxed);
+                i += 1.0;
+                thread::sleep(Duration::from_millis(2));
+            }
+        }));
+    }
+
+    thread::sleep(Duration::from_millis(30));
+    *params.write().unwrap() = 2.0;                       // exclusive write lock
+    thread::sleep(Duration::from_millis(30));
+    running.store(false, Ordering::Relaxed);
+    for h in handles { h.join().unwrap(); }
+
+    let map = latest.lock().unwrap();
+    let mut keys: Vec&lt;_&gt; = map.keys().collect();
+    keys.sort();
+    println!("topics = {keys:?}");
+    println!("frames &gt; 30? {}", frames.load(Ordering::Relaxed) &gt; 30);
+    println!("Arc strong count now = {}", Arc::strong_count(&amp;latest));
+}
+</code></pre></div>
+  <div class="call key"><span class="lab">Ordering 한 줄 요약</span>
+    <p><code>Relaxed</code>는 "이 변수 하나의 원자성"만 보장합니다. 카운터, 통계, 단순 중지 플래그에 충분합니다. 한 스레드가 데이터를 준비한 뒤 플래그로 "준비됐다"고 알리는 경우처럼 <b>다른 메모리의 가시성</b>까지 맞춰야 하면, 쓰는 쪽 <code>Release</code> + 읽는 쪽 <code>Acquire</code>를 짝지어 씁니다. 확신이 없으면 <code>SeqCst</code>로 시작하고, 원자 타입보다 <code>Mutex</code>나 채널을 먼저 고려하세요. 더 깊은 내용은 부록 B의 <i>Rust Atomics and Locks</i>가 표준 참고서입니다.</p>
+  </div>
+
+  <h3>메시지 전달: 공유하지 말고 보내라</h3>
+  <p>공유 상태보다 더 단순한 설계는 <strong>소유권을 메시지로 넘기는 것</strong>입니다. <code>std::sync::mpsc</code> 채널(다수 생산자, 단일 소비자)로 값을 보내면 소유권이 수신 스레드로 이동하므로, 보낸 쪽은 더 이상 그 값을 건드릴 수 없습니다. 3장의 이동 규칙이 그대로 스레드 안전성이 됩니다. 모든 송신자(<code>Sender</code>)가 drop되면 수신 루프가 자연스럽게 끝납니다.</p>
+<div class="code run"><div class="bar"><span class="fn">channels.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
+
+#[derive(Debug)]
+enum Msg { Scan { id: u32, ranges: Vec&lt;f32&gt; }, Status(&amp;'static str) }
+
+fn main() {
+    let (tx, rx) = mpsc::sync_channel::&lt;Msg&gt;(4);          // bounded: back-pressure when full
+
+    let lidar_tx = tx.clone();
+    let lidar = thread::spawn(move || {
+        for id in 0..3 {
+            let ranges = vec![1.0 + id as f32; 360];      // allocated here...
+            lidar_tx.send(Msg::Scan { id, ranges }).unwrap(); // ...ownership moves to the receiver
+            thread::sleep(Duration::from_millis(5));
+        }
+    });
+    let health = thread::spawn(move || {
+        tx.send(Msg::Status("battery ok")).unwrap();
+    });                                                    // original tx moved in and dropped here
+
+    for msg in rx {                                        // ends when every Sender is dropped
+        match msg {
+            Msg::Scan { id, ranges } =&gt; println!("scan {id}: {} beams, first {}", ranges.len(), ranges[0]),
+            Msg::Status(s) =&gt; println!("status: {s}"),
+        }
+    }
+    lidar.join().unwrap();
+    health.join().unwrap();
+    println!("all senders gone, receiver loop finished");
+}
+</code></pre></div>
+  <div class="call warn"><span class="lab">Rust가 막아 주지 않는 것</span>
+    <ul>
+      <li><b>교착 상태</b>: 두 스레드가 락 A, B를 반대 순서로 잡으면 여전히 멈춥니다. 락 순서를 정하고, 락을 잡은 채 다른 락이나 채널 수신을 기다리지 마세요.</li>
+      <li><b>경쟁 조건(race condition)</b>: "확인하고 나서 행동하기"를 두 번의 락으로 나누면 그 사이에 상태가 바뀝니다. 데이터 경쟁(data race, UB)과 달리 논리 버그이므로 컴파일러가 모릅니다.</li>
+      <li><b>독약 처리(poisoning)</b>: 락을 잡은 스레드가 panic하면 Mutex가 poisoned 상태가 되어 <code>lock()</code>이 <code>Err</code>를 돌려줍니다. 예제의 <code>unwrap()</code>은 "그러면 우리도 멈춘다"는 선택입니다.</li>
+    </ul>
+  </div>
+  <div class="call sys"><span class="lab">ROS 2 엔지니어의 눈으로</span>
+    <p>콜백 그룹과 executor로 스레드를 나누는 ROS 2에서 가장 흔한 버그는 콜백 사이의 공유 상태 경쟁입니다. Rust 바인딩(rclrs, r2r)에서는 콜백 클로저가 <code>Send</code>를 요구받기 때문에, 공유 상태를 <code>Arc&lt;Mutex&lt;_&gt;&gt;</code>로 감싸지 않으면 아예 컴파일되지 않습니다. 경쟁을 리뷰가 아니라 타입이 막는 것입니다.</p>
+  </div>
+  <p>스레드는 수천 개 단위의 동시 작업에는 무겁습니다. 네트워크 연결 수만 개를 한 스레드에서 다루는 방법, async/await가 다음 장의 주제입니다.</p>
+
+  <div class="quiz" data-quiz="ch12"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch12" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH13 ============ -->
+<section class="chapter col" id="ch13">
+  <div class="eyebrow">Part III · 고급 메커니즘 — 13장</div>
+  <h2>async/await의 내부</h2>
+  <p class="goal">이 장을 마치면: <code>Future</code> 트레잇의 <code>poll</code>과 <code>Waker</code>가 협력하는 방식을 설명할 수 있고, <code>async fn</code>이 상태 기계로 컴파일된다는 것과 그래서 "만들기만 하면 아무 일도 안 한다"는 것을 이해하며, 표준 라이브러리만으로 작은 executor를 만들어 여러 작업을 한 스레드에서 번갈아 돌릴 수 있습니다.</p>
+  <p>12장의 스레드는 OS가 선점형으로 스케줄합니다. 스레드마다 스택(Rust 기본 2 MiB)이 필요하고 문맥 전환 비용이 있어서, 연결 수만 개를 스레드 하나씩으로 다루기는 어렵습니다. async는 반대 방향입니다. 작업이 <strong>스스로 "지금은 더 할 게 없다"고 양보</strong>하는 협력형 다중 작업이고, 각 작업은 스택 대신 <strong>필요한 상태만 담은 작은 구조체</strong>입니다.</p>
+
+  <h3>Future는 "아직 안 끝난 계산"이고, poll로 한 걸음씩 민다</h3>
+<div class="code"><div class="bar"><span class="fn">core::future::Future</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="rust">pub trait Future {
+    type Output;
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt;;
+}
+pub enum Poll&lt;T&gt; { Ready(T), Pending }
+</code></pre></div>
+  <p>계약은 단순합니다. executor가 <code>poll</code>을 부르면 future는 할 수 있는 만큼 진행하고, 끝났으면 <code>Ready(값)</code>, 무언가(소켓 데이터, 타이머, 다른 작업)를 기다려야 하면 <code>Pending</code>을 돌려줍니다. 이때 <strong><code>cx</code>에 든 <code>Waker</code>를 그 "무언가"에 맡겨 둡니다</strong>. 기다리던 일이 생기면 누군가 <code>waker.wake()</code>를 부르고, executor는 그 작업을 다시 poll합니다. 바쁜 대기(busy polling)가 없습니다.</p>
+  <p>직접 future를 하나 구현하고, 그것을 돌리는 가장 작은 executor <code>block_on</code>을 만들어 보겠습니다. 표준 라이브러리만 씁니다.</p>
+<div class="code run"><div class="bar"><span class="fn">manual_future.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::future::Future;
+use std::pin::{pin, Pin};
+use std::sync::Arc;
+use std::task::{Context, Poll, Wake, Waker};
+use std::thread::{self, Thread};
+
+/// A hand-written future: needs `left` more polls before it completes.
+struct Countdown { left: u32 }
+
+impl Future for Countdown {
+    type Output = &amp;'static str;
+    fn poll(mut self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;Self::Output&gt; {
+        if self.left == 0 {
+            return Poll::Ready("liftoff");
+        }
+        println!("  poll: {} left -&gt; Pending", self.left);
+        self.left -= 1;
+        cx.waker().wake_by_ref();     // "poll me again soon" (a real future would hand the waker to an I/O driver)
+        Poll::Pending
+    }
+}
+
+/// The smallest useful executor: poll, and park the thread until someone calls wake().
+struct ThreadWaker(Thread);
+impl Wake for ThreadWaker {
+    fn wake(self: Arc&lt;Self&gt;) { self.0.unpark(); }
+}
+
+fn block_on&lt;F: Future&gt;(fut: F) -&gt; F::Output {
+    let mut fut = pin!(fut);
+    let waker = Waker::from(Arc::new(ThreadWaker(thread::current())));
+    let mut cx = Context::from_waker(&amp;waker);
+    loop {
+        match fut.as_mut().poll(&amp;mut cx) {
+            Poll::Ready(v) =&gt; return v,
+            Poll::Pending =&gt; thread::park(),   // sleep until wake() unparks us
+        }
+    }
+}
+
+async fn launch() -&gt; String {
+    let word = Countdown { left: 3 }.await;   // .await = "poll this until Ready, yielding Pending upward"
+    format!("{word}!")
+}
+
+fn main() {
+    let fut = launch();                       // creating a future runs NOTHING yet
+    println!("future created, size = {} bytes", std::mem::size_of_val(&amp;fut));
+    println!("result = {}", block_on(fut));
+}
+</code></pre></div>
+  <p>출력에서 두 가지를 확인하세요. <code>launch()</code>를 호출한 직후에는 아무것도 출력되지 않습니다. <code>async fn</code>은 호출하면 future 값만 만들고, <strong>poll되기 전에는 한 줄도 실행하지 않습니다</strong>(게으름, 9장의 반복자와 같은 성질). 그리고 future의 크기가 몇 바이트에 불과합니다. 스택이 아니라 <code>.await</code> 지점을 넘어 살아남아야 하는 지역 변수만 담은 구조체이기 때문입니다.</p>
+
+  <h3>async fn은 상태 기계로 컴파일된다</h3>
+  <p>컴파일러는 <code>async fn</code>을 열거형 상태 기계로 바꿉니다. 각 <code>.await</code>가 상태 하나이고, 그 지점에서 살아 있는 지역 변수가 그 상태의 필드입니다. <code>poll</code>은 현재 상태에서 다음 <code>.await</code>까지 실행하고, 하위 future가 <code>Pending</code>이면 그대로 <code>Pending</code>을 위로 전달합니다.</p>
+<div class="code"><div class="bar"><span class="fn">what_the_compiler_generates.rs</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="rust">// async fn launch() -&gt; String { let word = Countdown { left: 3 }.await; format!("{word}!") }
+// becomes, conceptually:
+enum LaunchFuture {
+    Start,
+    WaitingCountdown { inner: Countdown },    // locals alive across the .await live here
+    Done,
+}
+impl Future for LaunchFuture {
+    type Output = String;
+    fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;String&gt; {
+        loop {
+            match *self {
+                Start =&gt; *self = WaitingCountdown { inner: Countdown { left: 3 } },
+                WaitingCountdown { ref mut inner } =&gt; match Pin::new(inner).poll(cx) {
+                    Poll::Pending =&gt; return Poll::Pending,
+                    Poll::Ready(word) =&gt; { *self = Done; return Poll::Ready(format!("{word}!")); }
+                },
+                Done =&gt; panic!("polled after completion"),
+            }
+        }
+    }
+}
+</code></pre></div>
+  <p>여기서 <code>Pin</code>이 등장하는 이유가 나옵니다. 상태 기계의 한 필드가 같은 구조체의 다른 필드를 참조할 수 있습니다(<code>let buf = [0; 64]; read(&amp;mut buf).await</code>처럼). 이런 <strong>자기 참조 구조체</strong>는 메모리에서 옮겨지면 내부 포인터가 깨집니다. <code>Pin&lt;&amp;mut Self&gt;</code>는 "한 번 poll된 future는 더 이상 이동되지 않는다"는 약속을 타입으로 표현한 것입니다. 일상적인 async 코드에서는 <code>pin!</code>이나 <code>Box::pin</code>을 쓸 때 말고는 거의 신경 쓸 일이 없습니다.</p>
+
+  <h3>executor 안을 들여다보기</h3>
+  <p>실제 런타임(tokio, embassy 등)의 핵심은 "깨어난 작업의 큐"입니다. 작업을 poll하고, <code>Pending</code>이면 내려놓고, wake되면 다시 큐에 넣습니다. 아래 벤치로 두 작업이 한 스레드에서 번갈아 실행되는 과정을 따라가 보세요.</p>
+  <div class="bench" id="b-exec">
+    <header><b>실습 벤치 13-A · executor의 한 사이클</b><span>STEPPER · 9 STEPS</span></header>
+    <div class="body">
+      <div class="split">
+        <div class="srcview" id="exSrc"></div>
+        <div>
+          <div class="panelbox"><h5>실행 큐 (왼쪽부터 poll)</h5><div class="queue" id="exQueue"></div></div>
+          <div class="panelbox" style="margin-top:8px"><h5>작업 상태</h5><div id="exTasks"></div></div>
+        </div>
+      </div>
+      <p class="explain" id="exEx"></p>
+      <div class="row"><button type="button" class="btn" id="exPrev">◀ 이전</button><button type="button" class="btn pri" id="exNext">다음 ▶</button><button type="button" class="btn" id="exReset">처음으로</button><span class="tokc" id="exStep"></span></div>
+    </div>
+  </div>
+  <p>이제 실제로 동작하는 작은 다중 작업 executor입니다. <code>spawn</code>된 작업들이 채널(큐)로 들어오고, <code>Wake</code> 구현이 작업을 다시 큐에 넣습니다. 모든 작업이 끝나 송신자가 사라지면 루프가 끝납니다.</p>
+<div class="code run"><div class="bar"><span class="fn">mini_executor.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::future::Future;
+use std::pin::Pin;
+use std::sync::mpsc::{channel, Sender};
+use std::sync::{Arc, Mutex};
+use std::task::{Context, Poll, Wake, Waker};
+
+type BoxFuture = Pin&lt;Box&lt;dyn Future&lt;Output = ()&gt; + Send&gt;&gt;;
+
+struct Task {
+    name: &amp;'static str,
+    future: Mutex&lt;Option&lt;BoxFuture&gt;&gt;,
+    queue: Sender&lt;Arc&lt;Task&gt;&gt;,
+}
+
+impl Wake for Task {
+    fn wake(self: Arc&lt;Self&gt;) {
+        let q = self.queue.clone();
+        let _ = q.send(self);                 // re-schedule: push back onto the run queue
+    }
+}
+
+/// A future that returns Pending once, waking itself: "let others run".
+struct YieldNow(bool);
+impl Future for YieldNow {
+    type Output = ();
+    fn poll(mut self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;()&gt; {
+        if self.0 { return Poll::Ready(()); }
+        self.0 = true;
+        cx.waker().wake_by_ref();
+        Poll::Pending
+    }
+}
+fn yield_now() -&gt; YieldNow { YieldNow(false) }
+
+async fn sensor(name: &amp;'static str, samples: u32) {
+    for i in 1..=samples {
+        println!("{name:&gt;6}: sample {i}/{samples}");
+        yield_now().await;                    // cooperative: give the CPU back
+    }
+    println!("{name:&gt;6}: done");
+}
+
+fn main() {
+    let (tx, rx) = channel::&lt;Arc&lt;Task&gt;&gt;();
+    let spawn = |name, fut: BoxFuture| {
+        tx.send(Arc::new(Task { name, future: Mutex::new(Some(fut)), queue: tx.clone() })).unwrap();
+    };
+    spawn("imu", Box::pin(sensor("imu", 3)));
+    spawn("lidar", Box::pin(sensor("lidar", 2)));
+    spawn("log", Box::pin(async { println!("   log: one-shot task"); }));
+    drop(tx);                                 // only tasks hold senders now
+
+    let mut polls = 0;
+    while let Ok(task) = rx.recv() {          // ends when all tasks (and their senders) are gone
+        let mut slot = task.future.lock().unwrap();
+        if let Some(mut fut) = slot.take() {
+            polls += 1;
+            let waker = Waker::from(task.clone());
+            let mut cx = Context::from_waker(&amp;waker);
+            if fut.as_mut().poll(&amp;mut cx).is_pending() {
+                *slot = Some(fut);            // not finished: keep it for the next wake
+            } else {
+                println!("        [{} completed]", task.name);
+            }
+        }
+    }
+    println!("executor idle after {polls} polls");
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>async는 서버만의 기술이 아닙니다. <b>Embassy</b>는 마이크로컨트롤러에서 힙 없이 async를 돌리는 프레임워크로, 각 작업의 상태 기계 크기가 컴파일 타임에 정해지므로 정적 메모리에 배치됩니다. 인터럽트 핸들러가 waker를 깨우고, 깨울 작업이 없으면 코어를 WFI로 재웁니다. RTOS의 태스크·세마포어로 하던 일을 스택 없이 하는 셈입니다.</p>
+  </div>
+  <h3>실무 런타임에서 지킬 것</h3>
+<div class="code"><div class="bar"><span class="fn">tokio_sketch.rs</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="rust">// With tokio (not runnable here): the same ideas, production-grade.
+#[tokio::main]
+async fn main() -&gt; anyhow::Result&lt;()&gt; {
+    let (a, b) = tokio::join!(read_imu(), read_lidar());              // run concurrently, wait for both
+    tokio::select! {                                                  // first one wins, the other is DROPPED
+        frame = next_frame() =&gt; handle(frame?),
+        _ = tokio::time::sleep(Duration::from_millis(100)) =&gt; warn_timeout(),
+    }
+    let h = tokio::spawn(async move { heavy_io().await });           // needs Send + 'static, like thread::spawn
+    let crc = tokio::task::spawn_blocking(move || crc32(&amp;big)).await?; // CPU-bound work off the async threads
+    Ok(())
+}
+</code></pre></div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><b>async 안에서 블로킹하기</b>: <code>std::thread::sleep</code>, 동기 파일 I/O, 무거운 계산은 executor 스레드를 붙잡아 다른 모든 작업을 멈춥니다. 비동기 버전이나 <code>spawn_blocking</code>을 쓰세요.</li>
+      <li><b>취소 = drop</b>: <code>select!</code>에서 진 future나 타임아웃된 future는 <code>.await</code> 지점에서 그냥 drop됩니다. "절반만 쓴 버퍼"처럼 중간 상태를 남기지 않도록, await 지점 사이의 불변식을 신경 쓰세요(cancel safety).</li>
+      <li><b>std <code>Mutex</code> 가드를 <code>.await</code> 너머로 들고 가기</b>: 가드는 <code>Send</code>가 아니라 멀티스레드 런타임에서 컴파일 오류가 나고, 단일 스레드에서는 교착의 원인이 됩니다. 가드를 await 전에 drop하거나 async용 Mutex를 쓰세요.</li>
+    </ul>
+  </div>
+  <p>Part III가 끝났습니다. 지금까지는 컴파일러가 모든 것을 증명해 주는 safe Rust였습니다. 다음 장에서는 그 증명을 우리가 대신 책임지는 <code>unsafe</code>와, C 세계와 만나는 FFI로 들어갑니다.</p>
+
+  <div class="quiz" data-quiz="ch13"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch13" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH14 ============ -->
+<section class="chapter col" id="ch14">
+  <div class="eyebrow">Part IV · 고급 엔지니어의 Rust — 14장</div>
+  <h2>unsafe·FFI·메모리 레이아웃</h2>
+  <p class="goal">이 장을 마치면: <code>unsafe</code>가 허용하는 다섯 가지 일과 허용하지 않는 것을 구분할 수 있고, unsafe 내부를 safe API로 감싸며 <code>// SAFETY:</code> 근거를 쓸 수 있으며, <code>repr(C)</code>로 C와 호환되는 레이아웃을 만들고 C 함수를 호출·노출하고, Miri로 정의되지 않은 동작을 잡을 수 있습니다.</p>
+  <p>13장까지 우리는 컴파일러가 모든 안전성을 증명하는 세계에 있었습니다. 하지만 하드웨어 레지스터, C 라이브러리, 새로운 자료구조의 내부처럼 <strong>컴파일러가 증명할 수 없지만 사람이 증명할 수 있는</strong> 코드가 있습니다. <code>unsafe</code>는 그 경계선입니다.</p>
+
+  <h3>unsafe는 검사를 끄지 않는다, 다섯 가지 능력을 연다</h3>
+  <p><code>unsafe</code> 블록 안에서도 빌림 검사기와 타입 검사는 그대로 동작합니다. 추가로 허용되는 것은 딱 다섯 가지입니다.</p>
+  <ol class="steps">
+    <li>원시 포인터(<code>*const T</code>, <code>*mut T</code>) 역참조</li>
+    <li><code>unsafe fn</code> 호출(FFI 함수 포함)</li>
+    <li><code>static mut</code> 접근</li>
+    <li><code>unsafe trait</code> 구현(예: <code>Send</code>, <code>Sync</code> 수동 구현)</li>
+    <li><code>union</code> 필드 읽기</li>
+  </ol>
+  <p>그 대가로 프로그래머가 약속해야 하는 것이 있습니다. 매달린 포인터를 역참조하지 않는다, 같은 메모리에 <code>&amp;mut</code>를 둘 만들지 않는다, 유효하지 않은 값(<code>bool</code>에 2, 범위 밖 열거형 태그)을 만들지 않는다, 데이터 경쟁을 만들지 않는다. 이 약속이 깨지면 C와 똑같이 <strong>정의되지 않은 동작(UB)</strong>이고, 그 영향은 unsafe 블록 밖 safe 코드로도 번집니다.</p>
+
+  <h3>핵심 기술: unsafe 내부, safe 외부</h3>
+  <p>실무 원칙은 "unsafe를 작게 만들고, 안전한 API로 감싸고, 왜 안전한지 적는다"입니다. 표준 라이브러리의 <code>split_at_mut</code>가 좋은 예입니다. 한 슬라이스에서 겹치지 않는 두 <code>&amp;mut</code>를 만드는 일은 빌림 검사기가 증명하지 못하지만(같은 슬라이스를 두 번 가변으로 빌리니까), 인덱스 계산으로 사람이 증명할 수 있습니다.</p>
+<div class="code run" data-miri="1"><div class="bar"><span class="fn">split_at_mut.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="mb" title="Miri로 정의되지 않은 동작 검사">Miri</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">/// Our own split_at_mut: two non-overlapping &amp;mut views into one slice.
+fn split_mut(v: &amp;mut [i32], mid: usize) -&gt; (&amp;mut [i32], &amp;mut [i32]) {
+    let len = v.len();
+    assert!(mid &lt;= len, "mid out of range");          // the safety check lives in SAFE code
+    let p = v.as_mut_ptr();
+    // SAFETY: `mid &lt;= len`, so [0, mid) and [mid, len) are both inside the allocation
+    // and do not overlap; both borrows are tied to the lifetime of `v`.
+    unsafe {
+        (std::slice::from_raw_parts_mut(p, mid),
+         std::slice::from_raw_parts_mut(p.add(mid), len - mid))
+    }
+}
+
+fn main() {
+    let mut buf = [1, 2, 3, 4, 5, 6];
+    let (left, right) = split_mut(&amp;mut buf, 2);
+    left[0] = 100;
+    right[0] = 300;
+    right.reverse();
+    println!("{buf:?}");
+
+    // Raw pointers are fine to CREATE in safe code; only dereferencing needs unsafe.
+    let x = 7u32;
+    let p = &amp;x as *const u32;
+    let addr_mod_4 = p as usize % 4;
+    // SAFETY: p comes from a live reference to x.
+    println!("x via raw pointer = {}, aligned = {}", unsafe { *p }, addr_mod_4 == 0);
+}
+</code></pre></div>
+  <p>이 예제의 <b>Miri</b> 버튼을 눌러 보세요. Miri는 Rust의 중간 표현(MIR)을 한 줄씩 해석하며 모든 메모리 접근이 규칙을 지키는지 검사하는 도구입니다. 문제가 없으면 정상 출력이 나옵니다. 이번엔 일부러 규칙을 깨 보겠습니다.</p>
+<div class="code run" data-miri="1"><div class="bar"><span class="fn">aliasing_ub.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="mb" title="Miri로 정의되지 않은 동작 검사">Miri</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn main() {
+    let mut x = 10u32;
+    let p = &amp;mut x as *mut u32;
+    // Two live &amp;mut to the same place: the compiler is allowed to assume this never happens.
+    let a = unsafe { &amp;mut *p };
+    let b = unsafe { &amp;mut *p };
+    *b += 1;
+    *a += 1;            // UB: `a` was invalidated when `b` was created and used
+    println!("x = {x}  (looks fine when run normally; press Miri)");
+}
+</code></pre></div>
+  <p>일반 실행은 아무 문제 없이 <code>12</code>를 출력합니다. 이것이 UB의 무서운 점입니다. 오늘은 동작하고, 컴파일러 버전이나 최적화 수준이 바뀌면 다르게 동작할 수 있습니다. <b>Miri</b>로 실행하면 "Undefined Behavior: attempting a write access ... but that tag does not exist in the borrow stack" 같은 오류로 정확한 줄을 짚어 줍니다. unsafe 코드가 있는 크레이트는 CI에서 <code>cargo +nightly miri test</code>를 돌리는 것이 좋은 습관입니다.</p>
+
+  <h3>메모리 레이아웃: repr(Rust)는 재배치, repr(C)는 선언 순서</h3>
+  <p>기본 레이아웃(<code>repr(Rust)</code>)에서 컴파일러는 필드 순서를 바꿀 수 있고, 실제로 패딩을 줄이려 재배치합니다. 배치는 보장되지 않으므로 하드웨어 레지스터 맵, 네트워크 패킷, C 구조체와 메모리를 공유할 때는 <code>#[repr(C)]</code>로 <strong>C와 같은 규칙(선언 순서 + 정렬 패딩)</strong>을 요구합니다. <code>#[repr(u8)]</code>는 열거형 태그 크기를, <code>#[repr(transparent)]</code>는 "필드 하나짜리 래퍼가 그 필드와 같은 ABI"임을 보장합니다.</p>
+  <div class="bench" id="b-layout">
+    <header><b>실습 벤치 14-A · 구조체 레이아웃 계산기</b><span>SIMULATOR</span></header>
+    <div class="body">
+      <div class="row" style="margin-bottom:8px"><span class="lbl">필드 추가</span><span class="seg" id="lyAdd"></span></div>
+      <div class="row" style="margin-bottom:8px"><span class="lbl">프리셋</span><span class="seg" id="lyPre"></span><button type="button" class="btn" id="lyClear">비우기</button></div>
+      <div class="row" style="margin-bottom:10px"><span class="lbl">repr</span><span class="seg" id="lyRepr"><button type="button" data-r="c" aria-pressed="true">#[repr(C)]</button><button type="button" data-r="rust" aria-pressed="false">repr(Rust) (재배치 예시)</button></span></div>
+      <pre class="lycode" id="lyCode"></pre>
+      <div class="lybytes" id="lyBytes" aria-label="바이트 배치"></div>
+      <div class="legend" id="lyLegend"></div>
+      <div class="status" id="lyRes"></div>
+    </div>
+  </div>
+<div class="code run"><div class="bar"><span class="fn">layout.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::mem::{align_of, offset_of, size_of};
+
+#[allow(dead_code)]
+#[repr(C)]
+struct ImuPacketC { flags: u8, accel: [f32; 3], seq: u16, ts_us: u64 }
+
+#[allow(dead_code)]
+struct ImuPacketRust { flags: u8, accel: [f32; 3], seq: u16, ts_us: u64 }
+
+#[allow(dead_code)]
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+enum Cmd { Stop = 0, Move = 1, Dock = 0x10 }
+
+#[repr(transparent)]
+struct Millis(u32);
+
+fn main() {
+    println!("repr(C)    size {:&gt;2} align {}  offsets: flags {} accel {} seq {} ts_us {}",
+        size_of::&lt;ImuPacketC&gt;(), align_of::&lt;ImuPacketC&gt;(),
+        offset_of!(ImuPacketC, flags), offset_of!(ImuPacketC, accel),
+        offset_of!(ImuPacketC, seq), offset_of!(ImuPacketC, ts_us));
+    println!("repr(Rust) size {:&gt;2} align {}  offsets: flags {} accel {} seq {} ts_us {}",
+        size_of::&lt;ImuPacketRust&gt;(), align_of::&lt;ImuPacketRust&gt;(),
+        offset_of!(ImuPacketRust, flags), offset_of!(ImuPacketRust, accel),
+        offset_of!(ImuPacketRust, seq), offset_of!(ImuPacketRust, ts_us));
+    println!("Cmd: size {}  Dock as u8 = {:#04x}", size_of::&lt;Cmd&gt;(), Cmd::Dock as u8);
+    println!("Millis: size {} (same as u32: {})", size_of::&lt;Millis&gt;(), size_of::&lt;Millis&gt;() == size_of::&lt;u32&gt;());
+    println!("Option&lt;Cmd&gt; size {} (niche: unused tag values encode None)", size_of::&lt;Option&lt;Cmd&gt;&gt;());
+    let _ = (Cmd::Stop, Cmd::Move, Millis(5).0);
+}
+</code></pre></div>
+
+  <h3>FFI: C를 부르고, C에게 불리기</h3>
+  <p>C 함수는 <code>unsafe extern "C"</code> 블록에 선언하고 호출합니다(2024 에디션부터 블록 자체에 <code>unsafe</code>가 필요합니다. 선언이 틀리면 UB이기 때문입니다). 확실히 안전한 함수는 블록 안에서 <code>safe fn</code>으로 표시해 일반 함수처럼 부를 수 있습니다. 문자열은 <code>CString</code>/<code>CStr</code>로 NUL 종료를 맞추고, 콜백은 <code>extern "C" fn</code>으로 만들어 넘깁니다. 아래는 libc의 <code>strlen</code>과 <code>qsort</code>를 Rust에서 부르는 예입니다.</p>
+<div class="code run"><div class="bar"><span class="fn">ffi_libc.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::ffi::{c_char, c_int, c_void, CStr, CString};
+
+unsafe extern "C" {
+    fn strlen(s: *const c_char) -&gt; usize;
+    fn qsort(base: *mut c_void, n: usize, size: usize,
+             cmp: extern "C" fn(*const c_void, *const c_void) -&gt; c_int);
+    safe fn abs(x: c_int) -&gt; c_int;           // declared safe: callable without `unsafe`
+}
+
+/// A Rust function with the C calling convention, passed to qsort as a callback.
+extern "C" fn by_distance(a: *const c_void, b: *const c_void) -&gt; c_int {
+    // SAFETY: qsort only passes pointers to elements of the array we gave it (f32s).
+    let (a, b) = unsafe { (*(a as *const f32), *(b as *const f32)) };
+    a.total_cmp(&amp;b) as c_int
+}
+
+fn main() {
+    let name = CString::new("front_lidar").expect("no interior NUL");
+    // SAFETY: `name` is a valid NUL-terminated string that outlives the call.
+    let n = unsafe { strlen(name.as_ptr()) };
+    println!("strlen = {n}, abs(-42) = {}", abs(-42));
+
+    let mut ranges = [3.2f32, 0.4, 9.9, 1.5, 0.05];
+    // SAFETY: pointer/len/size describe exactly our array; the comparator matches the element type.
+    unsafe {
+        qsort(ranges.as_mut_ptr().cast(), ranges.len(), size_of::&lt;f32&gt;(), by_distance);
+    }
+    println!("sorted by C qsort = {ranges:?}");
+
+    let back: &amp;CStr = name.as_c_str();
+    println!("back to Rust: {}", back.to_str().unwrap());
+}
+</code></pre></div>
+  <p>반대로 Rust 함수를 C에서 부르게 하려면 이름 맹글링을 끄고(<code>#[unsafe(no_mangle)]</code>, 2024 에디션 표기) C 호출 규약을 지정한 뒤, <code>Cargo.toml</code>에서 <code>crate-type = ["staticlib"]</code>나 <code>["cdylib"]</code>로 빌드합니다. 헤더는 <code>cbindgen</code>이 생성하고, 반대 방향(C 헤더 → Rust 선언)은 <code>bindgen</code>이 생성합니다.</p>
+<div class="code"><div class="bar"><span class="fn">src/lib.rs</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="rust">#[repr(C)]
+pub struct Pose2D { pub x: f64, pub y: f64, pub theta: f64 }
+
+/// Called from C. Returns 0 on success, -1 if `out` is null.
+#[unsafe(no_mangle)]
+pub extern "C" fn pose_compose(a: Pose2D, b: Pose2D, out: *mut Pose2D) -&gt; i32 {
+    let Some(out) = (unsafe { out.as_mut() }) else { return -1 };   // null -&gt; None
+    let (s, c) = a.theta.sin_cos();
+    *out = Pose2D { x: a.x + c * b.x - s * b.y, y: a.y + s * b.x + c * b.y, theta: a.theta + b.theta };
+    0
+}
+</code></pre></div>
+<div class="code"><div class="bar"><span class="fn">main.c</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="c">/* pose.h (generated by cbindgen) */
+typedef struct { double x, y, theta; } Pose2D;
+int32_t pose_compose(Pose2D a, Pose2D b, Pose2D *out);
+
+int main(void) {
+    Pose2D out;
+    if (pose_compose((Pose2D){1, 0, 0}, (Pose2D){0, 1, 0}, &amp;out) == 0)
+        printf("%f %f\n", out.x, out.y);
+}
+</code></pre></div>
+  <h3>임베디드: volatile 레지스터 접근을 safe API로</h3>
+  <p>메모리 맵 I/O는 반드시 <code>read_volatile</code>/<code>write_volatile</code>로 접근해 컴파일러가 접근을 없애거나 합치지 못하게 합니다. 실무에서는 이것을 직접 쓰기보다 SVD 파일에서 생성한 PAC(peripheral access crate)와 그 위의 HAL을 씁니다. 원리는 아래처럼 "주소가 유효하다"는 증명을 생성자 한 곳에 모으는 것입니다.</p>
+<div class="code"><div class="bar"><span class="fn">gpio.rs</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="rust">#[repr(C)]
+struct GpioRegs { moder: u32, otyper: u32, ospeedr: u32, pupdr: u32, idr: u32, odr: u32 }
+
+pub struct Gpio { regs: *mut GpioRegs }
+
+impl Gpio {
+    /// # Safety
+    /// `base` must be the address of a GPIO block, and only one `Gpio` may exist per block.
+    pub const unsafe fn new(base: usize) -&gt; Self { Gpio { regs: base as *mut GpioRegs } }
+
+    pub fn set_high(&amp;mut self, pin: u32) {
+        // SAFETY: `regs` is valid per the constructor contract; &amp;mut self gives exclusive access.
+        unsafe {
+            let odr = &amp;raw mut (*self.regs).odr;
+            odr.write_volatile(odr.read_volatile() | (1 &lt;&lt; pin));
+        }
+    }
+}
+</code></pre></div>
+  <div class="call key"><span class="lab">unsafe 코드 리뷰 체크리스트</span>
+    <ul>
+      <li>모든 <code>unsafe</code> 블록에 <code>// SAFETY:</code> 주석으로 근거를 적었는가? (clippy <code>undocumented_unsafe_blocks</code>)</li>
+      <li>모든 <code>unsafe fn</code>에 호출자가 지켜야 할 조건을 <code># Safety</code> 문서로 적었는가?</li>
+      <li>안전성 검사(<code>assert!</code>, 범위 확인)가 <b>safe 코드 쪽</b>에 있어 우회할 수 없는가?</li>
+      <li>panic이 중간에 일어나도 불변식이 깨진 값이 남지 않는가?(panic safety)</li>
+      <li>Miri로 테스트했는가? FFI 경계에서 panic이 C로 넘어가지 않는가?(<code>extern "C" fn</code>에서의 panic은 abort됩니다)</li>
+    </ul>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><code>static mut</code>에 대한 참조 만들기는 2024 에디션에서 기본 거부(<code>static_mut_refs</code>)됩니다. 전역 상태는 <code>AtomicU32</code>, <code>Mutex</code>, <code>OnceLock</code>, 임베디드에서는 <code>critical_section::Mutex</code>를 쓰세요.</li>
+      <li><code>std::mem::transmute</code>는 마지막 수단입니다. 바이트 해석은 <code>u32::from_le_bytes</code> 같은 안전한 함수가 거의 다 대신합니다.</li>
+    </ul>
+  </div>
+  <p>unsafe로 경계를 넘는 법을 봤으니, 다음 장은 반대 방향입니다. 타입 시스템을 더 적극적으로 써서 잘못된 사용을 아예 컴파일 오류로 만드는 설계 기법을 다룹니다.</p>
+
+  <div class="quiz" data-quiz="ch14"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch14" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH15 ============ -->
+<section class="chapter col" id="ch15">
+  <div class="eyebrow">Part IV · 고급 엔지니어의 Rust — 15장</div>
+  <h2>타입 수준 설계와 매크로</h2>
+  <p class="goal">이 장을 마치면: newtype으로 단위·ID 혼동을 컴파일 오류로 만들 수 있고, <code>PhantomData</code>와 제로 크기 타입으로 타입 상태(typestate) 패턴을 구현해 잘못된 상태 전이를 막을 수 있으며, const 제네릭으로 크기가 타입에 박힌 버퍼를 만들고, <code>macro_rules!</code>로 반복 코드를 생성할 수 있습니다.</p>
+  <p>5장에서 "잘못된 상태를 표현할 수 없게" 열거형을 설계했습니다. 이 장은 그 생각을 끝까지 밀어붙입니다. 고급 Rust 엔지니어의 코드가 다른 이유는 대개 여기 있습니다. <strong>규칙을 문서나 런타임 검사 대신 타입에 넣어, 어기면 컴파일이 안 되게</strong> 만드는 것입니다. 그리고 이 모든 것이 런타임 비용 0입니다.</p>
+
+  <h3>newtype: 같은 f64라도 미터와 피트는 다른 타입이다</h3>
+  <p>필드 하나짜리 튜플 구조체로 기존 타입을 감싸면, 메모리 표현은 같지만 <strong>타입 검사에서는 완전히 다른 타입</strong>이 됩니다. 단위 혼동(화성 기후 궤도선 사고로 유명한 바로 그 버그), 서로 다른 ID 공간(<code>RobotId</code>와 <code>TaskId</code>) 혼동, 검증된 값과 검증 안 된 값의 혼동을 막을 수 있습니다. 8장의 고아 규칙을 피해 남의 타입에 트레잇을 구현할 때도 씁니다.</p>
+<div class="code run" data-expect="error"><div class="bar"><span class="fn">newtype.rs<span class="std x-error">컴파일 오류 예제</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::ops::Add;
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+struct Meters(f64);
+#[derive(Debug, Clone, Copy)]
+struct Feet(f64);
+
+impl Add for Meters { type Output = Meters; fn add(self, o: Meters) -&gt; Meters { Meters(self.0 + o.0) } }
+impl From&lt;Feet&gt; for Meters { fn from(f: Feet) -&gt; Meters { Meters(f.0 * 0.3048) } }
+
+/// A speed that has been validated once; the field is private outside its module.
+mod safe_speed {
+    #[derive(Debug, Clone, Copy)]
+    pub struct Speed(f64);
+    impl Speed {
+        pub fn new(v: f64) -&gt; Option&lt;Speed&gt; { (0.0..=1.5).contains(&amp;v).then_some(Speed(v)) }
+        pub fn get(self) -&gt; f64 { self.0 }
+    }
+}
+use safe_speed::Speed;
+
+fn set_speed(s: Speed) { println!("speed set to {} m/s", s.get()); }  // can't receive an unchecked f64
+
+fn main() {
+    let a = Meters(10.0);
+    let b = Feet(3.0);
+    let total = a + Meters::from(b);              // explicit conversion: fine
+    println!("total = {total:?}");
+    if let Some(s) = Speed::new(0.8) { set_speed(s); }
+    println!("Speed::new(3.0) = {:?}", Speed::new(3.0));
+
+    let oops = a + b;                             // error[E0308]: expected `Meters`, found `Feet`
+    set_speed(2.0);                               // error[E0308]: expected `Speed`, found floating-point number
+    let forged = safe_speed::Speed(9.9);          // error[E0603]: tuple struct constructor is private
+}
+</code></pre></div>
+
+  <h3>타입 상태: 상태를 타입 매개변수로 만들기</h3>
+  <p>GPIO 핀은 출력 모드일 때만 <code>set_high()</code>할 수 있고, 입력 모드일 때만 <code>is_high()</code>를 읽을 수 있습니다. 런타임 검사로 하면 잘못된 호출이 실행 중에 오류가 됩니다. <strong>타입 상태 패턴</strong>은 상태를 제네릭 매개변수로 만들어, 상태마다 다른 메서드 집합을 갖게 합니다. 상태 전이 메서드는 <code>self</code>를 소비하고 새 상태의 값을 돌려주므로, 이전 상태의 값은 더 이상 쓸 수 없습니다(3장의 이동). <code>embedded-hal</code> 생태계의 HAL들이 바로 이 방식입니다.</p>
+<div class="code run"><div class="bar"><span class="fn">typestate.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::marker::PhantomData;
+
+// Zero-sized marker types: they exist only at compile time.
+struct Input;
+struct Output;
+struct Unconfigured;
+
+struct Pin&lt;Mode&gt; {
+    num: u8,
+    _mode: PhantomData&lt;Mode&gt;,     // "this Pin is parameterized by Mode" without storing one
+}
+
+impl Pin&lt;Unconfigured&gt; {
+    fn take(num: u8) -&gt; Self { Pin { num, _mode: PhantomData } }
+    fn into_output(self) -&gt; Pin&lt;Output&gt; { println!("  pin{}: MODER &lt;- output", self.num); Pin { num: self.num, _mode: PhantomData } }
+    fn into_input(self) -&gt; Pin&lt;Input&gt; { println!("  pin{}: MODER &lt;- input", self.num); Pin { num: self.num, _mode: PhantomData } }
+}
+impl Pin&lt;Output&gt; {
+    fn set_high(&amp;mut self) { println!("  pin{}: ODR bit set", self.num); }
+    fn into_input(self) -&gt; Pin&lt;Input&gt; { println!("  pin{}: MODER &lt;- input", self.num); Pin { num: self.num, _mode: PhantomData } }
+}
+impl Pin&lt;Input&gt; {
+    fn is_high(&amp;self) -&gt; bool { self.num % 2 == 0 }   // stand-in for reading IDR
+}
+
+fn main() {
+    let led = Pin::take(5);
+    let mut led = led.into_output();
+    led.set_high();
+    // led.is_high();          // error[E0599]: no method named `is_high` found for `Pin&lt;Output&gt;`
+    let button = Pin::take(4).into_input();
+    println!("button pressed = {}", button.is_high());
+    let led_as_input = led.into_input();
+    // led.set_high();         // error[E0382]: `led` was moved by into_input()
+    println!("pin5 now reads {}", led_as_input.is_high());
+    println!("size_of::&lt;Pin&lt;Output&gt;&gt;() = {} byte (PhantomData costs nothing)", std::mem::size_of::&lt;Pin&lt;Output&gt;&gt;());
+}
+</code></pre></div>
+  <div class="bench" id="b-ts">
+    <header><b>실습 벤치 15-A · 타입 상태 기계 조작하기</b><span>SIMULATOR</span></header>
+    <div class="body">
+      <p class="explain" style="min-height:0">변수 <code>p</code>에 메서드를 차례로 호출해 보세요. 컴파일러가 어떤 호출을 허락하는지, 그때 <code>p</code>의 타입이 어떻게 바뀌는지 보여 줍니다.</p>
+      <div class="tsstate" id="tsState"></div>
+      <div class="row" id="tsBtns"></div>
+      <pre class="lycode" id="tsCode"></pre>
+      <div class="status" id="tsRes"></div>
+      <div class="row"><button type="button" class="btn" id="tsReset">처음부터</button></div>
+    </div>
+  </div>
+
+  <h3>const 제네릭: 크기가 타입에 들어간다</h3>
+  <p><code>[T; N]</code>의 <code>N</code>처럼, 직접 만든 타입도 상수를 매개변수로 받을 수 있습니다. 힙 없이 동작해야 하는 임베디드 링 버퍼, 고정 크기 행렬, 프레임 버퍼에 쓰기 좋습니다. 크기가 다른 버퍼는 다른 타입이라 섞어 쓸 수 없고, 크기 조건을 컴파일 타임에 검사할 수도 있습니다.</p>
+<div class="code run"><div class="bar"><span class="fn">const_generics.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">/// Fixed-capacity ring buffer: no heap, capacity is part of the type.
+struct Ring&lt;T: Copy + Default, const N: usize&gt; {
+    buf: [T; N],
+    head: usize,
+    len: usize,
+}
+
+impl&lt;T: Copy + Default, const N: usize&gt; Ring&lt;T, N&gt; {
+    const ASSERT_POW2: () = assert!(N.is_power_of_two(), "capacity must be a power of two");
+
+    fn new() -&gt; Self {
+        let () = Self::ASSERT_POW2;               // evaluated at compile time per N
+        Ring { buf: [T::default(); N], head: 0, len: 0 }
+    }
+    fn push(&amp;mut self, v: T) -&gt; Option&lt;T&gt; {       // returns the overwritten oldest value
+        let idx = (self.head + self.len) &amp; (N - 1);
+        if self.len == N {
+            let old = self.buf[self.head];
+            self.buf[self.head] = v;
+            self.head = (self.head + 1) &amp; (N - 1);
+            Some(old)
+        } else {
+            self.buf[idx] = v;
+            self.len += 1;
+            None
+        }
+    }
+    fn iter(&amp;self) -&gt; impl Iterator&lt;Item = T&gt; + '_ {
+        (0..self.len).map(move |i| self.buf[(self.head + i) &amp; (N - 1)])
+    }
+}
+
+fn main() {
+    let mut hist: Ring&lt;u16, 4&gt; = Ring::new();
+    for v in [10, 20, 30, 40, 50, 60] {
+        if let Some(dropped) = hist.push(v) { print!("(drop {dropped}) "); }
+    }
+    println!("\ncontents = {:?}", hist.iter().collect::&lt;Vec&lt;_&gt;&gt;());
+    println!("size_of::&lt;Ring&lt;u16, 4&gt;&gt;() = {} bytes, all on the stack", std::mem::size_of::&lt;Ring&lt;u16, 4&gt;&gt;());
+    // let bad: Ring&lt;u8, 6&gt; = Ring::new();   // compile-time error: capacity must be a power of two
+}
+</code></pre></div>
+
+  <h3>선언적 매크로: 반복되는 코드를 생성한다</h3>
+  <p><code>macro_rules!</code>는 토큰 패턴을 받아 코드를 생성하는 "예시 기반" 매크로입니다. C 전처리기와 달리 <strong>문법 트리 단위로 동작</strong>하고 위생적(hygienic)이어서, 매크로 안의 지역 변수가 바깥 이름과 섞이지 않습니다. 레지스터 정의, 테스트 케이스, 반복적인 트레잇 구현에 자주 씁니다. 더 강력한 <strong>절차적 매크로</strong>(<code>#[derive(Serialize)]</code> 같은)는 별도 크레이트에서 Rust 코드로 토큰을 변환하는 함수입니다.</p>
+<div class="code run"><div class="bar"><span class="fn">macros.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">/// Generate a register type with named bit fields: get/set methods and a Debug dump.
+macro_rules! bitfield_reg {
+    ($name:ident : $t:ty { $($field:ident @ $bit:literal),+ $(,)? }) =&gt; {
+        #[derive(Clone, Copy, Default)]
+        struct $name($t);
+        impl $name {
+            $(
+                #[allow(dead_code)]
+                fn $field(&amp;self) -&gt; bool { self.0 &gt;&gt; $bit &amp; 1 == 1 }
+            )+
+            fn set(&amp;mut self, bit: u32, on: bool) {
+                if on { self.0 |= 1 &lt;&lt; bit } else { self.0 &amp;= !(1 &lt;&lt; bit) }
+            }
+        }
+        impl std::fmt::Debug for $name {
+            fn fmt(&amp;self, f: &amp;mut std::fmt::Formatter&lt;'_&gt;) -&gt; std::fmt::Result {
+                let mut d = f.debug_struct(stringify!($name));
+                $( d.field(stringify!($field), &amp;self.$field()); )+
+                d.finish()
+            }
+        }
+    };
+}
+
+bitfield_reg!(MotorStatus: u8 { enabled @ 0, fault @ 1, overheat @ 2, homed @ 7 });
+
+/// A tiny `hashmap!{ k =&gt; v, ... }` literal.
+macro_rules! hashmap {
+    ($($k:expr =&gt; $v:expr),* $(,)?) =&gt; {{
+        let mut m = std::collections::HashMap::new();
+        $( m.insert($k, $v); )*
+        m
+    }};
+}
+
+fn main() {
+    let mut s = MotorStatus::default();
+    s.set(0, true);
+    s.set(7, true);
+    println!("{s:?} raw={:#010b}", s.0);
+    let gains = hashmap! { "kp" =&gt; 1.2, "ki" =&gt; 0.05, "kd" =&gt; 0.3 };
+    let mut keys: Vec&lt;_&gt; = gains.keys().copied().collect();
+    keys.sort();
+    println!("gains keys = {keys:?}, kp = {}", gains["kp"]);
+}
+</code></pre></div>
+  <div class="call sys"><span class="lab">시스템 엔지니어의 눈으로</span>
+    <p>C에서 비트필드 매크로와 <code>#define REG_FAULT (1u &lt;&lt; 1)</code>로 하던 일을 Rust는 타입과 매크로로 합니다. 차이는 잘못 쓰면 컴파일 오류가 난다는 것입니다. 실제 PAC는 이보다 훨씬 정교해서, 읽기 전용 비트에 쓰거나 다른 레지스터의 필드를 섞으면 컴파일되지 않습니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>타입 수준 설계는 강력하지만 과하면 API가 읽기 어렵고 컴파일 오류가 길어집니다. "사용자가 실수할 가능성 × 실수의 비용"이 큰 곳(하드웨어 상태, 단위, 보안 경계)에 집중하세요.</li>
+      <li>매크로는 함수와 제네릭으로 안 될 때 씁니다. 디버깅이 어렵고 IDE 지원도 약해집니다. <code>cargo expand</code>로 생성된 코드를 확인할 수 있습니다.</li>
+    </ul>
+  </div>
+  <p>언어 기능은 여기까지입니다. 다음 장은 그것들을 실제 제품으로 묶는 법, 크레이트 구조·테스트·도구·성능 측정을 다룹니다.</p>
+
+  <div class="quiz" data-quiz="ch15"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch15" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH16 ============ -->
+<section class="chapter col" id="ch16">
+  <div class="eyebrow">Part IV · 고급 엔지니어의 Rust — 16장</div>
+  <h2>크레이트·테스트·성능</h2>
+  <p class="goal">이 장을 마치면: 모듈 트리와 가시성(<code>pub</code>, <code>pub(crate)</code>)으로 API 경계를 설계할 수 있고, 단위·통합·문서 테스트를 구분해 쓸 수 있으며, 워크스페이스·feature·릴리스 프로필·크로스 컴파일을 설정하고, 측정(벤치마크·프로파일링)에 근거해 성능을 개선하는 흐름을 설명할 수 있습니다.</p>
+  <p>15장까지 언어를 배웠습니다. 고급 엔지니어의 일은 그 언어로 <strong>여러 사람이 오래 유지할 수 있는 코드베이스</strong>를 만드는 것입니다. Rust 생태계는 이 부분의 도구가 유난히 잘 표준화되어 있습니다.</p>
+
+  <h3>모듈과 가시성: 기본은 비공개</h3>
+  <p>크레이트는 컴파일 단위(라이브러리 하나 또는 실행 파일 하나)이고, 그 안을 <strong>모듈 트리</strong>로 나눕니다. 모든 항목은 기본적으로 <strong>자기 모듈 안에서만 보입니다</strong>. 밖으로 노출할 것만 <code>pub</code>을 붙이고, 크레이트 안에서만 공유할 것은 <code>pub(crate)</code>를 씁니다. 구조체 필드도 따로 공개해야 하므로, 15장의 <code>Speed</code>처럼 "검증 없이는 만들 수 없는 타입"을 쉽게 만들 수 있습니다.</p>
+<div class="code"><div class="bar"><span class="fn">project layout</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="sh">robot/                      # a Cargo workspace
+├── Cargo.toml              # [workspace] members = ["crates/*", "apps/*"]
+├── crates/
+│   ├── proto/              # wire format: no_std-compatible, no deps
+│   │   └── src/lib.rs      # mod frame; mod crc; pub use frame::Frame;
+│   └── bus/                # message bus, depends on proto
+└── apps/
+    └── robotd/             # the binary: wires everything together
+        └── src/main.rs
+</code></pre></div>
+<div class="code run"><div class="bar"><span class="fn">modules.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">// In a real crate each `mod` would be its own file (src/sensors.rs, src/sensors/imu.rs...).
+mod sensors {
+    pub mod imu {
+        #[derive(Debug)]
+        pub struct Sample { pub ax: f32, pub ay: f32, pub(crate) raw: u16 }  // `raw` hidden outside the crate
+
+        pub fn read() -&gt; Sample { Sample { ax: 0.1, ay: -0.2, raw: calibrate(512) } }
+        fn calibrate(x: u16) -&gt; u16 { x - super::OFFSET }    // private helper
+    }
+    const OFFSET: u16 = 12;                                 // private to `sensors` and its children
+
+    pub use imu::Sample as ImuSample;                       // re-export: a flatter public API
+}
+
+mod control {
+    use crate::sensors::ImuSample;                          // absolute path from the crate root
+    pub fn tilt(s: &amp;ImuSample) -&gt; f32 { s.ay.atan2(s.ax).to_degrees() }
+}
+
+fn main() {
+    let s = sensors::imu::read();
+    println!("{s:?} tilt = {:.1} deg, raw = {}", control::tilt(&amp;s), s.raw);
+    // sensors::imu::calibrate(1);   // error[E0603]: function `calibrate` is private
+}
+</code></pre></div>
+
+  <h3>테스트는 언어에 내장되어 있다</h3>
+  <p><code>#[test]</code> 함수를 쓰고 <code>cargo test</code>를 실행하면 끝입니다. 테스트에는 세 종류가 있습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>종류</th><th>위치</th><th>볼 수 있는 것</th><th>용도</th></tr></thead>
+    <tbody>
+      <tr><td>단위 테스트</td><td>같은 파일의 <code>#[cfg(test)] mod tests</code></td><td>비공개 항목까지</td><td>내부 로직</td></tr>
+      <tr><td>통합 테스트</td><td><code>tests/*.rs</code></td><td>공개 API만</td><td>사용자 관점 시나리오</td></tr>
+      <tr><td>문서 테스트</td><td><code>///</code> 주석 안의 코드 블록</td><td>공개 API만</td><td>예제가 항상 컴파일·통과함을 보장</td></tr>
+    </tbody>
+  </table></div>
+<div class="code"><div class="bar"><span class="fn">src/crc.rs</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="rust">/// CRC-8 (polynomial 0x07), as used by many sensor protocols.
+///
+/// ```
+/// assert_eq!(proto::crc8(b"123456789"), 0xF4);   // doc test: runs with `cargo test`
+/// ```
+pub fn crc8(data: &amp;[u8]) -&gt; u8 {
+    let mut crc = 0u8;
+    for &amp;b in data {
+        crc ^= b;
+        for _ in 0..8 {
+            crc = if crc &amp; 0x80 != 0 { (crc &lt;&lt; 1) ^ 0x07 } else { crc &lt;&lt; 1 };
+        }
+    }
+    crc
+}
+
+#[cfg(test)]                 // compiled only for `cargo test`
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_is_zero() { assert_eq!(crc8(&amp;[]), 0); }
+
+    #[test]
+    fn detects_single_bit_flips() {
+        let msg = *b"robot";
+        let good = crc8(&amp;msg);
+        for i in 0..msg.len() * 8 {
+            let mut m = msg;
+            m[i / 8] ^= 1 &lt;&lt; (i % 8);
+            assert_ne!(crc8(&amp;m), good, "bit {i} not detected");
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds")]
+    fn panics_are_testable_too() { let v: Vec&lt;u8&gt; = vec![]; let _ = v[0]; }
+}
+</code></pre></div>
+  <p>이 페이지의 실행 엔진은 <code>main</code>을 실행하므로, 같은 테스트를 <code>main</code>에서 직접 돌려 확인해 보겠습니다. 실무에서는 위처럼 <code>#[test]</code>로 두고 <code>cargo test</code>를 씁니다.</p>
+<div class="code run"><div class="bar"><span class="fn">crc_check.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">fn crc8(data: &amp;[u8]) -&gt; u8 {
+    let mut crc = 0u8;
+    for &amp;b in data {
+        crc ^= b;
+        for _ in 0..8 {
+            crc = if crc &amp; 0x80 != 0 { (crc &lt;&lt; 1) ^ 0x07 } else { crc &lt;&lt; 1 };
+        }
+    }
+    crc
+}
+
+fn main() {
+    assert_eq!(crc8(&amp;[]), 0);
+    assert_eq!(crc8(b"123456789"), 0xF4, "standard CRC-8 check value");
+    let msg = *b"robot";
+    let good = crc8(&amp;msg);
+    let mut detected = 0;
+    for i in 0..msg.len() * 8 {
+        let mut m = msg;
+        m[i / 8] ^= 1 &lt;&lt; (i % 8);
+        if crc8(&amp;m) != good { detected += 1; }
+    }
+    println!("crc8(\"robot\") = {good:#04x}; single-bit flips detected: {detected}/{}", msg.len() * 8);
+    println!("all checks passed");
+}
+</code></pre></div>
+  <div class="call key"><span class="lab">고급 테스트 도구</span>
+    <ul>
+      <li><b>속성 기반 테스트</b>(<code>proptest</code>): "임의의 입력에 대해 encode 후 decode하면 원래 값"처럼 성질을 쓰면 수백 개의 입력을 생성해 반례를 찾고, 반례를 최소화해 줍니다.</li>
+      <li><b>퍼징</b>(<code>cargo fuzz</code>): 파서처럼 외부 입력을 받는 코드에 필수. libFuzzer가 커버리지를 따라 입력을 변형합니다.</li>
+      <li><b>스냅샷 테스트</b>(<code>insta</code>), <b>동시성 모델 검사</b>(<code>loom</code>: 원자 연산과 락의 가능한 모든 실행 순서를 탐색), <b>Miri</b>(14장).</li>
+    </ul>
+  </div>
+
+  <h3>Cargo 설정: feature, 프로필, 크로스 컴파일</h3>
+<div class="code"><div class="bar"><span class="fn">Cargo.toml</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="toml">[package]
+name = "robotd"
+version = "0.3.1"            # SemVer: breaking API change = bump the major (or minor while 0.x)
+edition = "2024"
+rust-version = "1.85"        # MSRV: the oldest compiler you promise to support
+
+[dependencies]
+proto = { path = "../../crates/proto" }
+serde = { version = "1", optional = true, features = ["derive"] }
+
+[features]
+default = ["std"]
+std = []
+json = ["dep:serde"]         # `cargo build --features json` pulls serde in
+
+[profile.release]
+opt-level = 3
+lto = "fat"                  # whole-program optimization across crates
+codegen-units = 1            # slower build, faster binary
+panic = "abort"              # no unwinding tables: smaller, typical for embedded/daemons
+debug = "line-tables-only"   # keep symbols for profiling
+overflow-checks = true       # keep integer overflow panics in release (safety-critical code)
+</code></pre></div>
+<div class="code"><div class="bar"><span class="fn">terminal</span><span class="acts"><button type="button" class="cp">복사</button></span></div><pre><code data-lang="sh"># Cross-compile for an aarch64 board (e.g. Jetson Orin, Raspberry Pi 5)
+$ rustup target add aarch64-unknown-linux-gnu
+$ sudo apt install gcc-aarch64-linux-gnu
+$ cat &gt;&gt; .cargo/config.toml &lt;&lt;'EOF'
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+EOF
+$ cargo build --release --target aarch64-unknown-linux-gnu
+# or, with a container that has the whole sysroot:  cargo install cross &amp;&amp; cross build --target ...
+
+$ cargo clippy --all-targets -- -D warnings     # CI gate: lints as errors
+$ cargo fmt --check                             # CI gate: formatting
+$ cargo doc --open                              # API docs from /// comments
+$ cargo tree -d                                 # duplicate dependency versions
+$ cargo audit                                   # known vulnerabilities in dependencies (cargo-audit)
+</code></pre></div>
+
+  <h3>성능: 추측하지 말고 측정하라</h3>
+  <p>Rust는 기본적으로 빠르지만, 빠른 코드를 쓰는 습관은 다른 언어와 같습니다. 먼저 <b>release로 빌드</b>하고(debug는 최적화가 없어 10배 이상 느릴 수 있습니다), <b>측정</b>하고, <b>할당과 복사</b>를 줄이고, 다시 측정합니다. 아래 예제는 release 모드로 실행되도록 표시되어 있습니다. 같은 합계를 세 가지 방식으로 구해 시간을 비교합니다(온라인 엔진은 다른 작업과 CPU를 나눠 쓰므로 수치는 참고만 하세요).</p>
+<div class="code run" data-mode="release"><div class="bar"><span class="fn">measure.rs<span class="std">release</span></span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::hint::black_box;
+use std::time::Instant;
+
+fn time&lt;T&gt;(label: &amp;str, f: impl Fn() -&gt; T) -&gt; T {
+    let t = Instant::now();
+    let mut out = f();
+    for _ in 0..9 { out = black_box(f()); }        // repeat; black_box stops the optimizer from deleting work
+    println!("{label:&lt;28} {:&gt;8.2} ms/iter", t.elapsed().as_secs_f64() * 100.0);
+    out
+}
+
+fn main() {
+    let data: Vec&lt;u32&gt; = (0..2_000_000u32).map(|i| i.wrapping_mul(2_654_435_761) &gt;&gt; 20).collect();
+    let data = black_box(data);
+
+    let a = time("index loop", || {
+        let mut s = 0u64;
+        for i in 0..data.len() { s += data[i] as u64; }
+        s
+    });
+    let b = time("iterator sum", || data.iter().map(|&amp;x| x as u64).sum::&lt;u64&gt;());
+    let c = time("allocating Vec&lt;String&gt; (bad)", || {
+        let v: Vec&lt;String&gt; = data.iter().take(200_000).map(|x| x.to_string()).collect();
+        v.len() as u64
+    });
+    println!("same result: {}, (c = {c})", a == b);
+}
+</code></pre></div>
+  <div class="ladder">
+    <div><b>1</b><span><code>cargo build --release</code>, 그리고 실제 데이터로 재현 가능한 벤치마크(<code>criterion</code>, <code>divan</code>)를 만든다.</span></div>
+    <div><b>2</b><span>프로파일러로 뜨거운 곳을 찾는다: <code>perf record</code> + <code>cargo flamegraph</code>, 할당은 <code>heaptrack</code>/<code>dhat</code>.</span></div>
+    <div><b>3</b><span>알고리즘과 자료구조부터 바꾼다(7장의 컬렉션 선택). 그다음 할당 제거: <code>with_capacity</code>, 버퍼 재사용, <code>&amp;str</code>/<code>Cow</code>.</span></div>
+    <div><b>4</b><span>복사·간접 호출을 줄인다: 제네릭 vs <code>dyn</code>(8장), 데이터 배치(SoA), <code>#[inline]</code>은 측정 후에만.</span></div>
+    <div><b>5</b><span>병렬화(<code>rayon</code>의 <code>par_iter</code>, 12장 scoped thread), SIMD(<code>std::simd</code>는 아직 nightly, 안정판에선 <code>std::arch</code> 내장 함수).</span></div>
+  </div>
+  <div class="call sys"><span class="lab">팀 리드의 눈으로</span>
+    <p>Rust 도입의 성패는 언어보다 <b>CI 게이트</b>에 달려 있는 경우가 많습니다. <code>fmt --check</code>, <code>clippy -D warnings</code>, <code>test</code>, unsafe가 있으면 <code>miri</code>, 의존성 <code>audit</code>/<code>cargo deny</code>를 첫날부터 걸어 두세요. 이 다섯 가지가 리뷰어가 사람에게만 집중하게 해 줍니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>debug 빌드로 성능을 재고 "Rust가 느리다"고 결론 내리기. 항상 <code>--release</code>.</li>
+      <li>공개 API 타입에 의존성 크레이트의 타입이 노출되면, 그 크레이트의 메이저 업데이트가 내 크레이트의 브레이킹 체인지가 됩니다. 경계에서는 자기 타입으로 감싸세요.</li>
+      <li>feature는 <b>더하기만</b> 해야 합니다(additive). feature를 켰을 때 기존 API가 사라지면 의존성 그래프 어딘가에서 깨집니다.</li>
+    </ul>
+  </div>
+  <p>이제 모든 도구가 갖춰졌습니다. 마지막 장에서 지금까지 배운 것을 하나의 프로그램으로 묶습니다.</p>
+
+  <div class="quiz" data-quiz="ch16"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch16" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH17 ============ -->
+<section class="chapter col" id="ch17">
+  <div class="eyebrow">Part IV · 고급 엔지니어의 Rust — 17장</div>
+  <h2>실전: 미니 로봇 메시지 버스</h2>
+  <p class="goal">이 장을 마치면: 직렬 링크에서 들어오는 바이트 스트림을 프레임 단위로 복원하는 상태 기계 파서, 타입이 있는 메시지와 오류, 토픽별 구독과 스레드 노드로 이루어진 작은 메시지 버스를 직접 읽고 고칠 수 있고, 그 설계 결정 하나하나가 앞 장들의 어떤 개념에서 왔는지 짚을 수 있습니다.</p>
+  <p>마지막 장입니다. 로봇 소프트웨어에서 가장 흔한 구조 하나를 처음부터 만듭니다. MCU가 UART로 IMU·오도메트리·비상 정지 메시지를 보내고, 리눅스 쪽 데몬이 그것을 파싱해 여러 노드(안전 감시, 위치 추정)에 나눠 주는 구조입니다. ROS 2의 아주 작은 친척이라고 생각하면 됩니다.</p>
+
+  <h3>사양: minibus</h3>
+  <figure class="fig">
+    <svg viewBox="0 0 640 200" role="img" aria-label="minibus 데이터 흐름">
+      <rect class="sv-r1" x="10" y="70" width="100" height="56" rx="6"/><text class="sv-t" x="60" y="94" text-anchor="middle">UART 바이트</text><text class="sv-m" x="60" y="112" text-anchor="middle">7바이트씩 도착</text>
+      <rect class="sv-r2" x="140" y="70" width="120" height="56" rx="6"/><text class="sv-t" x="200" y="94" text-anchor="middle">FrameParser</text><text class="sv-m" x="200" y="112" text-anchor="middle">상태 기계 + CRC</text>
+      <rect class="sv-r2" x="290" y="70" width="110" height="56" rx="6"/><text class="sv-t" x="345" y="94" text-anchor="middle">Bus</text><text class="sv-m" x="345" y="112" text-anchor="middle">토픽 → 구독자</text>
+      <rect class="sv-r3" x="440" y="20" width="190" height="56" rx="6"/><text class="sv-t" x="535" y="44" text-anchor="middle">safety 스레드</text><text class="sv-m" x="535" y="62" text-anchor="middle">Imu, Estop</text>
+      <rect class="sv-r3" x="440" y="120" width="190" height="56" rx="6"/><text class="sv-t" x="535" y="144" text-anchor="middle">odometer 스레드</text><text class="sv-m" x="535" y="162" text-anchor="middle">Odom</text>
+      <path class="sv-ac" d="M110 98 L140 98"/><path class="sv-ac" d="M260 98 L290 98"/>
+      <path class="sv-ac" d="M400 90 L440 50"/><path class="sv-ac" d="M400 106 L440 146"/>
+      <text class="sv-m" x="405" y="70">Arc&lt;Message&gt;</text>
+      <text class="sv-m" x="140" y="150">Result&lt;Message, DecodeError&gt;</text>
+      <text class="sv-m" x="300" y="150">sync_channel(64)</text>
+    </svg>
+    <figcaption>그림 17-1. 바이트 → 프레임 → 타입 있는 메시지 → 토픽 라우팅 → 노드 스레드.</figcaption>
+  </figure>
+  <div class="tbl"><table>
+    <thead><tr><th>요구 사항</th><th>설계</th><th>근거가 된 장</th></tr></thead>
+    <tbody>
+      <tr><td>프레임: <code>[0xA5][topic][len u16 LE][payload][crc8]</code></td><td><code>encode()</code>, CRC-8(0x07)</td><td>4장 슬라이스, 16장 CRC</td></tr>
+      <tr><td>바이트가 아무렇게나 쪼개져 와도 복원</td><td>바이트 하나씩 받는 상태 기계 <code>FrameParser</code></td><td>5장 열거형 상태 기계</td></tr>
+      <tr><td>잡음·손상 프레임에서 다시 동기화</td><td>SYNC를 찾을 때까지 버림, CRC 실패는 <code>Err</code></td><td>6장 Result</td></tr>
+      <tr><td>잘못된 토픽·길이를 거부</td><td><code>TryFrom&lt;u8&gt; for Topic</code>, <code>DecodeError</code> 열거형</td><td>6장 오류 설계, 8장 트레잇</td></tr>
+      <tr><td>메시지 하나를 여러 노드가 받되 복사 없이</td><td><code>Arc&lt;Message&gt;</code>로 공유</td><td>11·12장 Arc</td></tr>
+      <tr><td>느린 노드가 수신 루프를 막으면 안 됨</td><td>구독자별 bounded 채널 + <code>try_send</code>, 가득 차면 버리고 계수</td><td>12장 채널</td></tr>
+      <tr><td>노드는 같은 인터페이스, 각자 스레드</td><td><code>trait Node: Send + 'static</code>, 제네릭 <code>spawn_node</code></td><td>8장 제네릭, 10장 'static</td></tr>
+      <tr><td>깨끗한 종료</td><td><code>drop(bus)</code> → 모든 Sender drop → 노드 루프 종료 → join</td><td>3장 Drop, 12장 채널</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>전체 코드</h3>
+  <p>약 300줄입니다. 먼저 그대로 실행해서 출력을 확인하고, 그다음 위의 표를 옆에 두고 위에서부터 읽어 보세요. 모든 부분이 앞 장에서 본 패턴입니다.</p>
+<div class="code run"><div class="bar"><span class="fn">minibus.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">//! minibus: a tiny robot message bus.
+//! serial bytes -&gt; streaming parser -&gt; typed messages -&gt; topic routing -&gt; node threads
+use std::collections::HashMap;
+use std::fmt;
+use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TrySendError};
+use std::sync::Arc;
+use std::thread::{self, JoinHandle};
+
+// ---------------------------------------------------------------- wire format
+// [0xA5][topic: u8][len: u16 LE][payload; len][crc8 over topic..=payload]
+const SYNC: u8 = 0xA5;
+const MAX_PAYLOAD: usize = 64;
+
+fn crc8(data: &amp;[u8]) -&gt; u8 {
+    data.iter().fold(0u8, |mut crc, &amp;b| {
+        crc ^= b;
+        for _ in 0..8 { crc = if crc &amp; 0x80 != 0 { (crc &lt;&lt; 1) ^ 0x07 } else { crc &lt;&lt; 1 }; }
+        crc
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[repr(u8)]
+enum Topic { Imu = 1, Odom = 2, Estop = 3 }
+
+impl TryFrom&lt;u8&gt; for Topic {
+    type Error = DecodeError;
+    fn try_from(b: u8) -&gt; Result&lt;Self, DecodeError&gt; {
+        match b {
+            1 =&gt; Ok(Topic::Imu),
+            2 =&gt; Ok(Topic::Odom),
+            3 =&gt; Ok(Topic::Estop),
+            other =&gt; Err(DecodeError::UnknownTopic(other)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum Message {
+    Imu { ax: f32, ay: f32, az: f32 },
+    Odom { x: f32, y: f32, theta: f32 },
+    Estop { reason: u8 },
+}
+
+#[derive(Debug, PartialEq)]
+enum DecodeError {
+    UnknownTopic(u8),
+    BadLength { topic: Topic, len: usize },
+    TooLong(usize),
+    BadCrc { expected: u8, got: u8 },
+}
+
+impl fmt::Display for DecodeError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter&lt;'_&gt;) -&gt; fmt::Result {
+        match self {
+            DecodeError::UnknownTopic(t) =&gt; write!(f, "unknown topic {t}"),
+            DecodeError::BadLength { topic, len } =&gt; write!(f, "{topic:?} payload has wrong length {len}"),
+            DecodeError::TooLong(n) =&gt; write!(f, "frame length {n} exceeds {MAX_PAYLOAD}"),
+            DecodeError::BadCrc { expected, got } =&gt; write!(f, "crc mismatch (expected {expected:#04x}, got {got:#04x})"),
+        }
+    }
+}
+impl std::error::Error for DecodeError {}
+
+fn f32s&lt;const N: usize&gt;(p: &amp;[u8]) -&gt; [f32; N] {
+    std::array::from_fn(|i| f32::from_le_bytes(p[i * 4..i * 4 + 4].try_into().unwrap()))
+}
+
+impl Message {
+    fn topic(&amp;self) -&gt; Topic {
+        match self {
+            Message::Imu { .. } =&gt; Topic::Imu,
+            Message::Odom { .. } =&gt; Topic::Odom,
+            Message::Estop { .. } =&gt; Topic::Estop,
+        }
+    }
+
+    fn payload(&amp;self) -&gt; Vec&lt;u8&gt; {
+        match *self {
+            Message::Imu { ax, ay, az } =&gt; [ax, ay, az].iter().flat_map(|v| v.to_le_bytes()).collect(),
+            Message::Odom { x, y, theta } =&gt; [x, y, theta].iter().flat_map(|v| v.to_le_bytes()).collect(),
+            Message::Estop { reason } =&gt; vec![reason],
+        }
+    }
+
+    /// A complete frame, ready for the wire.
+    fn encode(&amp;self) -&gt; Vec&lt;u8&gt; {
+        let payload = self.payload();
+        let mut frame = Vec::with_capacity(payload.len() + 5);
+        frame.push(SYNC);
+        frame.push(self.topic() as u8);
+        frame.extend_from_slice(&amp;(payload.len() as u16).to_le_bytes());
+        frame.extend_from_slice(&amp;payload);
+        frame.push(crc8(&amp;frame[1..]));
+        frame
+    }
+
+    fn decode(topic: Topic, p: &amp;[u8]) -&gt; Result&lt;Message, DecodeError&gt; {
+        let bad = || DecodeError::BadLength { topic, len: p.len() };
+        Ok(match topic {
+            Topic::Imu if p.len() == 12 =&gt; { let [ax, ay, az] = f32s::&lt;3&gt;(p); Message::Imu { ax, ay, az } }
+            Topic::Odom if p.len() == 12 =&gt; { let [x, y, theta] = f32s::&lt;3&gt;(p); Message::Odom { x, y, theta } }
+            Topic::Estop if p.len() == 1 =&gt; Message::Estop { reason: p[0] },
+            _ =&gt; return Err(bad()),
+        })
+    }
+}
+
+// ---------------------------------------------------------------- streaming parser
+/// Byte-at-a-time state machine: works no matter how the serial driver chunks the data.
+#[derive(Debug, Clone, Copy)]
+enum State { Sync, Topic, LenLo, LenHi { lo: u8 }, Payload, Crc }
+
+struct FrameParser { state: State, topic: u8, len: usize, buf: Vec&lt;u8&gt; }
+
+impl FrameParser {
+    fn new() -&gt; Self { FrameParser { state: State::Sync, topic: 0, len: 0, buf: Vec::with_capacity(MAX_PAYLOAD) } }
+
+    /// Feed one byte; returns Some(..) when a frame finished (good or bad).
+    fn push(&amp;mut self, b: u8) -&gt; Option&lt;Result&lt;Message, DecodeError&gt;&gt; {
+        use State::*;
+        match self.state {
+            Sync =&gt; if b == SYNC { self.state = Topic; },          // skip garbage until SYNC
+            Topic =&gt; { self.topic = b; self.state = LenLo; }
+            LenLo =&gt; self.state = LenHi { lo: b },
+            LenHi { lo } =&gt; {
+                self.len = u16::from_le_bytes([lo, b]) as usize;
+                self.buf.clear();
+                if self.len &gt; MAX_PAYLOAD {
+                    self.state = Sync;
+                    return Some(Err(DecodeError::TooLong(self.len)));
+                }
+                self.state = if self.len == 0 { Crc } else { Payload };
+            }
+            Payload =&gt; {
+                self.buf.push(b);
+                if self.buf.len() == self.len { self.state = Crc; }
+            }
+            Crc =&gt; {
+                self.state = Sync;
+                let mut hdr = vec![self.topic];
+                hdr.extend_from_slice(&amp;(self.len as u16).to_le_bytes());
+                hdr.extend_from_slice(&amp;self.buf);
+                let expected = crc8(&amp;hdr);
+                if expected != b {
+                    return Some(Err(DecodeError::BadCrc { expected, got: b }));
+                }
+                // `crate::Topic`: inside this fn, `Topic` alone means State::Topic (glob import above)
+                return Some(crate::Topic::try_from(self.topic).and_then(|t| Message::decode(t, &amp;self.buf)));
+            }
+        }
+        None
+    }
+}
+
+// ---------------------------------------------------------------- bus
+#[derive(Default)]
+struct Stats { published: AtomicU64, delivered: AtomicU64, dropped: AtomicU64, bad_frames: AtomicU64 }
+
+type Sub = (&amp;'static str, SyncSender&lt;Arc&lt;Message&gt;&gt;);
+
+struct Bus { subs: HashMap&lt;Topic, Vec&lt;Sub&gt;&gt;, stats: Arc&lt;Stats&gt; }
+
+impl Bus {
+    fn new() -&gt; Self { Bus { subs: HashMap::new(), stats: Arc::new(Stats::default()) } }
+
+    /// Bounded queue per subscriber: a slow node can never block the publisher.
+    fn subscribe(&amp;mut self, node: &amp;'static str, topics: &amp;[Topic], depth: usize) -&gt; Receiver&lt;Arc&lt;Message&gt;&gt; {
+        let (tx, rx) = sync_channel(depth);
+        for &amp;t in topics { self.subs.entry(t).or_default().push((node, tx.clone())); }
+        rx
+    }
+
+    fn publish(&amp;self, msg: Message) {
+        self.stats.published.fetch_add(1, Relaxed);
+        let msg = Arc::new(msg);                                   // one allocation, shared by all subscribers
+        for (_node, tx) in self.subs.get(&amp;msg.topic()).into_iter().flatten() {
+            match tx.try_send(Arc::clone(&amp;msg)) {
+                Ok(()) =&gt; { self.stats.delivered.fetch_add(1, Relaxed); }
+                Err(TrySendError::Full(_)) =&gt; { self.stats.dropped.fetch_add(1, Relaxed); } // best-effort QoS
+                Err(TrySendError::Disconnected(_)) =&gt; {}
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- nodes
+trait Node: Send + 'static {
+    fn name(&amp;self) -&gt; &amp;'static str;
+    fn on_message(&amp;mut self, msg: &amp;Message);
+    fn summary(&amp;self) -&gt; String;
+}
+
+fn spawn_node&lt;N: Node&gt;(mut node: N, rx: Receiver&lt;Arc&lt;Message&gt;&gt;) -&gt; JoinHandle&lt;String&gt; {
+    thread::Builder::new()
+        .name(node.name().into())
+        .spawn(move || {
+            for msg in rx { node.on_message(&amp;msg); }           // ends when the bus is dropped
+            node.summary()
+        })
+        .expect("spawn node thread")
+}
+
+struct Safety { estops: Vec&lt;u8&gt;, impacts: u32 }
+impl Node for Safety {
+    fn name(&amp;self) -&gt; &amp;'static str { "safety" }
+    fn on_message(&amp;mut self, msg: &amp;Message) {
+        match *msg {
+            Message::Estop { reason } =&gt; self.estops.push(reason),
+            Message::Imu { ax, ay, .. } if (ax * ax + ay * ay).sqrt() &gt; 15.0 =&gt; self.impacts += 1,
+            _ =&gt; {}
+        }
+    }
+    fn summary(&amp;self) -&gt; String { format!("estops={:?} impacts={}", self.estops, self.impacts) }
+}
+
+struct Odometer { last: Option&lt;(f32, f32)&gt;, distance: f32, samples: u32 }
+impl Node for Odometer {
+    fn name(&amp;self) -&gt; &amp;'static str { "odometer" }
+    fn on_message(&amp;mut self, msg: &amp;Message) {
+        if let Message::Odom { x, y, .. } = *msg {
+            if let Some((px, py)) = self.last { self.distance += ((x - px).powi(2) + (y - py).powi(2)).sqrt(); }
+            self.last = Some((x, y));
+            self.samples += 1;
+        }
+    }
+    fn summary(&amp;self) -&gt; String { format!("samples={} distance={:.2} m", self.samples, self.distance) }
+}
+
+// ---------------------------------------------------------------- main: simulate a serial link
+fn main() {
+    // 1) Self-checks: every message survives an encode/decode round trip.
+    let samples = [
+        Message::Imu { ax: 0.1, ay: -9.8, az: 0.2 },
+        Message::Odom { x: 1.0, y: 2.0, theta: 0.5 },
+        Message::Estop { reason: 7 },
+    ];
+    for m in &amp;samples {
+        let mut p = FrameParser::new();
+        let out: Vec&lt;_&gt; = m.encode().into_iter().filter_map(|b| p.push(b)).collect();
+        assert_eq!(out, vec![Ok(m.clone())], "round trip failed for {m:?}");
+    }
+    println!("self-check: round trip ok for {} message types", samples.len());
+
+    // 2) Build a byte stream: odometry along a 3-4-5 path, an impact, one corrupted frame, junk, an e-stop.
+    let mut wire: Vec&lt;u8&gt; = vec![0x00, 0x13, 0x37];                    // line noise before the first frame
+    for (i, (x, y)) in [(0.0, 0.0), (3.0, 0.0), (3.0, 4.0), (6.0, 8.0)].into_iter().enumerate() {
+        wire.extend(Message::Odom { x, y, theta: i as f32 * 0.1 }.encode());
+        wire.extend(Message::Imu { ax: 0.2, ay: 9.7, az: 0.0 }.encode());
+    }
+    wire.extend(Message::Imu { ax: 12.0, ay: 14.0, az: 0.0 }.encode()); // a bump
+    let mut corrupted = Message::Estop { reason: 99 }.encode();
+    corrupted[4] ^= 0xFF;                                               // flip payload bits: CRC must catch it
+    wire.extend(corrupted);
+    let unknown = [9u8, 1, 0, 0];                                       // valid CRC, but topic 9 doesn't exist
+    wire.push(SYNC);
+    wire.extend(unknown);
+    wire.push(crc8(&amp;unknown));
+    wire.extend(Message::Estop { reason: 2 }.encode());
+
+    // 3) Wire up the bus and the node threads.
+    let mut bus = Bus::new();
+    let safety_rx = bus.subscribe("safety", &amp;[Topic::Imu, Topic::Estop], 64);
+    let odo_rx = bus.subscribe("odometer", &amp;[Topic::Odom], 64);
+    let handles = vec![
+        spawn_node(Safety { estops: vec![], impacts: 0 }, safety_rx),
+        spawn_node(Odometer { last: None, distance: 0.0, samples: 0 }, odo_rx),
+    ];
+
+    // 4) Feed the stream in odd-sized chunks, like a UART driver would.
+    let mut parser = FrameParser::new();
+    for chunk in wire.chunks(7) {
+        for &amp;b in chunk {
+            match parser.push(b) {
+                Some(Ok(msg)) =&gt; bus.publish(msg),
+                Some(Err(e)) =&gt; {
+                    bus.stats.bad_frames.fetch_add(1, Relaxed);
+                    println!("rejected frame: {e}");
+                }
+                None =&gt; {}
+            }
+        }
+    }
+
+    // 5) Shut down: dropping the bus drops every Sender, so every node loop ends.
+    let stats = Arc::clone(&amp;bus.stats);
+    drop(bus);
+    for h in handles {
+        let name = h.thread().name().unwrap_or("?").to_string();
+        println!("{name:&gt;9}: {}", h.join().expect("node panicked"));
+    }
+    println!("published={} delivered={} dropped={} bad_frames={}",
+        stats.published.load(Relaxed), stats.delivered.load(Relaxed),
+        stats.dropped.load(Relaxed), stats.bad_frames.load(Relaxed));
+}
+</code></pre></div>
+  <p>출력을 하나씩 대조해 보겠습니다.</p>
+  <ul>
+    <li><b>self-check</b>: 세 메시지 타입 모두 <code>encode → push</code>를 거쳐 원래 값으로 돌아옵니다. <code>assert_eq!</code>는 <code>Result</code>와 <code>Message</code>가 <code>PartialEq</code>를 derive했기 때문에 쓸 수 있습니다.</li>
+    <li><b>rejected frame</b> 두 줄: 페이로드를 뒤집은 비상 정지 프레임은 CRC가 잡았고, 토픽 9 프레임은 CRC는 맞지만 <code>TryFrom</code>이 거부했습니다. 그 뒤의 정상 프레임은 파서가 다시 동기화해 받아 냅니다. 맨 앞의 잡음 3바이트는 SYNC를 찾는 동안 조용히 버려졌습니다.</li>
+    <li><b>safety</b>: 손상된 비상 정지(reason 99)는 들어오지 않았고 정상인 reason 2만 들어왔습니다. 가속도 크기가 15를 넘은 충격이 한 번 감지됐습니다.</li>
+    <li><b>odometer</b>: (0,0)→(3,0)→(3,4)→(6,8)의 거리 3 + 4 + 5 = 12 m.</li>
+    <li><b>stats</b>: 발행 10건이 모두 전달되었고, 큐가 넘치지 않아 버린 메시지는 0건입니다.</li>
+  </ul>
+
+  <h3>확장 과제</h3>
+  <p>코드를 <b>편집</b>해 직접 해 보세요. 위로 갈수록 쉽고, 아래로 갈수록 실무 고급 엔지니어의 일에 가깝습니다.</p>
+  <ol class="steps">
+    <li><b>QoS 실험</b>: odometer의 큐 깊이를 2로 줄이고, <code>on_message</code>에 <code>thread::sleep(Duration::from_millis(5))</code>를 넣어 느린 노드를 만드세요. <code>dropped</code>가 늘어나는 것을 확인하고, "가장 오래된 것 버리기"(keep-last) 정책을 구현해 보세요. (힌트: 노드 쪽에서 <code>try_iter()</code>로 비우고 마지막 것만 처리)</li>
+    <li><b>새 토픽 추가</b>: <code>Battery { volts: f32, percent: u8 }</code>를 추가하세요. <code>match</code>의 완전성 검사가 고쳐야 할 곳을 모두 알려 줍니다(5장).</li>
+    <li><b>제로 카피 파서</b>: 지금 파서는 페이로드를 <code>Vec</code>에 모읍니다. 버퍼 전체가 메모리에 있는 경우를 위해 <code>fn parse_all&lt;'a&gt;(buf: &amp;'a [u8]) -&gt; impl Iterator&lt;Item = Result&lt;Frame&lt;'a&gt;, DecodeError&gt;&gt;</code>를 만들어 보세요. <code>Frame&lt;'a&gt;</code>는 페이로드를 <code>&amp;'a [u8]</code>로 빌립니다(10장).</li>
+    <li><b>no_std 이식</b>: 파서와 <code>Message</code>를 별도 크레이트로 빼서 <code>#![no_std]</code>로 만드세요. <code>Vec</code> 대신 15장의 const 제네릭 버퍼를 쓰면 MCU 쪽 송신 코드와 같은 크레이트를 공유할 수 있습니다.</li>
+    <li><b>async 버전</b>: tokio의 <code>tokio-serial</code>과 <code>mpsc</code>로 바꾸고, 노드를 <code>tokio::spawn</code> 작업으로 만드세요. 블로킹 지점이 어디였는지 13장의 함정 목록과 대조해 보세요.</li>
+    <li><b>검증</b>: <code>proptest</code>로 "임의의 메시지를 encode하고 임의 위치에서 쪼개 넣어도 같은 메시지가 나온다"를, <code>cargo fuzz</code>로 "어떤 바이트열에도 파서가 panic하지 않는다"를 확인하세요(16장).</li>
+  </ol>
+
+  <h3>최종 체크리스트와 다음 단계</h3>
+  <div class="call key"><span class="lab">이 책을 마친 당신이 할 수 있어야 하는 것</span>
+    <ul>
+      <li>컴파일 오류 메시지를 보고 소유권·빌림·라이프타임 중 무엇의 문제인지 바로 짚는다.</li>
+      <li>데이터 구조를 설계할 때 "누가 소유하는가"부터 그린다. <code>Rc&lt;RefCell&gt;</code>은 마지막 수단이다.</li>
+      <li>오류를 열거형으로 설계하고, 라이브러리와 애플리케이션의 오류 전략을 구분한다.</li>
+      <li>제네릭/<code>dyn</code>/열거형 중 다형성 방식을 비용과 함께 고른다.</li>
+      <li>스레드·채널·락·원자·async 중 동시성 도구를 문제에 맞게 고르고, 교착과 취소 안전성을 따진다.</li>
+      <li>unsafe를 작은 safe API 뒤에 숨기고 SAFETY 근거와 Miri로 검증한다.</li>
+      <li>타입 상태·newtype으로 잘못된 사용을 컴파일 오류로 만든다.</li>
+      <li>CI 게이트(fmt, clippy, test, miri, audit)와 측정 기반 최적화를 습관으로 갖는다.</li>
+    </ul>
+  </div>
+  <div class="ladder">
+    <div><b>L1</b><span>코드가 컴파일되게 만들 수 있다. clone과 unwrap이 많다.</span></div>
+    <div><b>L2</b><span>빌림으로 설계하고, Result와 반복자로 관용적인 코드를 쓴다. (이 책의 Part II)</span></div>
+    <div><b>L3</b><span>라이프타임·트레잇·동시성으로 라이브러리 API를 설계한다. 다른 사람이 쓰기 쉬운 크레이트를 만든다. (Part III)</span></div>
+    <div><b>L4</b><span>unsafe 경계와 타입 수준 설계로 시스템 전체의 불변식을 지킨다. 성능을 측정하고, 팀의 Rust 도입과 리뷰 기준을 이끈다. (Part IV)</span></div>
+    <div><b>L5</b><span>생태계에 기여한다: 크레이트 유지, RFC 논의, 임베디드/커널/로보틱스 분야의 Rust 기반 구조를 만든다.</span></div>
+  </div>
+  <p>다음 단계로는 부록 B의 자료 중 <i>Rust for Rustaceans</i>(설계 감각), <i>Rust Atomics and Locks</i>(동시성 내부), <i>The Rustonomicon</i>(unsafe), 그리고 관심 분야에 따라 <i>The Embedded Rust Book</i>이나 tokio 튜토리얼을 권합니다. 그리고 무엇보다, 지금 C/C++로 유지하는 도구 하나를 골라 Rust로 다시 써 보세요. 컴파일러와의 대화가 가장 빠른 선생입니다.</p>
+
+  <div class="quiz" data-quiz="ch17"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch17" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ APPENDIX ============ -->
+<section class="chapter col" id="glossary">
+  <div class="eyebrow">부록 A</div>
+  <h2>용어집 · C/C++↔Rust 대응표</h2>
+  <h3>C/C++에서 하던 일, Rust에서는</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>C / C++</th><th>Rust</th><th>장</th></tr></thead>
+    <tbody>
+      <tr><td><code>malloc</code>/<code>realloc</code> 배열, <code>std::vector</code></td><td><code>Vec&lt;T&gt;</code></td><td>7</td></tr>
+      <tr><td>포인터 + 길이 인자 쌍, <code>std::span</code></td><td><code>&amp;[T]</code>, <code>&amp;mut [T]</code></td><td>4</td></tr>
+      <tr><td><code>char *</code> + <code>strlen</code>, <code>std::string</code></td><td><code>String</code>, <code>&amp;str</code> (UTF-8), C 경계는 <code>CString</code>/<code>&amp;CStr</code></td><td>7·14</td></tr>
+      <tr><td>NULL 가능 포인터</td><td><code>Option&lt;&amp;T&gt;</code>, <code>Option&lt;Box&lt;T&gt;&gt;</code> (크기 동일)</td><td>5</td></tr>
+      <tr><td>-1 + <code>errno</code>, 예외</td><td><code>Result&lt;T, E&gt;</code> + <code>?</code></td><td>6</td></tr>
+      <tr><td><code>goto cleanup</code>, 소멸자(RAII)</td><td><code>Drop</code></td><td>3</td></tr>
+      <tr><td><code>std::move</code> (비파괴)</td><td>이동은 기본 동작이며 파괴적</td><td>3</td></tr>
+      <tr><td><code>const T *</code> / <code>restrict T *</code></td><td><code>&amp;T</code> / <code>&amp;mut T</code> (검증됨)</td><td>4</td></tr>
+      <tr><td>태그 + <code>union</code>, <code>std::variant</code></td><td>데이터를 품은 <code>enum</code> + <code>match</code></td><td>5</td></tr>
+      <tr><td>함수 포인터 테이블, 가상 함수</td><td><code>dyn Trait</code></td><td>8</td></tr>
+      <tr><td>템플릿 + 컨셉트</td><td>제네릭 + 트레잇 경계</td><td>8</td></tr>
+      <tr><td>콜백 + <code>void *user</code>, 람다</td><td>클로저 (<code>Fn</code>/<code>FnMut</code>/<code>FnOnce</code>)</td><td>9</td></tr>
+      <tr><td><code>unique_ptr</code> / <code>shared_ptr</code> / <code>weak_ptr</code></td><td><code>Box</code> / <code>Rc</code>·<code>Arc</code> / <code>Weak</code></td><td>11</td></tr>
+      <tr><td><code>pthread_create</code>/<code>join</code></td><td><code>thread::spawn</code>, <code>thread::scope</code></td><td>12</td></tr>
+      <tr><td><code>pthread_mutex_t</code> + 보호할 데이터</td><td><code>Mutex&lt;T&gt;</code> (데이터를 품음)</td><td>12</td></tr>
+      <tr><td><code>_Atomic</code>, <code>std::atomic</code></td><td><code>AtomicU32</code> 등 + <code>Ordering</code></td><td>12</td></tr>
+      <tr><td>상태 기계 + 콜백(이벤트 루프)</td><td><code>async</code>/<code>.await</code> + executor</td><td>13</td></tr>
+      <tr><td><code>__attribute__((packed))</code>, C 구조체 레이아웃</td><td><code>#[repr(C)]</code>, <code>#[repr(C, packed)]</code></td><td>14</td></tr>
+      <tr><td><code>volatile</code> 레지스터 접근</td><td><code>read_volatile</code>/<code>write_volatile</code>, PAC/HAL</td><td>14</td></tr>
+      <tr><td><code>typedef double meters_t;</code></td><td>newtype <code>struct Meters(f64);</code> (진짜 다른 타입)</td><td>15</td></tr>
+      <tr><td>매크로 (<code>#define</code>)</td><td><code>const</code>, 제네릭, <code>macro_rules!</code></td><td>2·15</td></tr>
+      <tr><td>make/CMake + 패키지 관리자</td><td><code>cargo</code> + crates.io</td><td>1·16</td></tr>
+    </tbody>
+  </table></div>
+  <h3>용어</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>용어</th><th>뜻</th></tr></thead>
+    <tbody>
+      <tr><td>크레이트(crate)</td><td>컴파일 단위. 라이브러리 하나 또는 실행 파일 하나. crates.io에 배포되는 패키지 단위이기도 하다.</td></tr>
+      <tr><td>소유권(ownership)</td><td>모든 값은 소유자 하나를 가지며, 소유자가 스코프를 벗어나면 값이 해제된다는 규칙.</td></tr>
+      <tr><td>이동(move)</td><td>소유권을 다른 변수로 넘기는 것. 원래 이름은 이후 사용할 수 없다.</td></tr>
+      <tr><td><code>Copy</code> / <code>Clone</code></td><td>비트 복사로 충분한 타입의 암묵적 복사 / 명시적 깊은 복사.</td></tr>
+      <tr><td>빌림(borrow)</td><td>소유권을 넘기지 않고 참조를 만드는 것. <code>&amp;T</code>는 공유, <code>&amp;mut T</code>는 배타.</td></tr>
+      <tr><td>빌림 검사기</td><td>"공유 XOR 변경"과 "참조는 원래 값보다 오래 살 수 없다"를 검사하는 컴파일러 단계.</td></tr>
+      <tr><td>NLL</td><td>non-lexical lifetimes. 빌림이 스코프 끝이 아니라 마지막 사용 지점에서 끝난다는 규칙.</td></tr>
+      <tr><td>라이프타임(<code>'a</code>)</td><td>참조가 유효한 구간의 이름. 참조들 사이의 관계를 시그니처에 적는 컴파일 타임 정보.</td></tr>
+      <tr><td>슬라이스 / 팻 포인터</td><td>연속 메모리 일부에 대한 참조. (포인터, 길이) 두 워드. <code>dyn Trait</code> 참조는 (포인터, vtable).</td></tr>
+      <tr><td>트레잇(trait)</td><td>타입이 구현할 수 있는 동작의 계약. 인터페이스, 연산자, 마커(Send/Sync) 모두 트레잇.</td></tr>
+      <tr><td>단형화(monomorphization)</td><td>제네릭 코드를 사용된 구체 타입마다 별도로 컴파일하는 것. 정적 디스패치.</td></tr>
+      <tr><td>dyn 호환(object safety)</td><td>트레잇을 <code>dyn Trait</code>로 쓸 수 있는 조건. 제네릭 메서드, <code>Self</code> 반환 등이 있으면 불가.</td></tr>
+      <tr><td>고아 규칙</td><td>트레잇 구현은 트레잇이나 타입 중 하나가 내 크레이트 것일 때만 가능.</td></tr>
+      <tr><td>내부 가변성</td><td><code>&amp;T</code>를 통해서도 내용을 바꿀 수 있게 하는 것(<code>Cell</code>, <code>RefCell</code>, <code>Mutex</code>, 원자 타입).</td></tr>
+      <tr><td><code>Send</code> / <code>Sync</code></td><td>다른 스레드로 옮겨도 안전 / 여러 스레드가 공유 참조를 가져도 안전.</td></tr>
+      <tr><td>Future / Waker</td><td>poll로 진행시키는 미완료 계산 / 기다리던 일이 생기면 작업을 다시 스케줄하게 하는 핸들.</td></tr>
+      <tr><td><code>Pin</code></td><td>값이 메모리에서 이동하지 않음을 보장하는 포인터 래퍼. 자기 참조 future에 필요.</td></tr>
+      <tr><td>UB</td><td>정의되지 않은 동작. safe Rust에서는 발생하지 않으며, unsafe 코드가 약속을 어길 때 생긴다.</td></tr>
+      <tr><td>Miri</td><td>MIR 인터프리터. 실행하며 UB(정렬, 범위, 별칭 규칙 위반 등)를 탐지한다.</td></tr>
+      <tr><td>niche</td><td>타입이 쓰지 않는 비트 패턴. <code>Option</code> 등이 태그 없이 이를 이용해 크기를 줄인다.</td></tr>
+      <tr><td>타입 상태(typestate)</td><td>상태를 타입 매개변수로 표현해 잘못된 상태 전이를 컴파일 오류로 만드는 패턴.</td></tr>
+      <tr><td>에디션</td><td>하위 호환을 깨지 않고 문법을 다듬는 단위(2015/2018/2021/2024). 크레이트마다 선택.</td></tr>
+      <tr><td>MSRV</td><td>minimum supported Rust version. 크레이트가 지원을 약속하는 가장 오래된 컴파일러 버전.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="chapter col" id="refs">
+  <div class="eyebrow">부록 B</div>
+  <h2>참고 자료와 다음 단계</h2>
+  <h3>공식 문서 (무료)</h3>
+  <ul>
+    <li><a href="https://doc.rust-lang.org/book/" rel="noopener">The Rust Programming Language</a> ("the book"): 공식 입문서. 이 책의 Part I–II와 겹치며 더 자세한 설명이 있다.</li>
+    <li><a href="https://doc.rust-lang.org/rust-by-example/" rel="noopener">Rust by Example</a>: 짧은 예제 위주로 문법을 훑는다.</li>
+    <li><a href="https://doc.rust-lang.org/std/" rel="noopener">표준 라이브러리 문서</a>: 각 타입의 메서드 목록과 예제. 실무에서 가장 자주 여는 페이지.</li>
+    <li><a href="https://doc.rust-lang.org/reference/" rel="noopener">The Rust Reference</a>: 언어 명세에 가장 가까운 문서.</li>
+    <li><a href="https://doc.rust-lang.org/edition-guide/" rel="noopener">The Edition Guide</a>: 2024 에디션 변경점(unsafe extern, RPIT 캡처 규칙 등).</li>
+    <li><a href="https://doc.rust-lang.org/nomicon/" rel="noopener">The Rustonomicon</a>: unsafe Rust의 규칙과 함정. 14장의 다음 단계.</li>
+    <li><a href="https://rust-lang.github.io/async-book/" rel="noopener">Asynchronous Programming in Rust</a>: 13장의 다음 단계.</li>
+    <li><a href="https://docs.rust-embedded.org/book/" rel="noopener">The Embedded Rust Book</a>: no_std, PAC/HAL, 인터럽트, 메모리 맵 I/O.</li>
+    <li><a href="https://rust-lang.github.io/api-guidelines/" rel="noopener">Rust API Guidelines</a>: 라이브러리 API 설계 체크리스트.</li>
+    <li><a href="https://rust-lang.github.io/rust-clippy/master/" rel="noopener">Clippy lints</a>: 모든 린트와 이유.</li>
+    <li><a href="https://google.github.io/comprehensive-rust/" rel="noopener">Comprehensive Rust</a>: Google Android 팀의 4일 과정 교재. Android·베어메탈·동시성 특화 과정 포함.</li>
+    <li><a href="https://marabos.nl/atomics/" rel="noopener">Rust Atomics and Locks</a> (Mara Bos): 원자 연산·메모리 순서·락 구현. 온라인 무료 공개.</li>
+  </ul>
+  <h3>책</h3>
+  <ul>
+    <li>Jon Gjengset, <i>Rust for Rustaceans</i> (No Starch Press, 2021): 중급에서 고급으로 가는 설계 감각. 이 책 Part III–IV의 다음 단계.</li>
+    <li>Jim Blandy, Jason Orendorff, Leonora Tindall, <i>Programming Rust</i> (2nd ed., O'Reilly, 2021): 시스템 프로그래머 관점의 두꺼운 레퍼런스.</li>
+    <li>Tim McNamara, <i>Rust in Action</i> (Manning, 2021): 시스템 프로그래밍 프로젝트 중심.</li>
+  </ul>
+  <h3>생태계와 도구</h3>
+  <ul>
+    <li><a href="https://releases.rs" rel="noopener">releases.rs</a> / <a href="https://blog.rust-lang.org/releases/" rel="noopener">Rust 릴리스 공지</a>: 6주마다 나오는 안정판의 변경 사항.</li>
+    <li><a href="https://tokio.rs/tokio/tutorial" rel="noopener">Tokio 튜토리얼</a>, <a href="https://embassy.dev" rel="noopener">Embassy</a>: 서버용과 임베디드용 async 런타임.</li>
+    <li><a href="https://github.com/ros2-rust/ros2_rust" rel="noopener">ros2_rust (rclrs)</a>: ROS 2의 Rust 클라이언트 라이브러리.</li>
+    <li><a href="https://ferrocene.dev" rel="noopener">Ferrocene</a>: ISO 26262·IEC 61508 인증을 받은 Rust 툴체인. 안전 필수 시스템용.</li>
+    <li><a href="https://rust-for-linux.com" rel="noopener">Rust for Linux</a>: 리눅스 커널의 Rust 지원 현황과 드라이버.</li>
+    <li><a href="https://github.com/rust-lang/miri" rel="noopener">Miri</a>, <a href="https://github.com/rust-fuzz/cargo-fuzz" rel="noopener">cargo-fuzz</a>, <a href="https://github.com/tokio-rs/loom" rel="noopener">loom</a>, <a href="https://github.com/proptest-rs/proptest" rel="noopener">proptest</a>: 14·16장의 검증 도구.</li>
+  </ul>
+  <h3>이 책의 실행 엔진</h3>
+  <ul>
+    <li><a href="https://play.rust-lang.org" rel="noopener">Rust Playground</a>: Rust 프로젝트가 운영하는 공식 온라인 실행 환경. 이 책의 기본 엔진이며 Miri도 제공한다.</li>
+    <li><a href="https://godbolt.org" rel="noopener">Compiler Explorer</a>: 코드가 어떤 어셈블리로 바뀌는지 볼 수 있다. 9·16장의 "반복자는 비용이 0인가?"를 직접 확인할 때 좋다.</li>
+    <li><a href="https://wandbox.org" rel="noopener">Wandbox</a>: 여러 언어·버전의 컴파일러를 제공하는 온라인 실행 서비스.</li>
+  </ul>
+</section>
+
+<section class="chapter col" id="playground">
+  <div class="eyebrow">부록 C</div>
+  <h2>코드 놀이터</h2>
+  <p>자유롭게 코드를 써 보는 곳입니다. 편집 내용은 이 브라우저에 자동 저장되고, <code>Ctrl/⌘ + Enter</code>로 실행됩니다. 에디션과 debug/release는 왼쪽 목차 아래 실행 엔진 상자에서 바꿉니다.</p>
+<div class="code run"><div class="bar"><span class="fn">playground.rs</span><span class="acts"><button type="button" class="cp">복사</button><button type="button" class="eb">편집</button><button type="button" class="rb">▶ 실행</button></span></div><pre><code data-lang="rust">use std::collections::BTreeMap;
+
+fn main() {
+    let todo = ["read chapter 4 again", "run the Miri examples", "extend minibus with a Battery topic"];
+    let plan: BTreeMap&lt;usize, &amp;str&gt; = todo.iter().enumerate().map(|(i, t)| (i + 1, *t)).collect();
+    for (n, task) in &amp;plan {
+        println!("{n}. {task}");
+    }
+}
+</code></pre></div>
+</section>
+
+
+<footer class="foot col">
+  Rust 교본 — 기초부터 고급 엔지니어까지 · 코드와 주석은 영어, 설명은 한국어로 썼습니다. 실행 엔진: <a href="https://play.rust-lang.org" rel="noopener">Rust Playground</a>, <a href="https://godbolt.org" rel="noopener">Compiler Explorer</a>, <a href="https://wandbox.org" rel="noopener">Wandbox</a>.
+</footer>
+</main>
+</div>
+<script src="assets/runner.js"></script>
+<script src="assets/book.js"></script>
+</body>
+</html>

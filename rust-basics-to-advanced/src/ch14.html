@@ -1,0 +1,216 @@
+<!-- ============ CH14 ============ -->
+<section class="chapter col" id="ch14">
+  <div class="eyebrow">Part IV · 고급 엔지니어의 Rust — 14장</div>
+  <h2>unsafe·FFI·메모리 레이아웃</h2>
+  <p class="goal">이 장을 마치면: <code>unsafe</code>가 허용하는 다섯 가지 일과 허용하지 않는 것을 구분할 수 있고, unsafe 내부를 safe API로 감싸며 <code>// SAFETY:</code> 근거를 쓸 수 있으며, <code>repr(C)</code>로 C와 호환되는 레이아웃을 만들고 C 함수를 호출·노출하고, Miri로 정의되지 않은 동작을 잡을 수 있습니다.</p>
+  <p>13장까지 우리는 컴파일러가 모든 안전성을 증명하는 세계에 있었습니다. 하지만 하드웨어 레지스터, C 라이브러리, 새로운 자료구조의 내부처럼 <strong>컴파일러가 증명할 수 없지만 사람이 증명할 수 있는</strong> 코드가 있습니다. <code>unsafe</code>는 그 경계선입니다.</p>
+
+  <h3>unsafe는 검사를 끄지 않는다, 다섯 가지 능력을 연다</h3>
+  <p><code>unsafe</code> 블록 안에서도 빌림 검사기와 타입 검사는 그대로 동작합니다. 추가로 허용되는 것은 딱 다섯 가지입니다.</p>
+  <ol class="steps">
+    <li>원시 포인터(<code>*const T</code>, <code>*mut T</code>) 역참조</li>
+    <li><code>unsafe fn</code> 호출(FFI 함수 포함)</li>
+    <li><code>static mut</code> 접근</li>
+    <li><code>unsafe trait</code> 구현(예: <code>Send</code>, <code>Sync</code> 수동 구현)</li>
+    <li><code>union</code> 필드 읽기</li>
+  </ol>
+  <p>그 대가로 프로그래머가 약속해야 하는 것이 있습니다. 매달린 포인터를 역참조하지 않는다, 같은 메모리에 <code>&amp;mut</code>를 둘 만들지 않는다, 유효하지 않은 값(<code>bool</code>에 2, 범위 밖 열거형 태그)을 만들지 않는다, 데이터 경쟁을 만들지 않는다. 이 약속이 깨지면 C와 똑같이 <strong>정의되지 않은 동작(UB)</strong>이고, 그 영향은 unsafe 블록 밖 safe 코드로도 번집니다.</p>
+
+  <h3>핵심 기술: unsafe 내부, safe 외부</h3>
+  <p>실무 원칙은 "unsafe를 작게 만들고, 안전한 API로 감싸고, 왜 안전한지 적는다"입니다. 표준 라이브러리의 <code>split_at_mut</code>가 좋은 예입니다. 한 슬라이스에서 겹치지 않는 두 <code>&amp;mut</code>를 만드는 일은 빌림 검사기가 증명하지 못하지만(같은 슬라이스를 두 번 가변으로 빌리니까), 인덱스 계산으로 사람이 증명할 수 있습니다.</p>
+<run file="split_at_mut.rs" miri="1">
+/// Our own split_at_mut: two non-overlapping &mut views into one slice.
+fn split_mut(v: &mut [i32], mid: usize) -> (&mut [i32], &mut [i32]) {
+    let len = v.len();
+    assert!(mid <= len, "mid out of range");          // the safety check lives in SAFE code
+    let p = v.as_mut_ptr();
+    // SAFETY: `mid <= len`, so [0, mid) and [mid, len) are both inside the allocation
+    // and do not overlap; both borrows are tied to the lifetime of `v`.
+    unsafe {
+        (std::slice::from_raw_parts_mut(p, mid),
+         std::slice::from_raw_parts_mut(p.add(mid), len - mid))
+    }
+}
+
+fn main() {
+    let mut buf = [1, 2, 3, 4, 5, 6];
+    let (left, right) = split_mut(&mut buf, 2);
+    left[0] = 100;
+    right[0] = 300;
+    right.reverse();
+    println!("{buf:?}");
+
+    // Raw pointers are fine to CREATE in safe code; only dereferencing needs unsafe.
+    let x = 7u32;
+    let p = &x as *const u32;
+    let addr_mod_4 = p as usize % 4;
+    // SAFETY: p comes from a live reference to x.
+    println!("x via raw pointer = {}, aligned = {}", unsafe { *p }, addr_mod_4 == 0);
+}
+</run>
+  <p>이 예제의 <b>Miri</b> 버튼을 눌러 보세요. Miri는 Rust의 중간 표현(MIR)을 한 줄씩 해석하며 모든 메모리 접근이 규칙을 지키는지 검사하는 도구입니다. 문제가 없으면 정상 출력이 나옵니다. 이번엔 일부러 규칙을 깨 보겠습니다.</p>
+<run file="aliasing_ub.rs" miri="1">
+fn main() {
+    let mut x = 10u32;
+    let p = &mut x as *mut u32;
+    // Two live &mut to the same place: the compiler is allowed to assume this never happens.
+    let a = unsafe { &mut *p };
+    let b = unsafe { &mut *p };
+    *b += 1;
+    *a += 1;            // UB: `a` was invalidated when `b` was created and used
+    println!("x = {x}  (looks fine when run normally; press Miri)");
+}
+</run>
+  <p>일반 실행은 아무 문제 없이 <code>12</code>를 출력합니다. 이것이 UB의 무서운 점입니다. 오늘은 동작하고, 컴파일러 버전이나 최적화 수준이 바뀌면 다르게 동작할 수 있습니다. <b>Miri</b>로 실행하면 "Undefined Behavior: attempting a write access ... but that tag does not exist in the borrow stack" 같은 오류로 정확한 줄을 짚어 줍니다. unsafe 코드가 있는 크레이트는 CI에서 <code>cargo +nightly miri test</code>를 돌리는 것이 좋은 습관입니다.</p>
+
+  <h3>메모리 레이아웃: repr(Rust)는 재배치, repr(C)는 선언 순서</h3>
+  <p>기본 레이아웃(<code>repr(Rust)</code>)에서 컴파일러는 필드 순서를 바꿀 수 있고, 실제로 패딩을 줄이려 재배치합니다. 배치는 보장되지 않으므로 하드웨어 레지스터 맵, 네트워크 패킷, C 구조체와 메모리를 공유할 때는 <code>#[repr(C)]</code>로 <strong>C와 같은 규칙(선언 순서 + 정렬 패딩)</strong>을 요구합니다. <code>#[repr(u8)]</code>는 열거형 태그 크기를, <code>#[repr(transparent)]</code>는 "필드 하나짜리 래퍼가 그 필드와 같은 ABI"임을 보장합니다.</p>
+  <div class="bench" id="b-layout">
+    <header><b>실습 벤치 14-A · 구조체 레이아웃 계산기</b><span>SIMULATOR</span></header>
+    <div class="body">
+      <div class="row" style="margin-bottom:8px"><span class="lbl">필드 추가</span><span class="seg" id="lyAdd"></span></div>
+      <div class="row" style="margin-bottom:8px"><span class="lbl">프리셋</span><span class="seg" id="lyPre"></span><button type="button" class="btn" id="lyClear">비우기</button></div>
+      <div class="row" style="margin-bottom:10px"><span class="lbl">repr</span><span class="seg" id="lyRepr"><button type="button" data-r="c" aria-pressed="true">#[repr(C)]</button><button type="button" data-r="rust" aria-pressed="false">repr(Rust) (재배치 예시)</button></span></div>
+      <pre class="lycode" id="lyCode"></pre>
+      <div class="lybytes" id="lyBytes" aria-label="바이트 배치"></div>
+      <div class="legend" id="lyLegend"></div>
+      <div class="status" id="lyRes"></div>
+    </div>
+  </div>
+<run file="layout.rs">
+use std::mem::{align_of, offset_of, size_of};
+
+#[allow(dead_code)]
+#[repr(C)]
+struct ImuPacketC { flags: u8, accel: [f32; 3], seq: u16, ts_us: u64 }
+
+#[allow(dead_code)]
+struct ImuPacketRust { flags: u8, accel: [f32; 3], seq: u16, ts_us: u64 }
+
+#[allow(dead_code)]
+#[repr(u8)]
+#[derive(Debug, Clone, Copy)]
+enum Cmd { Stop = 0, Move = 1, Dock = 0x10 }
+
+#[repr(transparent)]
+struct Millis(u32);
+
+fn main() {
+    println!("repr(C)    size {:>2} align {}  offsets: flags {} accel {} seq {} ts_us {}",
+        size_of::<ImuPacketC>(), align_of::<ImuPacketC>(),
+        offset_of!(ImuPacketC, flags), offset_of!(ImuPacketC, accel),
+        offset_of!(ImuPacketC, seq), offset_of!(ImuPacketC, ts_us));
+    println!("repr(Rust) size {:>2} align {}  offsets: flags {} accel {} seq {} ts_us {}",
+        size_of::<ImuPacketRust>(), align_of::<ImuPacketRust>(),
+        offset_of!(ImuPacketRust, flags), offset_of!(ImuPacketRust, accel),
+        offset_of!(ImuPacketRust, seq), offset_of!(ImuPacketRust, ts_us));
+    println!("Cmd: size {}  Dock as u8 = {:#04x}", size_of::<Cmd>(), Cmd::Dock as u8);
+    println!("Millis: size {} (same as u32: {})", size_of::<Millis>(), size_of::<Millis>() == size_of::<u32>());
+    println!("Option<Cmd> size {} (niche: unused tag values encode None)", size_of::<Option<Cmd>>());
+    let _ = (Cmd::Stop, Cmd::Move, Millis(5).0);
+}
+</run>
+
+  <h3>FFI: C를 부르고, C에게 불리기</h3>
+  <p>C 함수는 <code>unsafe extern "C"</code> 블록에 선언하고 호출합니다(2024 에디션부터 블록 자체에 <code>unsafe</code>가 필요합니다. 선언이 틀리면 UB이기 때문입니다). 확실히 안전한 함수는 블록 안에서 <code>safe fn</code>으로 표시해 일반 함수처럼 부를 수 있습니다. 문자열은 <code>CString</code>/<code>CStr</code>로 NUL 종료를 맞추고, 콜백은 <code>extern "C" fn</code>으로 만들어 넘깁니다. 아래는 libc의 <code>strlen</code>과 <code>qsort</code>를 Rust에서 부르는 예입니다.</p>
+<run file="ffi_libc.rs">
+use std::ffi::{c_char, c_int, c_void, CStr, CString};
+
+unsafe extern "C" {
+    fn strlen(s: *const c_char) -> usize;
+    fn qsort(base: *mut c_void, n: usize, size: usize,
+             cmp: extern "C" fn(*const c_void, *const c_void) -> c_int);
+    safe fn abs(x: c_int) -> c_int;           // declared safe: callable without `unsafe`
+}
+
+/// A Rust function with the C calling convention, passed to qsort as a callback.
+extern "C" fn by_distance(a: *const c_void, b: *const c_void) -> c_int {
+    // SAFETY: qsort only passes pointers to elements of the array we gave it (f32s).
+    let (a, b) = unsafe { (*(a as *const f32), *(b as *const f32)) };
+    a.total_cmp(&b) as c_int
+}
+
+fn main() {
+    let name = CString::new("front_lidar").expect("no interior NUL");
+    // SAFETY: `name` is a valid NUL-terminated string that outlives the call.
+    let n = unsafe { strlen(name.as_ptr()) };
+    println!("strlen = {n}, abs(-42) = {}", abs(-42));
+
+    let mut ranges = [3.2f32, 0.4, 9.9, 1.5, 0.05];
+    // SAFETY: pointer/len/size describe exactly our array; the comparator matches the element type.
+    unsafe {
+        qsort(ranges.as_mut_ptr().cast(), ranges.len(), size_of::<f32>(), by_distance);
+    }
+    println!("sorted by C qsort = {ranges:?}");
+
+    let back: &CStr = name.as_c_str();
+    println!("back to Rust: {}", back.to_str().unwrap());
+}
+</run>
+  <p>반대로 Rust 함수를 C에서 부르게 하려면 이름 맹글링을 끄고(<code>#[unsafe(no_mangle)]</code>, 2024 에디션 표기) C 호출 규약을 지정한 뒤, <code>Cargo.toml</code>에서 <code>crate-type = ["staticlib"]</code>나 <code>["cdylib"]</code>로 빌드합니다. 헤더는 <code>cbindgen</code>이 생성하고, 반대 방향(C 헤더 → Rust 선언)은 <code>bindgen</code>이 생성합니다.</p>
+<rs file="src/lib.rs">
+#[repr(C)]
+pub struct Pose2D { pub x: f64, pub y: f64, pub theta: f64 }
+
+/// Called from C. Returns 0 on success, -1 if `out` is null.
+#[unsafe(no_mangle)]
+pub extern "C" fn pose_compose(a: Pose2D, b: Pose2D, out: *mut Pose2D) -> i32 {
+    let Some(out) = (unsafe { out.as_mut() }) else { return -1 };   // null -> None
+    let (s, c) = a.theta.sin_cos();
+    *out = Pose2D { x: a.x + c * b.x - s * b.y, y: a.y + s * b.x + c * b.y, theta: a.theta + b.theta };
+    0
+}
+</rs>
+<c file="main.c">
+/* pose.h (generated by cbindgen) */
+typedef struct { double x, y, theta; } Pose2D;
+int32_t pose_compose(Pose2D a, Pose2D b, Pose2D *out);
+
+int main(void) {
+    Pose2D out;
+    if (pose_compose((Pose2D){1, 0, 0}, (Pose2D){0, 1, 0}, &out) == 0)
+        printf("%f %f\n", out.x, out.y);
+}
+</c>
+  <h3>임베디드: volatile 레지스터 접근을 safe API로</h3>
+  <p>메모리 맵 I/O는 반드시 <code>read_volatile</code>/<code>write_volatile</code>로 접근해 컴파일러가 접근을 없애거나 합치지 못하게 합니다. 실무에서는 이것을 직접 쓰기보다 SVD 파일에서 생성한 PAC(peripheral access crate)와 그 위의 HAL을 씁니다. 원리는 아래처럼 "주소가 유효하다"는 증명을 생성자 한 곳에 모으는 것입니다.</p>
+<rs file="gpio.rs">
+#[repr(C)]
+struct GpioRegs { moder: u32, otyper: u32, ospeedr: u32, pupdr: u32, idr: u32, odr: u32 }
+
+pub struct Gpio { regs: *mut GpioRegs }
+
+impl Gpio {
+    /// # Safety
+    /// `base` must be the address of a GPIO block, and only one `Gpio` may exist per block.
+    pub const unsafe fn new(base: usize) -> Self { Gpio { regs: base as *mut GpioRegs } }
+
+    pub fn set_high(&mut self, pin: u32) {
+        // SAFETY: `regs` is valid per the constructor contract; &mut self gives exclusive access.
+        unsafe {
+            let odr = &raw mut (*self.regs).odr;
+            odr.write_volatile(odr.read_volatile() | (1 << pin));
+        }
+    }
+}
+</rs>
+  <div class="call key"><span class="lab">unsafe 코드 리뷰 체크리스트</span>
+    <ul>
+      <li>모든 <code>unsafe</code> 블록에 <code>// SAFETY:</code> 주석으로 근거를 적었는가? (clippy <code>undocumented_unsafe_blocks</code>)</li>
+      <li>모든 <code>unsafe fn</code>에 호출자가 지켜야 할 조건을 <code># Safety</code> 문서로 적었는가?</li>
+      <li>안전성 검사(<code>assert!</code>, 범위 확인)가 <b>safe 코드 쪽</b>에 있어 우회할 수 없는가?</li>
+      <li>panic이 중간에 일어나도 불변식이 깨진 값이 남지 않는가?(panic safety)</li>
+      <li>Miri로 테스트했는가? FFI 경계에서 panic이 C로 넘어가지 않는가?(<code>extern "C" fn</code>에서의 panic은 abort됩니다)</li>
+    </ul>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><code>static mut</code>에 대한 참조 만들기는 2024 에디션에서 기본 거부(<code>static_mut_refs</code>)됩니다. 전역 상태는 <code>AtomicU32</code>, <code>Mutex</code>, <code>OnceLock</code>, 임베디드에서는 <code>critical_section::Mutex</code>를 쓰세요.</li>
+      <li><code>std::mem::transmute</code>는 마지막 수단입니다. 바이트 해석은 <code>u32::from_le_bytes</code> 같은 안전한 함수가 거의 다 대신합니다.</li>
+    </ul>
+  </div>
+  <p>unsafe로 경계를 넘는 법을 봤으니, 다음 장은 반대 방향입니다. 타입 시스템을 더 적극적으로 써서 잘못된 사용을 아예 컴파일 오류로 만드는 설계 기법을 다룹니다.</p>
+
+  <div class="quiz" data-quiz="ch14"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch14" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

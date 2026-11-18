@@ -1,0 +1,382 @@
+<!-- ============ CH17 ============ -->
+<section class="chapter col" id="ch17">
+  <div class="eyebrow">Part IV · 고급 엔지니어의 Rust — 17장</div>
+  <h2>실전: 미니 로봇 메시지 버스</h2>
+  <p class="goal">이 장을 마치면: 직렬 링크에서 들어오는 바이트 스트림을 프레임 단위로 복원하는 상태 기계 파서, 타입이 있는 메시지와 오류, 토픽별 구독과 스레드 노드로 이루어진 작은 메시지 버스를 직접 읽고 고칠 수 있고, 그 설계 결정 하나하나가 앞 장들의 어떤 개념에서 왔는지 짚을 수 있습니다.</p>
+  <p>마지막 장입니다. 로봇 소프트웨어에서 가장 흔한 구조 하나를 처음부터 만듭니다. MCU가 UART로 IMU·오도메트리·비상 정지 메시지를 보내고, 리눅스 쪽 데몬이 그것을 파싱해 여러 노드(안전 감시, 위치 추정)에 나눠 주는 구조입니다. ROS 2의 아주 작은 친척이라고 생각하면 됩니다.</p>
+
+  <h3>사양: minibus</h3>
+  <figure class="fig">
+    <svg viewBox="0 0 640 200" role="img" aria-label="minibus 데이터 흐름">
+      <rect class="sv-r1" x="10" y="70" width="100" height="56" rx="6"/><text class="sv-t" x="60" y="94" text-anchor="middle">UART 바이트</text><text class="sv-m" x="60" y="112" text-anchor="middle">7바이트씩 도착</text>
+      <rect class="sv-r2" x="140" y="70" width="120" height="56" rx="6"/><text class="sv-t" x="200" y="94" text-anchor="middle">FrameParser</text><text class="sv-m" x="200" y="112" text-anchor="middle">상태 기계 + CRC</text>
+      <rect class="sv-r2" x="290" y="70" width="110" height="56" rx="6"/><text class="sv-t" x="345" y="94" text-anchor="middle">Bus</text><text class="sv-m" x="345" y="112" text-anchor="middle">토픽 → 구독자</text>
+      <rect class="sv-r3" x="440" y="20" width="190" height="56" rx="6"/><text class="sv-t" x="535" y="44" text-anchor="middle">safety 스레드</text><text class="sv-m" x="535" y="62" text-anchor="middle">Imu, Estop</text>
+      <rect class="sv-r3" x="440" y="120" width="190" height="56" rx="6"/><text class="sv-t" x="535" y="144" text-anchor="middle">odometer 스레드</text><text class="sv-m" x="535" y="162" text-anchor="middle">Odom</text>
+      <path class="sv-ac" d="M110 98 L140 98"/><path class="sv-ac" d="M260 98 L290 98"/>
+      <path class="sv-ac" d="M400 90 L440 50"/><path class="sv-ac" d="M400 106 L440 146"/>
+      <text class="sv-m" x="405" y="70">Arc&lt;Message&gt;</text>
+      <text class="sv-m" x="140" y="150">Result&lt;Message, DecodeError&gt;</text>
+      <text class="sv-m" x="300" y="150">sync_channel(64)</text>
+    </svg>
+    <figcaption>그림 17-1. 바이트 → 프레임 → 타입 있는 메시지 → 토픽 라우팅 → 노드 스레드.</figcaption>
+  </figure>
+  <div class="tbl"><table>
+    <thead><tr><th>요구 사항</th><th>설계</th><th>근거가 된 장</th></tr></thead>
+    <tbody>
+      <tr><td>프레임: <code>[0xA5][topic][len u16 LE][payload][crc8]</code></td><td><code>encode()</code>, CRC-8(0x07)</td><td>4장 슬라이스, 16장 CRC</td></tr>
+      <tr><td>바이트가 아무렇게나 쪼개져 와도 복원</td><td>바이트 하나씩 받는 상태 기계 <code>FrameParser</code></td><td>5장 열거형 상태 기계</td></tr>
+      <tr><td>잡음·손상 프레임에서 다시 동기화</td><td>SYNC를 찾을 때까지 버림, CRC 실패는 <code>Err</code></td><td>6장 Result</td></tr>
+      <tr><td>잘못된 토픽·길이를 거부</td><td><code>TryFrom&lt;u8&gt; for Topic</code>, <code>DecodeError</code> 열거형</td><td>6장 오류 설계, 8장 트레잇</td></tr>
+      <tr><td>메시지 하나를 여러 노드가 받되 복사 없이</td><td><code>Arc&lt;Message&gt;</code>로 공유</td><td>11·12장 Arc</td></tr>
+      <tr><td>느린 노드가 수신 루프를 막으면 안 됨</td><td>구독자별 bounded 채널 + <code>try_send</code>, 가득 차면 버리고 계수</td><td>12장 채널</td></tr>
+      <tr><td>노드는 같은 인터페이스, 각자 스레드</td><td><code>trait Node: Send + 'static</code>, 제네릭 <code>spawn_node</code></td><td>8장 제네릭, 10장 'static</td></tr>
+      <tr><td>깨끗한 종료</td><td><code>drop(bus)</code> → 모든 Sender drop → 노드 루프 종료 → join</td><td>3장 Drop, 12장 채널</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>전체 코드</h3>
+  <p>약 300줄입니다. 먼저 그대로 실행해서 출력을 확인하고, 그다음 위의 표를 옆에 두고 위에서부터 읽어 보세요. 모든 부분이 앞 장에서 본 패턴입니다.</p>
+<run file="minibus.rs">
+//! minibus: a tiny robot message bus.
+//! serial bytes -> streaming parser -> typed messages -> topic routing -> node threads
+use std::collections::HashMap;
+use std::fmt;
+use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TrySendError};
+use std::sync::Arc;
+use std::thread::{self, JoinHandle};
+
+// ---------------------------------------------------------------- wire format
+// [0xA5][topic: u8][len: u16 LE][payload; len][crc8 over topic..=payload]
+const SYNC: u8 = 0xA5;
+const MAX_PAYLOAD: usize = 64;
+
+fn crc8(data: &[u8]) -> u8 {
+    data.iter().fold(0u8, |mut crc, &b| {
+        crc ^= b;
+        for _ in 0..8 { crc = if crc & 0x80 != 0 { (crc << 1) ^ 0x07 } else { crc << 1 }; }
+        crc
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[repr(u8)]
+enum Topic { Imu = 1, Odom = 2, Estop = 3 }
+
+impl TryFrom<u8> for Topic {
+    type Error = DecodeError;
+    fn try_from(b: u8) -> Result<Self, DecodeError> {
+        match b {
+            1 => Ok(Topic::Imu),
+            2 => Ok(Topic::Odom),
+            3 => Ok(Topic::Estop),
+            other => Err(DecodeError::UnknownTopic(other)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum Message {
+    Imu { ax: f32, ay: f32, az: f32 },
+    Odom { x: f32, y: f32, theta: f32 },
+    Estop { reason: u8 },
+}
+
+#[derive(Debug, PartialEq)]
+enum DecodeError {
+    UnknownTopic(u8),
+    BadLength { topic: Topic, len: usize },
+    TooLong(usize),
+    BadCrc { expected: u8, got: u8 },
+}
+
+impl fmt::Display for DecodeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DecodeError::UnknownTopic(t) => write!(f, "unknown topic {t}"),
+            DecodeError::BadLength { topic, len } => write!(f, "{topic:?} payload has wrong length {len}"),
+            DecodeError::TooLong(n) => write!(f, "frame length {n} exceeds {MAX_PAYLOAD}"),
+            DecodeError::BadCrc { expected, got } => write!(f, "crc mismatch (expected {expected:#04x}, got {got:#04x})"),
+        }
+    }
+}
+impl std::error::Error for DecodeError {}
+
+fn f32s<const N: usize>(p: &[u8]) -> [f32; N] {
+    std::array::from_fn(|i| f32::from_le_bytes(p[i * 4..i * 4 + 4].try_into().unwrap()))
+}
+
+impl Message {
+    fn topic(&self) -> Topic {
+        match self {
+            Message::Imu { .. } => Topic::Imu,
+            Message::Odom { .. } => Topic::Odom,
+            Message::Estop { .. } => Topic::Estop,
+        }
+    }
+
+    fn payload(&self) -> Vec<u8> {
+        match *self {
+            Message::Imu { ax, ay, az } => [ax, ay, az].iter().flat_map(|v| v.to_le_bytes()).collect(),
+            Message::Odom { x, y, theta } => [x, y, theta].iter().flat_map(|v| v.to_le_bytes()).collect(),
+            Message::Estop { reason } => vec![reason],
+        }
+    }
+
+    /// A complete frame, ready for the wire.
+    fn encode(&self) -> Vec<u8> {
+        let payload = self.payload();
+        let mut frame = Vec::with_capacity(payload.len() + 5);
+        frame.push(SYNC);
+        frame.push(self.topic() as u8);
+        frame.extend_from_slice(&(payload.len() as u16).to_le_bytes());
+        frame.extend_from_slice(&payload);
+        frame.push(crc8(&frame[1..]));
+        frame
+    }
+
+    fn decode(topic: Topic, p: &[u8]) -> Result<Message, DecodeError> {
+        let bad = || DecodeError::BadLength { topic, len: p.len() };
+        Ok(match topic {
+            Topic::Imu if p.len() == 12 => { let [ax, ay, az] = f32s::<3>(p); Message::Imu { ax, ay, az } }
+            Topic::Odom if p.len() == 12 => { let [x, y, theta] = f32s::<3>(p); Message::Odom { x, y, theta } }
+            Topic::Estop if p.len() == 1 => Message::Estop { reason: p[0] },
+            _ => return Err(bad()),
+        })
+    }
+}
+
+// ---------------------------------------------------------------- streaming parser
+/// Byte-at-a-time state machine: works no matter how the serial driver chunks the data.
+#[derive(Debug, Clone, Copy)]
+enum State { Sync, Topic, LenLo, LenHi { lo: u8 }, Payload, Crc }
+
+struct FrameParser { state: State, topic: u8, len: usize, buf: Vec<u8> }
+
+impl FrameParser {
+    fn new() -> Self { FrameParser { state: State::Sync, topic: 0, len: 0, buf: Vec::with_capacity(MAX_PAYLOAD) } }
+
+    /// Feed one byte; returns Some(..) when a frame finished (good or bad).
+    fn push(&mut self, b: u8) -> Option<Result<Message, DecodeError>> {
+        use State::*;
+        match self.state {
+            Sync => if b == SYNC { self.state = Topic; },          // skip garbage until SYNC
+            Topic => { self.topic = b; self.state = LenLo; }
+            LenLo => self.state = LenHi { lo: b },
+            LenHi { lo } => {
+                self.len = u16::from_le_bytes([lo, b]) as usize;
+                self.buf.clear();
+                if self.len > MAX_PAYLOAD {
+                    self.state = Sync;
+                    return Some(Err(DecodeError::TooLong(self.len)));
+                }
+                self.state = if self.len == 0 { Crc } else { Payload };
+            }
+            Payload => {
+                self.buf.push(b);
+                if self.buf.len() == self.len { self.state = Crc; }
+            }
+            Crc => {
+                self.state = Sync;
+                let mut hdr = vec![self.topic];
+                hdr.extend_from_slice(&(self.len as u16).to_le_bytes());
+                hdr.extend_from_slice(&self.buf);
+                let expected = crc8(&hdr);
+                if expected != b {
+                    return Some(Err(DecodeError::BadCrc { expected, got: b }));
+                }
+                // `crate::Topic`: inside this fn, `Topic` alone means State::Topic (glob import above)
+                return Some(crate::Topic::try_from(self.topic).and_then(|t| Message::decode(t, &self.buf)));
+            }
+        }
+        None
+    }
+}
+
+// ---------------------------------------------------------------- bus
+#[derive(Default)]
+struct Stats { published: AtomicU64, delivered: AtomicU64, dropped: AtomicU64, bad_frames: AtomicU64 }
+
+type Sub = (&'static str, SyncSender<Arc<Message>>);
+
+struct Bus { subs: HashMap<Topic, Vec<Sub>>, stats: Arc<Stats> }
+
+impl Bus {
+    fn new() -> Self { Bus { subs: HashMap::new(), stats: Arc::new(Stats::default()) } }
+
+    /// Bounded queue per subscriber: a slow node can never block the publisher.
+    fn subscribe(&mut self, node: &'static str, topics: &[Topic], depth: usize) -> Receiver<Arc<Message>> {
+        let (tx, rx) = sync_channel(depth);
+        for &t in topics { self.subs.entry(t).or_default().push((node, tx.clone())); }
+        rx
+    }
+
+    fn publish(&self, msg: Message) {
+        self.stats.published.fetch_add(1, Relaxed);
+        let msg = Arc::new(msg);                                   // one allocation, shared by all subscribers
+        for (_node, tx) in self.subs.get(&msg.topic()).into_iter().flatten() {
+            match tx.try_send(Arc::clone(&msg)) {
+                Ok(()) => { self.stats.delivered.fetch_add(1, Relaxed); }
+                Err(TrySendError::Full(_)) => { self.stats.dropped.fetch_add(1, Relaxed); } // best-effort QoS
+                Err(TrySendError::Disconnected(_)) => {}
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- nodes
+trait Node: Send + 'static {
+    fn name(&self) -> &'static str;
+    fn on_message(&mut self, msg: &Message);
+    fn summary(&self) -> String;
+}
+
+fn spawn_node<N: Node>(mut node: N, rx: Receiver<Arc<Message>>) -> JoinHandle<String> {
+    thread::Builder::new()
+        .name(node.name().into())
+        .spawn(move || {
+            for msg in rx { node.on_message(&msg); }           // ends when the bus is dropped
+            node.summary()
+        })
+        .expect("spawn node thread")
+}
+
+struct Safety { estops: Vec<u8>, impacts: u32 }
+impl Node for Safety {
+    fn name(&self) -> &'static str { "safety" }
+    fn on_message(&mut self, msg: &Message) {
+        match *msg {
+            Message::Estop { reason } => self.estops.push(reason),
+            Message::Imu { ax, ay, .. } if (ax * ax + ay * ay).sqrt() > 15.0 => self.impacts += 1,
+            _ => {}
+        }
+    }
+    fn summary(&self) -> String { format!("estops={:?} impacts={}", self.estops, self.impacts) }
+}
+
+struct Odometer { last: Option<(f32, f32)>, distance: f32, samples: u32 }
+impl Node for Odometer {
+    fn name(&self) -> &'static str { "odometer" }
+    fn on_message(&mut self, msg: &Message) {
+        if let Message::Odom { x, y, .. } = *msg {
+            if let Some((px, py)) = self.last { self.distance += ((x - px).powi(2) + (y - py).powi(2)).sqrt(); }
+            self.last = Some((x, y));
+            self.samples += 1;
+        }
+    }
+    fn summary(&self) -> String { format!("samples={} distance={:.2} m", self.samples, self.distance) }
+}
+
+// ---------------------------------------------------------------- main: simulate a serial link
+fn main() {
+    // 1) Self-checks: every message survives an encode/decode round trip.
+    let samples = [
+        Message::Imu { ax: 0.1, ay: -9.8, az: 0.2 },
+        Message::Odom { x: 1.0, y: 2.0, theta: 0.5 },
+        Message::Estop { reason: 7 },
+    ];
+    for m in &samples {
+        let mut p = FrameParser::new();
+        let out: Vec<_> = m.encode().into_iter().filter_map(|b| p.push(b)).collect();
+        assert_eq!(out, vec![Ok(m.clone())], "round trip failed for {m:?}");
+    }
+    println!("self-check: round trip ok for {} message types", samples.len());
+
+    // 2) Build a byte stream: odometry along a 3-4-5 path, an impact, one corrupted frame, junk, an e-stop.
+    let mut wire: Vec<u8> = vec![0x00, 0x13, 0x37];                    // line noise before the first frame
+    for (i, (x, y)) in [(0.0, 0.0), (3.0, 0.0), (3.0, 4.0), (6.0, 8.0)].into_iter().enumerate() {
+        wire.extend(Message::Odom { x, y, theta: i as f32 * 0.1 }.encode());
+        wire.extend(Message::Imu { ax: 0.2, ay: 9.7, az: 0.0 }.encode());
+    }
+    wire.extend(Message::Imu { ax: 12.0, ay: 14.0, az: 0.0 }.encode()); // a bump
+    let mut corrupted = Message::Estop { reason: 99 }.encode();
+    corrupted[4] ^= 0xFF;                                               // flip payload bits: CRC must catch it
+    wire.extend(corrupted);
+    let unknown = [9u8, 1, 0, 0];                                       // valid CRC, but topic 9 doesn't exist
+    wire.push(SYNC);
+    wire.extend(unknown);
+    wire.push(crc8(&unknown));
+    wire.extend(Message::Estop { reason: 2 }.encode());
+
+    // 3) Wire up the bus and the node threads.
+    let mut bus = Bus::new();
+    let safety_rx = bus.subscribe("safety", &[Topic::Imu, Topic::Estop], 64);
+    let odo_rx = bus.subscribe("odometer", &[Topic::Odom], 64);
+    let handles = vec![
+        spawn_node(Safety { estops: vec![], impacts: 0 }, safety_rx),
+        spawn_node(Odometer { last: None, distance: 0.0, samples: 0 }, odo_rx),
+    ];
+
+    // 4) Feed the stream in odd-sized chunks, like a UART driver would.
+    let mut parser = FrameParser::new();
+    for chunk in wire.chunks(7) {
+        for &b in chunk {
+            match parser.push(b) {
+                Some(Ok(msg)) => bus.publish(msg),
+                Some(Err(e)) => {
+                    bus.stats.bad_frames.fetch_add(1, Relaxed);
+                    println!("rejected frame: {e}");
+                }
+                None => {}
+            }
+        }
+    }
+
+    // 5) Shut down: dropping the bus drops every Sender, so every node loop ends.
+    let stats = Arc::clone(&bus.stats);
+    drop(bus);
+    for h in handles {
+        let name = h.thread().name().unwrap_or("?").to_string();
+        println!("{name:>9}: {}", h.join().expect("node panicked"));
+    }
+    println!("published={} delivered={} dropped={} bad_frames={}",
+        stats.published.load(Relaxed), stats.delivered.load(Relaxed),
+        stats.dropped.load(Relaxed), stats.bad_frames.load(Relaxed));
+}
+</run>
+  <p>출력을 하나씩 대조해 보겠습니다.</p>
+  <ul>
+    <li><b>self-check</b>: 세 메시지 타입 모두 <code>encode → push</code>를 거쳐 원래 값으로 돌아옵니다. <code>assert_eq!</code>는 <code>Result</code>와 <code>Message</code>가 <code>PartialEq</code>를 derive했기 때문에 쓸 수 있습니다.</li>
+    <li><b>rejected frame</b> 두 줄: 페이로드를 뒤집은 비상 정지 프레임은 CRC가 잡았고, 토픽 9 프레임은 CRC는 맞지만 <code>TryFrom</code>이 거부했습니다. 그 뒤의 정상 프레임은 파서가 다시 동기화해 받아 냅니다. 맨 앞의 잡음 3바이트는 SYNC를 찾는 동안 조용히 버려졌습니다.</li>
+    <li><b>safety</b>: 손상된 비상 정지(reason 99)는 들어오지 않았고 정상인 reason 2만 들어왔습니다. 가속도 크기가 15를 넘은 충격이 한 번 감지됐습니다.</li>
+    <li><b>odometer</b>: (0,0)→(3,0)→(3,4)→(6,8)의 거리 3 + 4 + 5 = 12 m.</li>
+    <li><b>stats</b>: 발행 10건이 모두 전달되었고, 큐가 넘치지 않아 버린 메시지는 0건입니다.</li>
+  </ul>
+
+  <h3>확장 과제</h3>
+  <p>코드를 <b>편집</b>해 직접 해 보세요. 위로 갈수록 쉽고, 아래로 갈수록 실무 고급 엔지니어의 일에 가깝습니다.</p>
+  <ol class="steps">
+    <li><b>QoS 실험</b>: odometer의 큐 깊이를 2로 줄이고, <code>on_message</code>에 <code>thread::sleep(Duration::from_millis(5))</code>를 넣어 느린 노드를 만드세요. <code>dropped</code>가 늘어나는 것을 확인하고, "가장 오래된 것 버리기"(keep-last) 정책을 구현해 보세요. (힌트: 노드 쪽에서 <code>try_iter()</code>로 비우고 마지막 것만 처리)</li>
+    <li><b>새 토픽 추가</b>: <code>Battery { volts: f32, percent: u8 }</code>를 추가하세요. <code>match</code>의 완전성 검사가 고쳐야 할 곳을 모두 알려 줍니다(5장).</li>
+    <li><b>제로 카피 파서</b>: 지금 파서는 페이로드를 <code>Vec</code>에 모읍니다. 버퍼 전체가 메모리에 있는 경우를 위해 <code>fn parse_all&lt;'a&gt;(buf: &amp;'a [u8]) -&gt; impl Iterator&lt;Item = Result&lt;Frame&lt;'a&gt;, DecodeError&gt;&gt;</code>를 만들어 보세요. <code>Frame&lt;'a&gt;</code>는 페이로드를 <code>&amp;'a [u8]</code>로 빌립니다(10장).</li>
+    <li><b>no_std 이식</b>: 파서와 <code>Message</code>를 별도 크레이트로 빼서 <code>#![no_std]</code>로 만드세요. <code>Vec</code> 대신 15장의 const 제네릭 버퍼를 쓰면 MCU 쪽 송신 코드와 같은 크레이트를 공유할 수 있습니다.</li>
+    <li><b>async 버전</b>: tokio의 <code>tokio-serial</code>과 <code>mpsc</code>로 바꾸고, 노드를 <code>tokio::spawn</code> 작업으로 만드세요. 블로킹 지점이 어디였는지 13장의 함정 목록과 대조해 보세요.</li>
+    <li><b>검증</b>: <code>proptest</code>로 "임의의 메시지를 encode하고 임의 위치에서 쪼개 넣어도 같은 메시지가 나온다"를, <code>cargo fuzz</code>로 "어떤 바이트열에도 파서가 panic하지 않는다"를 확인하세요(16장).</li>
+  </ol>
+
+  <h3>최종 체크리스트와 다음 단계</h3>
+  <div class="call key"><span class="lab">이 책을 마친 당신이 할 수 있어야 하는 것</span>
+    <ul>
+      <li>컴파일 오류 메시지를 보고 소유권·빌림·라이프타임 중 무엇의 문제인지 바로 짚는다.</li>
+      <li>데이터 구조를 설계할 때 "누가 소유하는가"부터 그린다. <code>Rc&lt;RefCell&gt;</code>은 마지막 수단이다.</li>
+      <li>오류를 열거형으로 설계하고, 라이브러리와 애플리케이션의 오류 전략을 구분한다.</li>
+      <li>제네릭/<code>dyn</code>/열거형 중 다형성 방식을 비용과 함께 고른다.</li>
+      <li>스레드·채널·락·원자·async 중 동시성 도구를 문제에 맞게 고르고, 교착과 취소 안전성을 따진다.</li>
+      <li>unsafe를 작은 safe API 뒤에 숨기고 SAFETY 근거와 Miri로 검증한다.</li>
+      <li>타입 상태·newtype으로 잘못된 사용을 컴파일 오류로 만든다.</li>
+      <li>CI 게이트(fmt, clippy, test, miri, audit)와 측정 기반 최적화를 습관으로 갖는다.</li>
+    </ul>
+  </div>
+  <div class="ladder">
+    <div><b>L1</b><span>코드가 컴파일되게 만들 수 있다. clone과 unwrap이 많다.</span></div>
+    <div><b>L2</b><span>빌림으로 설계하고, Result와 반복자로 관용적인 코드를 쓴다. (이 책의 Part II)</span></div>
+    <div><b>L3</b><span>라이프타임·트레잇·동시성으로 라이브러리 API를 설계한다. 다른 사람이 쓰기 쉬운 크레이트를 만든다. (Part III)</span></div>
+    <div><b>L4</b><span>unsafe 경계와 타입 수준 설계로 시스템 전체의 불변식을 지킨다. 성능을 측정하고, 팀의 Rust 도입과 리뷰 기준을 이끈다. (Part IV)</span></div>
+    <div><b>L5</b><span>생태계에 기여한다: 크레이트 유지, RFC 논의, 임베디드/커널/로보틱스 분야의 Rust 기반 구조를 만든다.</span></div>
+  </div>
+  <p>다음 단계로는 부록 B의 자료 중 <i>Rust for Rustaceans</i>(설계 감각), <i>Rust Atomics and Locks</i>(동시성 내부), <i>The Rustonomicon</i>(unsafe), 그리고 관심 분야에 따라 <i>The Embedded Rust Book</i>이나 tokio 튜토리얼을 권합니다. 그리고 무엇보다, 지금 C/C++로 유지하는 도구 하나를 골라 Rust로 다시 써 보세요. 컴파일러와의 대화가 가장 빠른 선생입니다.</p>
+
+  <div class="quiz" data-quiz="ch17"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch17" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

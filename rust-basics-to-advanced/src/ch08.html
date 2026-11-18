@@ -1,0 +1,185 @@
+<!-- ============ CH8 ============ -->
+<section class="chapter col" id="ch8">
+  <div class="eyebrow">Part II · 타입으로 설계하기 — 8장</div>
+  <h2>제네릭과 트레잇</h2>
+  <p class="goal">이 장을 마치면: 트레잇을 정의·구현하고 트레잇 경계(<code>T: Trait</code>, <code>where</code>)로 제네릭 함수를 제약할 수 있고, 제네릭(정적 디스패치, 단형화)과 <code>dyn Trait</code>(동적 디스패치, vtable)의 비용과 쓰임새를 비교해 고를 수 있으며, <code>derive</code>·연산자 오버로딩·고아 규칙(orphan rule)을 설명할 수 있습니다.</p>
+  <p>7장까지 쓴 <code>Vec&lt;T&gt;</code>와 <code>Option&lt;T&gt;</code>는 모두 제네릭입니다. 이 장에서는 그 <code>T</code>에 "어떤 능력이 있어야 하는가"를 표현하는 <strong>트레잇</strong>을 배웁니다. 트레잇은 Rust에서 인터페이스, 연산자, 형변환, 스레드 안전성까지 거의 모든 추상화의 기반입니다.</p>
+
+  <h3>트레잇은 "이 타입이 할 수 있는 일"의 계약이다</h3>
+  <p>트레잇은 메서드 시그니처의 묶음입니다. 기본 구현을 줄 수 있고, 어떤 타입이든 <code>impl Trait for Type</code>으로 구현할 수 있습니다. 상속은 없습니다. 대신 여러 트레잇을 조합합니다.</p>
+<run file="traits.rs">
+trait Sensor {
+    fn name(&self) -> String;
+    fn read(&mut self) -> f64;
+    fn read_avg(&mut self, n: u32) -> f64 {           // default method: uses the required ones
+        (0..n).map(|_| self.read()).sum::<f64>() / n as f64
+    }
+}
+
+struct Thermistor { raw: u16 }
+struct Ultrasonic { echo_us: u32, tick: u32 }
+
+impl Sensor for Thermistor {
+    fn name(&self) -> String { "thermistor".into() }
+    fn read(&mut self) -> f64 {
+        self.raw = self.raw.wrapping_add(3);
+        25.0 + (self.raw % 10) as f64 * 0.1
+    }
+}
+
+impl Sensor for Ultrasonic {
+    fn name(&self) -> String { format!("ultrasonic#{}", self.tick) }
+    fn read(&mut self) -> f64 {
+        self.tick += 1;
+        self.echo_us as f64 * 0.0343 / 2.0             // cm
+    }
+    fn read_avg(&mut self, _n: u32) -> f64 { self.read() }   // override the default
+}
+
+// Generic function with a trait bound: one copy is compiled per concrete type.
+fn report<S: Sensor>(s: &mut S) {
+    println!("{:<14} avg = {:.2}", s.name(), s.read_avg(4));
+}
+
+// Same thing, `impl Trait` in argument position (sugar for a generic).
+fn report_twice(s: &mut impl Sensor) { report(s); report(s); }
+
+fn main() {
+    let mut t = Thermistor { raw: 0 };
+    let mut u = Ultrasonic { echo_us: 580, tick: 0 };
+    report(&mut t);
+    report_twice(&mut u);
+}
+</run>
+
+  <h3>derive와 표준 트레잇: 공짜로 얻는 능력</h3>
+  <p>자주 쓰는 표준 트레잇은 <code>#[derive(...)]</code>로 자동 구현됩니다. 어떤 트레잇을 구현했는지가 그 타입으로 할 수 있는 일을 결정합니다. <code>==</code>는 <code>PartialEq</code>, <code>{:?}</code>는 <code>Debug</code>, <code>HashMap</code> 키가 되려면 <code>Eq + Hash</code>, 정렬하려면 <code>Ord</code>가 필요합니다. <code>+</code> 같은 연산자도 <code>std::ops::Add</code> 트레잇을 구현하면 됩니다.</p>
+<run file="derive_ops.rs">
+use std::collections::HashSet;
+use std::fmt;
+use std::ops::{Add, Mul};
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+struct Vec2 { x: f64, y: f64 }
+
+impl Add for Vec2 {
+    type Output = Vec2;                                  // associated type
+    fn add(self, o: Vec2) -> Vec2 { Vec2 { x: self.x + o.x, y: self.y + o.y } }
+}
+impl Mul<f64> for Vec2 {
+    type Output = Vec2;
+    fn mul(self, k: f64) -> Vec2 { Vec2 { x: self.x * k, y: self.y * k } }
+}
+impl fmt::Display for Vec2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({:.2}, {:.2})", self.x, self.y)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+enum Priority { Low, Normal, High, Critical }           // derive Ord: declaration order
+
+// A generic function bounded by several traits, written with `where`.
+fn largest<T>(items: &[T]) -> Option<&T>
+where
+    T: PartialOrd,
+{
+    let mut best = items.first()?;
+    for it in items { if it > best { best = it; } }
+    Some(best)
+}
+
+fn main() {
+    let p = Vec2 { x: 1.0, y: 2.0 } + Vec2 { x: 0.5, y: -1.0 } * 2.0;
+    println!("p = {p}  default = {:?}", Vec2::default());
+
+    let mut queue = vec![Priority::Normal, Priority::Critical, Priority::Low, Priority::High];
+    queue.sort();
+    println!("sorted = {queue:?}, max = {:?}", largest(&queue));
+    println!("largest f64 = {:?}", largest(&[0.3, 9.1, 2.2]));
+
+    let unique: HashSet<Priority> = [Priority::Low, Priority::Low, Priority::High].into_iter().collect();
+    println!("unique count = {}", unique.len());
+}
+</run>
+  <div class="call key"><span class="lab">고아 규칙(orphan rule)</span>
+    <p><code>impl Trait for Type</code>은 <b>트레잇이나 타입 중 적어도 하나가 내 크레이트 것</b>일 때만 쓸 수 있습니다. 그래서 남의 타입 <code>Vec&lt;u8&gt;</code>에 남의 트레잇 <code>Display</code>를 구현할 수 없습니다. 두 크레이트가 같은 구현을 따로 넣어 충돌하는 일을 막기 위한 규칙입니다. 필요하면 15장의 newtype(<code>struct Hex(Vec&lt;u8&gt;)</code>)으로 감싸서 구현합니다.</p>
+  </div>
+
+  <h3>정적 디스패치 vs 동적 디스패치</h3>
+  <p>여러 종류의 센서를 한 벡터에 담고 싶다면? 제네릭 <code>Vec&lt;T&gt;</code>는 한 가지 타입만 담습니다. 서로 다른 타입을 섞으려면 <strong>트레잇 객체</strong> <code>dyn Sensor</code>를 씁니다. 크기를 모르는 타입이라 항상 포인터 뒤에 둡니다(<code>Box&lt;dyn Sensor&gt;</code>, <code>&amp;dyn Sensor</code>).</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 220" role="img" aria-label="단형화와 vtable 비교">
+      <text class="sv-t" x="20" y="22" font-weight="600">제네릭 &lt;S: Sensor&gt; — 단형화</text>
+      <rect class="sv-r1" x="20" y="34" width="270" height="38" rx="6"/><text class="sv-m" x="30" y="58">report::&lt;Thermistor&gt;  (별도 기계어)</text>
+      <rect class="sv-r1" x="20" y="80" width="270" height="38" rx="6"/><text class="sv-m" x="30" y="104">report::&lt;Ultrasonic&gt;  (별도 기계어)</text>
+      <text class="sv-m" x="20" y="142">호출은 직접 call · 인라인 가능</text>
+      <text class="sv-m" x="20" y="160">대가: 타입 수만큼 코드가 늘어남</text>
+      <text class="sv-t" x="340" y="22" font-weight="600">dyn Sensor — vtable</text>
+      <rect class="sv-r2" x="340" y="34" width="120" height="56" rx="6"/><text class="sv-m" x="350" y="56">&amp;dyn Sensor</text><text class="sv-m" x="350" y="74">[data | vtable]</text>
+      <rect class="sv-r3" x="500" y="34" width="125" height="110" rx="6"/>
+      <text class="sv-m" x="510" y="54">vtable(Ultrasonic)</text><text class="sv-m" x="510" y="76">drop_in_place</text><text class="sv-m" x="510" y="92">size, align</text><text class="sv-m" x="510" y="108">name()</text><text class="sv-m" x="510" y="124">read() …</text>
+      <path class="sv-ac" d="M460 74 L500 74"/>
+      <text class="sv-m" x="340" y="142">호출은 간접 call · 보통 인라인 불가</text>
+      <text class="sv-m" x="340" y="160">이점: 서로 다른 타입을 한 컬렉션에</text>
+      <text class="sv-m" x="340" y="198">&amp;dyn Trait = 팻 포인터 (16바이트)</text>
+    </svg>
+    <figcaption>그림 8-1. 같은 트레잇을 두 방식으로 쓸 수 있습니다. 기본은 제네릭, 이질적인 집합이나 플러그인 구조가 필요할 때 <code>dyn</code>.</figcaption>
+  </figure>
+<run file="dyn_dispatch.rs">
+trait Actuator {
+    fn name(&self) -> &str;
+    fn command(&mut self, value: f64) -> String;
+}
+
+struct Motor { id: u8, rpm: f64 }
+struct Gripper { closed: bool }
+
+impl Actuator for Motor {
+    fn name(&self) -> &str { "motor" }
+    fn command(&mut self, v: f64) -> String { self.rpm = v * 3000.0; format!("motor{} -> {} rpm", self.id, self.rpm) }
+}
+impl Actuator for Gripper {
+    fn name(&self) -> &str { "gripper" }
+    fn command(&mut self, v: f64) -> String { self.closed = v > 0.5; format!("gripper closed = {}", self.closed) }
+}
+
+fn main() {
+    // A heterogeneous collection: each Box<dyn Actuator> is (data ptr, vtable ptr).
+    let mut outputs: Vec<Box<dyn Actuator>> = vec![
+        Box::new(Motor { id: 1, rpm: 0.0 }),
+        Box::new(Gripper { closed: false }),
+        Box::new(Motor { id: 2, rpm: 0.0 }),
+    ];
+    for (i, a) in outputs.iter_mut().enumerate() {
+        let out = a.command(0.2 * (i as f64 + 1.0));   // finish the &mut call first...
+        println!("{:<8} {out}", a.name());              // ...then borrow again for name()
+    }
+    use std::mem::size_of;
+    println!("Box<Motor> = {} B, Box<dyn Actuator> = {} B, &dyn Actuator = {} B",
+             size_of::<Box<Motor>>(), size_of::<Box<dyn Actuator>>(), size_of::<&dyn Actuator>());
+}
+</run>
+  <p>모든 트레잇이 <code>dyn</code>으로 쓰일 수 있는 것은 아닙니다. vtable에 담을 수 없는 메서드, 예컨대 <strong>제네릭 메서드</strong>나 <code>Self</code>를 값으로 반환하는 메서드가 있으면 그 트레잇은 "dyn 호환"(예전 용어로 object safe)이 아닙니다. 제네릭 메서드는 타입마다 다른 기계어가 필요한데 vtable에는 칸이 하나뿐이기 때문입니다.</p>
+  <div class="bench" id="b-disp">
+    <header><b>실습 벤치 8-A · 이 호출은 어떻게 디스패치될까?</b><span>CLASSIFY · 8 SNIPPETS</span></header>
+    <div class="body">
+      <div id="dispList"></div>
+      <div class="row"><button type="button" class="btn" id="dispListReset">다시 풀기</button></div>
+      <div class="status" id="dispScore"></div>
+    </div>
+  </div>
+  <div class="call sys"><span class="lab">C/C++ 개발자의 눈으로</span>
+    <p><code>dyn Trait</code>는 C의 "ops 구조체(함수 포인터 테이블) + <code>void *</code>"를 언어가 만들어 주는 것이고, C++의 가상 함수와 달리 <b>vtable 포인터가 객체 안이 아니라 참조 쪽에</b> 붙습니다. 그래서 같은 <code>Motor</code> 값을 제네릭으로도, <code>dyn</code>으로도 쓸 수 있고, 트레잇을 쓰지 않는 값에는 vtable 비용이 전혀 없습니다. 제네릭은 C++ 템플릿처럼 단형화되지만, 경계(<code>S: Sensor</code>)를 선언 시점에 검사하므로 C++20 컨셉트처럼 오류가 짧고 정확합니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>"Java처럼" 모든 것을 <code>Box&lt;dyn Trait&gt;</code>로 설계하지 마세요. 기본은 제네릭이고, 런타임에 종류가 정해지거나 코드 크기가 문제일 때 <code>dyn</code>을 씁니다. 종류가 닫혀 있으면(정해진 몇 개) <b>열거형</b>이 둘 다보다 나을 때가 많습니다.</li>
+      <li>제네릭을 깊게 중첩하면 컴파일 시간과 바이너리 크기가 커집니다. 임베디드에서는 <code>cargo bloat</code>로 단형화 비용을 확인하세요.</li>
+    </ul>
+  </div>
+  <p>트레잇의 가장 화려한 쓰임새는 반복자입니다. 다음 장에서 클로저와 함께 <code>Iterator</code> 트레잇을 열어 봅니다.</p>
+
+  <div class="quiz" data-quiz="ch8"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch8" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

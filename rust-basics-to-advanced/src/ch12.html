@@ -1,0 +1,161 @@
+<!-- ============ CH12 ============ -->
+<section class="chapter col" id="ch12">
+  <div class="eyebrow">Part III · 고급 메커니즘 — 12장</div>
+  <h2>두려움 없는 동시성</h2>
+  <p class="goal">이 장을 마치면: <code>Send</code>와 <code>Sync</code>가 무엇을 보장하는지 설명하고 주요 타입의 Send/Sync 여부를 판별할 수 있으며, <code>thread::scope</code>, <code>Arc&lt;Mutex&lt;T&gt;&gt;</code>, 채널, 원자 타입 중 문제에 맞는 공유 방식을 고를 수 있고, Rust가 막아 주는 것(데이터 경쟁)과 막지 못하는 것(교착, 경쟁 조건)을 구분할 수 있습니다.</p>
+  <p>11장의 <code>Rc</code>와 <code>RefCell</code>은 단일 스레드 전용이었습니다. 이 장에서는 그 제약이 어디서 오는지, 그리고 스레드 사이에서 같은 일을 하려면 무엇을 써야 하는지 봅니다. 핵심은 새 규칙이 아니라 <strong>4장의 "공유 XOR 변경" 규칙이 스레드에도 그대로 적용된다</strong>는 것입니다.</p>
+
+  <h3>Send와 Sync: 두 개의 마커 트레잇이 전부다</h3>
+  <ul>
+    <li><strong><code>T: Send</code></strong> — <code>T</code> 값의 소유권을 다른 스레드로 <b>옮겨도</b> 안전하다.</li>
+    <li><strong><code>T: Sync</code></strong> — <code>&amp;T</code>를 여러 스레드가 <b>동시에 가져도</b> 안전하다. (정의상 <code>T: Sync</code> ⇔ <code>&amp;T: Send</code>)</li>
+  </ul>
+  <p>둘 다 메서드가 없는 마커 트레잇이고, 구성 요소가 모두 Send/Sync이면 <strong>컴파일러가 자동으로 구현</strong>합니다. 그리고 <code>thread::spawn</code>은 넘겨받는 클로저에 <code>F: Send + 'static</code>을 요구합니다. 이 두 줄의 조합으로 데이터 경쟁이 컴파일 오류가 됩니다. <code>Rc</code>는 카운트를 비원자적으로 바꾸므로 <code>Send</code>가 아니고, 따라서 <code>Rc</code>를 품은 클로저는 다른 스레드로 보낼 수 없습니다.</p>
+<run file="rc_thread.rs" expect="error">
+use std::rc::Rc;
+use std::thread;
+
+fn main() {
+    let shared = Rc::new(vec![1, 2, 3]);
+    let s2 = Rc::clone(&shared);
+    let h = thread::spawn(move || {          // error[E0277]: `Rc<Vec<i32>>` cannot be sent between threads safely
+        println!("{:?}", s2);
+    });
+    h.join().unwrap();
+}
+</run>
+  <div class="bench" id="b-send">
+    <header><b>실습 벤치 12-A · Send일까 Sync일까?</b><span>CLASSIFY · 10 TYPES</span></header>
+    <div class="body">
+      <div id="sendList"></div>
+      <div class="row"><button type="button" class="btn" id="sendListReset">다시 풀기</button></div>
+      <div class="status" id="sendScore"></div>
+    </div>
+  </div>
+
+  <h3>scoped thread: 스택 데이터를 그대로 빌려주기</h3>
+  <p><code>thread::spawn</code>이 <code>'static</code>을 요구하는 이유는 새 스레드가 언제 끝날지 모르기 때문입니다. 지역 변수를 빌려주면 함수가 먼저 반환해 매달린 참조가 될 수 있습니다. <code>thread::scope</code>는 "이 블록이 끝나기 전에 안의 모든 스레드를 join한다"고 보장하므로, <strong>지역 데이터를 그냥 빌려줄 수 있습니다</strong>. 데이터를 나눠 병렬 처리하는 대부분의 경우에 가장 먼저 고려할 도구입니다.</p>
+<run file="scoped.rs">
+use std::thread;
+
+fn main() {
+    let scan: Vec<f32> = (0..1_000).map(|i| ((i * 37) % 1000) as f32 / 100.0).collect();
+    let mut mins = [0.0f32; 4];
+
+    thread::scope(|s| {
+        // Split the data into 4 chunks and the output into 4 disjoint &mut slots.
+        for (chunk, slot) in scan.chunks(250).zip(mins.iter_mut()) {
+            s.spawn(move || {
+                *slot = chunk.iter().copied().fold(f32::INFINITY, f32::min);
+            });
+        }
+    }); // all threads are joined here; borrows of `scan` and `mins` end
+
+    println!("per-chunk minimum = {mins:?}");
+    println!("global minimum    = {}", mins.iter().copied().fold(f32::INFINITY, f32::min));
+}
+</run>
+  <p><code>mins.iter_mut()</code>가 원소마다 겹치지 않는 <code>&amp;mut</code>를 하나씩 만들어 주므로, 네 스레드가 각자 자기 칸만 씁니다. 같은 칸을 두 스레드에 주려고 하면 4장의 규칙대로 컴파일되지 않습니다. 락이 하나도 없는데 데이터 경쟁도 없습니다.</p>
+
+  <h3>공유 상태: Arc + Mutex, 그리고 원자 타입</h3>
+  <p>스레드들이 같은 값을 계속 함께 바꿔야 하면 단일 스레드의 <code>Rc&lt;RefCell&lt;T&gt;&gt;</code>에 대응하는 <code>Arc&lt;Mutex&lt;T&gt;&gt;</code>를 씁니다. Rust의 <code>Mutex</code>는 C의 pthread mutex와 결정적으로 다릅니다. <strong>보호하는 데이터를 안에 품고 있어서</strong>, 락을 잡지 않으면 데이터에 접근할 방법이 없습니다. <code>lock()</code>이 돌려주는 <code>MutexGuard</code>가 drop될 때 자동으로 풀립니다(RAII). 정수 카운터나 플래그처럼 단순한 값은 <code>Atomic*</code> 타입이 더 가볍습니다.</p>
+<run file="shared_state.rs">
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, RwLock};
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    let latest: Arc<Mutex<HashMap<&'static str, f64>>> = Arc::new(Mutex::new(HashMap::new()));
+    let params = Arc::new(RwLock::new(0.5_f64));         // many readers, rare writers
+    let frames = Arc::new(AtomicU64::new(0));
+    let running = Arc::new(AtomicBool::new(true));
+
+    let mut handles = Vec::new();
+    for (topic, base) in [("imu", 1.0), ("lidar", 10.0), ("odom", 100.0)] {
+        let (latest, params, frames, running) = (latest.clone(), params.clone(), frames.clone(), running.clone());
+        handles.push(thread::spawn(move || {
+            let mut i = 0.0;
+            while running.load(Ordering::Relaxed) {
+                let gain = *params.read().unwrap();      // read lock, released at end of statement
+                {
+                    let mut map = latest.lock().unwrap(); // the ONLY way to reach the map
+                    map.insert(topic, base + i * gain);
+                }                                         // guard dropped: unlocked
+                frames.fetch_add(1, Ordering::Relaxed);
+                i += 1.0;
+                thread::sleep(Duration::from_millis(2));
+            }
+        }));
+    }
+
+    thread::sleep(Duration::from_millis(30));
+    *params.write().unwrap() = 2.0;                       // exclusive write lock
+    thread::sleep(Duration::from_millis(30));
+    running.store(false, Ordering::Relaxed);
+    for h in handles { h.join().unwrap(); }
+
+    let map = latest.lock().unwrap();
+    let mut keys: Vec<_> = map.keys().collect();
+    keys.sort();
+    println!("topics = {keys:?}");
+    println!("frames > 30? {}", frames.load(Ordering::Relaxed) > 30);
+    println!("Arc strong count now = {}", Arc::strong_count(&latest));
+}
+</run>
+  <div class="call key"><span class="lab">Ordering 한 줄 요약</span>
+    <p><code>Relaxed</code>는 "이 변수 하나의 원자성"만 보장합니다. 카운터, 통계, 단순 중지 플래그에 충분합니다. 한 스레드가 데이터를 준비한 뒤 플래그로 "준비됐다"고 알리는 경우처럼 <b>다른 메모리의 가시성</b>까지 맞춰야 하면, 쓰는 쪽 <code>Release</code> + 읽는 쪽 <code>Acquire</code>를 짝지어 씁니다. 확신이 없으면 <code>SeqCst</code>로 시작하고, 원자 타입보다 <code>Mutex</code>나 채널을 먼저 고려하세요. 더 깊은 내용은 부록 B의 <i>Rust Atomics and Locks</i>가 표준 참고서입니다.</p>
+  </div>
+
+  <h3>메시지 전달: 공유하지 말고 보내라</h3>
+  <p>공유 상태보다 더 단순한 설계는 <strong>소유권을 메시지로 넘기는 것</strong>입니다. <code>std::sync::mpsc</code> 채널(다수 생산자, 단일 소비자)로 값을 보내면 소유권이 수신 스레드로 이동하므로, 보낸 쪽은 더 이상 그 값을 건드릴 수 없습니다. 3장의 이동 규칙이 그대로 스레드 안전성이 됩니다. 모든 송신자(<code>Sender</code>)가 drop되면 수신 루프가 자연스럽게 끝납니다.</p>
+<run file="channels.rs">
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
+
+#[derive(Debug)]
+enum Msg { Scan { id: u32, ranges: Vec<f32> }, Status(&'static str) }
+
+fn main() {
+    let (tx, rx) = mpsc::sync_channel::<Msg>(4);          // bounded: back-pressure when full
+
+    let lidar_tx = tx.clone();
+    let lidar = thread::spawn(move || {
+        for id in 0..3 {
+            let ranges = vec![1.0 + id as f32; 360];      // allocated here...
+            lidar_tx.send(Msg::Scan { id, ranges }).unwrap(); // ...ownership moves to the receiver
+            thread::sleep(Duration::from_millis(5));
+        }
+    });
+    let health = thread::spawn(move || {
+        tx.send(Msg::Status("battery ok")).unwrap();
+    });                                                    // original tx moved in and dropped here
+
+    for msg in rx {                                        // ends when every Sender is dropped
+        match msg {
+            Msg::Scan { id, ranges } => println!("scan {id}: {} beams, first {}", ranges.len(), ranges[0]),
+            Msg::Status(s) => println!("status: {s}"),
+        }
+    }
+    lidar.join().unwrap();
+    health.join().unwrap();
+    println!("all senders gone, receiver loop finished");
+}
+</run>
+  <div class="call warn"><span class="lab">Rust가 막아 주지 않는 것</span>
+    <ul>
+      <li><b>교착 상태</b>: 두 스레드가 락 A, B를 반대 순서로 잡으면 여전히 멈춥니다. 락 순서를 정하고, 락을 잡은 채 다른 락이나 채널 수신을 기다리지 마세요.</li>
+      <li><b>경쟁 조건(race condition)</b>: "확인하고 나서 행동하기"를 두 번의 락으로 나누면 그 사이에 상태가 바뀝니다. 데이터 경쟁(data race, UB)과 달리 논리 버그이므로 컴파일러가 모릅니다.</li>
+      <li><b>독약 처리(poisoning)</b>: 락을 잡은 스레드가 panic하면 Mutex가 poisoned 상태가 되어 <code>lock()</code>이 <code>Err</code>를 돌려줍니다. 예제의 <code>unwrap()</code>은 "그러면 우리도 멈춘다"는 선택입니다.</li>
+    </ul>
+  </div>
+  <div class="call sys"><span class="lab">ROS 2 엔지니어의 눈으로</span>
+    <p>콜백 그룹과 executor로 스레드를 나누는 ROS 2에서 가장 흔한 버그는 콜백 사이의 공유 상태 경쟁입니다. Rust 바인딩(rclrs, r2r)에서는 콜백 클로저가 <code>Send</code>를 요구받기 때문에, 공유 상태를 <code>Arc&lt;Mutex&lt;_&gt;&gt;</code>로 감싸지 않으면 아예 컴파일되지 않습니다. 경쟁을 리뷰가 아니라 타입이 막는 것입니다.</p>
+  </div>
+  <p>스레드는 수천 개 단위의 동시 작업에는 무겁습니다. 네트워크 연결 수만 개를 한 스레드에서 다루는 방법, async/await가 다음 장의 주제입니다.</p>
+
+  <div class="quiz" data-quiz="ch12"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch12" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

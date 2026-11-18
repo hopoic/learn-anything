@@ -1,0 +1,154 @@
+<!-- ============ CH10 ============ -->
+<section class="chapter col" id="ch10">
+  <div class="eyebrow">Part III · 고급 메커니즘 — 10장</div>
+  <h2>라이프타임</h2>
+  <p class="goal">이 장을 마치면: 라이프타임 매개변수 <code>'a</code>가 "참조들 사이의 관계"를 선언하는 것이지 수명을 늘리거나 줄이는 것이 아님을 설명할 수 있고, 세 가지 생략 규칙으로 언제 표기가 필요한지 판단할 수 있으며, 참조를 품은 구조체와 <code>'static</code>, <code>T: 'a</code> 경계를 올바르게 쓸 수 있습니다.</p>
+  <p>4장에서 "참조는 원래 값보다 오래 살 수 없다"고 했습니다. 함수 안에서는 컴파일러가 이를 직접 확인할 수 있습니다. 하지만 함수가 참조를 받아서 참조를 돌려줄 때, <strong>돌려주는 참조가 어느 입력에서 왔는지</strong>는 시그니처에 적혀 있어야 호출하는 쪽이 검사할 수 있습니다. 그 표기가 라이프타임입니다.</p>
+
+  <h3>'a는 수명을 바꾸지 않는다, 관계를 적는다</h3>
+<run file="longest_error.rs" expect="error">
+// Which input does the returned reference borrow from? The signature doesn't say.
+fn longest(a: &str, b: &str) -> &str {      // error[E0106]: missing lifetime specifier
+    if a.len() >= b.len() { a } else { b }
+}
+
+fn main() {
+    println!("{}", longest("lidar", "imu"));
+}
+</run>
+  <p>컴파일러는 함수 본문을 보고 추측하지 않습니다. 시그니처만으로 호출부를 검사해야 모듈 경계를 넘어도 검사가 빠르고 안정적이기 때문입니다. 그래서 우리가 관계를 적어 줍니다.</p>
+<run file="longest.rs">
+// "The result lives at most as long as BOTH inputs": 'a is the overlap of the two borrows.
+fn longest<'a>(a: &'a str, b: &'a str) -> &'a str {
+    if a.len() >= b.len() { a } else { b }
+}
+
+// Here the result only ever comes from `text`, so `pattern` gets its own, unrelated lifetime.
+fn after<'t>(text: &'t str, pattern: &str) -> Option<&'t str> {
+    text.find(pattern).map(|i| &text[i + pattern.len()..])
+}
+
+fn main() {
+    let topic = String::from("/robot/front_lidar");
+    let result;
+    {
+        let short = String::from("/imu");
+        result = longest(&topic, &short);
+        println!("longest = {result}");            // fine: both strings are alive here
+    }
+    // println!("{result}");                      // error: `short` does not live long enough
+
+    let tail;
+    {
+        let pat = String::from("/robot/");
+        tail = after(&topic, &pat);                // tied to `topic` only
+    }
+    println!("tail = {tail:?}");                   // fine: `pat` is gone, but tail never borrowed it
+}
+</run>
+  <p><code>&lt;'a&gt;</code>는 "호출자가 정해 주는 어떤 구간"이라는 제네릭 매개변수입니다. <code>longest</code>의 시그니처는 "두 입력이 모두 유효한 구간 안에서만 결과가 유효하다"는 약속입니다. 컴파일러는 호출부에서 그 구간을 계산해 주석 처리된 줄처럼 약속을 어기는 사용을 막습니다. <strong>라이프타임 표기는 기계어에 아무 흔적도 남기지 않는</strong> 순수한 컴파일 타임 정보입니다.</p>
+
+  <h3>대부분은 생략 규칙이 대신 써 준다</h3>
+  <p>모든 참조에 라이프타임을 적으면 끔찍할 것입니다. 그래서 컴파일러는 세 가지 <strong>생략 규칙</strong>(elision rules)으로 흔한 경우를 채웁니다. 이 규칙으로 결정되지 않을 때만 직접 씁니다.</p>
+  <ol class="steps">
+    <li>입력의 각 참조는 각자 다른 라이프타임을 받는다. <code>fn f(a: &amp;T, b: &amp;U)</code> → <code>fn f&lt;'x, 'y&gt;(a: &amp;'x T, b: &amp;'y U)</code></li>
+    <li>입력 라이프타임이 <b>정확히 하나</b>면, 출력의 모든 참조가 그것을 받는다.</li>
+    <li>메서드에서 <code>&amp;self</code>나 <code>&amp;mut self</code>가 있으면, 출력은 <b><code>self</code>의 라이프타임</b>을 받는다.</li>
+  </ol>
+  <p><code>longest</code>는 입력 참조가 둘이고 <code>self</code>가 없어서 규칙 2, 3이 모두 적용되지 않았던 것입니다.</p>
+  <div class="bench" id="b-life">
+    <header><b>실습 벤치 10-A · 이 시그니처, 라이프타임을 써야 할까?</b><span>CLASSIFY · 8 SIGNATURES</span></header>
+    <div class="body">
+      <div id="lifeList"></div>
+      <div class="row"><button type="button" class="btn" id="lifeListReset">다시 풀기</button></div>
+      <div class="status" id="lifeScore"></div>
+    </div>
+  </div>
+
+  <h3>참조를 품은 구조체: 빌린 쪽보다 오래 살 수 없다</h3>
+  <p>구조체가 참조를 필드로 가지면 구조체 자체에 라이프타임 매개변수가 붙습니다. <code>Parser&lt;'a&gt;</code>는 "<code>'a</code> 동안 빌린 입력을 들고 있는 파서"이고, 파서 인스턴스는 입력보다 오래 살 수 없습니다. 이것이 <strong>제로 카피 파싱</strong>의 기반입니다. 입력 버퍼를 복사하지 않고 그 안을 가리키는 <code>&amp;str</code>/<code>&amp;[u8]</code> 조각들을 돌려줄 수 있습니다.</p>
+<run file="zero_copy.rs">
+/// Splits "key=value;key=value" without allocating: every &str points into the input.
+struct KvParser<'a> {
+    rest: &'a str,
+}
+
+impl<'a> KvParser<'a> {
+    fn new(input: &'a str) -> Self { Self { rest: input } }
+}
+
+impl<'a> Iterator for KvParser<'a> {
+    type Item = (&'a str, &'a str);          // items borrow from the INPUT, not from the parser
+    fn next(&mut self) -> Option<Self::Item> {
+        while !self.rest.is_empty() {
+            let (field, rest) = self.rest.split_once(';').unwrap_or((self.rest, ""));
+            self.rest = rest;
+            if let Some((k, v)) = field.split_once('=') {
+                return Some((k.trim(), v.trim()));
+            }
+        }
+        None
+    }
+}
+
+fn main() {
+    let msg = String::from("id=7; mode=auto;garbage; speed=0.8");
+    let pairs: Vec<(&str, &str)> = KvParser::new(&msg).collect();
+    println!("{pairs:?}");
+    let base = msg.as_ptr() as usize;
+    for (k, v) in &pairs {
+        println!("{k:>5} at byte {:>2}, {v:>4} at byte {:>2}", k.as_ptr() as usize - base, v.as_ptr() as usize - base);
+    }
+    // drop(msg);           // uncomment: error[E0505], `pairs` still borrows from `msg`
+    println!("pairs alive = {}", pairs.len());
+}
+</run>
+  <p>출력의 바이트 오프셋을 보면 모든 키와 값이 원본 문자열 <b>안을</b> 가리킨다는 것을 알 수 있습니다. 할당이 한 번도 없습니다. 대가는 <code>pairs</code>가 <code>msg</code>를 붙잡고 있어서 <code>msg</code>를 먼저 버릴 수 없다는 것뿐입니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 150" role="img" aria-label="입력 버퍼와 그 안을 가리키는 슬라이스들">
+      <rect class="sv-r2" x="20" y="30" width="600" height="34" rx="5"/>
+      <text class="sv-m" x="28" y="52">i d = 7 ;   m o d e = a u t o ; g a r b a g e ;   s p e e d = 0 . 8</text>
+      <text class="sv-t" x="20" y="20" font-weight="600">msg: String (힙, 한 번 할당)</text>
+      <path class="sv-ac" d="M40 110 L40 66"/><path class="sv-ac" d="M78 110 L78 66"/>
+      <path class="sv-ac" d="M128 110 L128 66"/><path class="sv-ac" d="M200 110 L200 66"/>
+      <path class="sv-ac" d="M440 110 L440 66"/><path class="sv-ac" d="M528 110 L528 66"/>
+      <text class="sv-m" x="20" y="128">pairs: Vec&lt;(&amp;'a str, &amp;'a str)&gt; — 포인터와 길이만 저장, 'a = msg를 빌린 구간</text>
+    </svg>
+    <figcaption>그림 10-1. 라이프타임은 "이 조각들은 msg가 살아 있는 동안만 유효하다"는 사실을 타입에 기록합니다.</figcaption>
+  </figure>
+
+  <h3>'static과 T: 'static은 다른 말이다</h3>
+  <p><code>&amp;'static str</code>은 "프로그램 끝까지 유효한 참조"입니다. 문자열 리터럴이 그렇습니다(실행 파일의 읽기 전용 영역에 있으니까). 한편 제네릭 경계 <code>T: 'static</code>은 "<code>T</code> 안에 <b>'static이 아닌 참조가 들어 있지 않다</b>"는 뜻입니다. <code>String</code>, <code>Vec&lt;u8&gt;</code>, <code>u32</code>처럼 아무것도 빌리지 않은 소유 타입은 모두 <code>T: 'static</code>을 만족합니다. 영원히 산다는 뜻이 아니라, <strong>원하면 영원히 들고 있어도 되는</strong> 값이라는 뜻입니다. 12장에서 <code>thread::spawn</code>이 클로저에 <code>'static</code>을 요구하는 이유가 바로 이것입니다.</p>
+<run file="static_bound.rs">
+use std::fmt::Debug;
+
+fn keep_forever<T: Debug + 'static>(x: T) -> Box<dyn Debug> { Box::new(x) }
+
+fn main() {
+    let owned = String::from("owned data");
+    let a = keep_forever(owned);              // String: 'static (owns its data)
+    let b = keep_forever(42_u32);
+    let c = keep_forever("a literal");        // &'static str
+    println!("{a:?} {b:?} {c:?}");
+
+    let local = String::from("local");
+    let r = &local;
+    // let d = keep_forever(r);               // error[E0597]: `local` does not live long enough
+    println!("{r}");
+}
+</run>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>C에서 "이 포인터는 저 버퍼가 살아 있는 동안만 유효하다"는 사실은 주석과 코드 리뷰로만 전달됩니다. 라이프타임은 그 주석을 컴파일러가 읽을 수 있는 형태로 바꾼 것입니다. 실무 감각으로는, <b>함수 시그니처에 라이프타임이 등장하면 "반환값이 어느 입력을 빌리는가"를 문서화하는 것</b>이라고 생각하면 됩니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>컴파일 오류를 없애려고 <code>'static</code>을 여기저기 붙이지 마세요. 거의 항상 문제를 옮길 뿐입니다.</li>
+      <li>오래 살아야 하는 구조체(설정, 캐시, 스레드 간 메시지)에는 참조 대신 <b>소유 타입</b>(<code>String</code>, <code>Vec</code>, <code>Arc</code>)을 넣으세요. 참조를 품은 구조체는 짧게 살다 사라지는 "뷰"에 어울립니다.</li>
+      <li>"self를 참조하는 구조체"(자기 참조)는 safe Rust로 직접 만들 수 없습니다. 인덱스로 바꾸거나, 13장의 <code>Pin</code>이 다루는 영역입니다.</li>
+    </ul>
+  </div>
+  <p>참조로 해결되지 않는 공유가 있습니다. 여러 소유자가 같은 값을 함께 소유해야 할 때입니다. 다음 장의 스마트 포인터가 그 도구입니다.</p>
+
+  <div class="quiz" data-quiz="ch10"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch10" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

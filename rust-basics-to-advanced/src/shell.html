@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rust 교본 — 기초부터 고급 엔지니어까지</title>
+<meta name="description" content="소유권과 빌림부터 트레잇, 라이프타임, 동시성, async 내부, unsafe·FFI, 타입 수준 설계까지. 모든 예제를 브라우저에서 진짜 rustc로 실행하며 배우는 인터랙티브 Rust 교본.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/book.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23A8431A'/%3E%3Ctext x='32' y='42' font-size='28' text-anchor='middle' fill='white' font-family='monospace'%3ERs%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<div class="shell">
+<aside class="toc" aria-label="목차">
+  <details id="tocd" open>
+    <summary>목차 <span class="meter" id="meter">0 / {{N_CH}} 완료</span></summary>
+    <ol id="tocl">
+      <li class="part">Part I · 기초</li>
+      <li><a href="#ch1"><span class="n">01</span>Rust 지도와 첫 프로그램<span class="chk" data-c="ch1"></span></a></li>
+      <li><a href="#ch2"><span class="n">02</span>값·타입·제어 흐름<span class="chk" data-c="ch2"></span></a></li>
+      <li><a href="#ch3"><span class="n">03</span>소유권: 값에는 주인이 하나<span class="chk" data-c="ch3"></span></a></li>
+      <li><a href="#ch4"><span class="n">04</span>빌림과 슬라이스<span class="chk" data-c="ch4"></span></a></li>
+      <li class="part">Part II · 타입으로 설계하기</li>
+      <li><a href="#ch5"><span class="n">05</span>구조체·열거형·패턴 매칭<span class="chk" data-c="ch5"></span></a></li>
+      <li><a href="#ch6"><span class="n">06</span>오류 처리: Result와 ?<span class="chk" data-c="ch6"></span></a></li>
+      <li><a href="#ch7"><span class="n">07</span>컬렉션과 문자열<span class="chk" data-c="ch7"></span></a></li>
+      <li><a href="#ch8"><span class="n">08</span>제네릭과 트레잇<span class="chk" data-c="ch8"></span></a></li>
+      <li><a href="#ch9"><span class="n">09</span>클로저와 반복자<span class="chk" data-c="ch9"></span></a></li>
+      <li class="part">Part III · 고급 메커니즘</li>
+      <li><a href="#ch10"><span class="n">10</span>라이프타임<span class="chk" data-c="ch10"></span></a></li>
+      <li><a href="#ch11"><span class="n">11</span>스마트 포인터와 내부 가변성<span class="chk" data-c="ch11"></span></a></li>
+      <li><a href="#ch12"><span class="n">12</span>두려움 없는 동시성<span class="chk" data-c="ch12"></span></a></li>
+      <li><a href="#ch13"><span class="n">13</span>async/await의 내부<span class="chk" data-c="ch13"></span></a></li>
+      <li class="part">Part IV · 고급 엔지니어의 Rust</li>
+      <li><a href="#ch14"><span class="n">14</span>unsafe·FFI·메모리 레이아웃<span class="chk" data-c="ch14"></span></a></li>
+      <li><a href="#ch15"><span class="n">15</span>타입 수준 설계와 매크로<span class="chk" data-c="ch15"></span></a></li>
+      <li><a href="#ch16"><span class="n">16</span>크레이트·테스트·성능<span class="chk" data-c="ch16"></span></a></li>
+      <li><a href="#ch17"><span class="n">17</span>실전: 미니 로봇 메시지 버스<span class="chk" data-c="ch17"></span></a></li>
+      <li class="part">부록</li>
+      <li><a href="#glossary"><span class="n">A</span>용어집 · C/C++↔Rust 대응표</a></li>
+      <li><a href="#refs"><span class="n">B</span>참고 자료와 다음 단계</a></li>
+      <li><a href="#playground"><span class="n">C</span>코드 놀이터</a></li>
+    </ol>
+  </details>
+  <div class="engine">
+    <label for="engineSel">실행 엔진</label>
+    <select id="engineSel">
+      <option value="auto">자동 (Playground → CE → Wandbox)</option>
+      <option value="playground">Rust Playground (공식)</option>
+      <option value="godbolt">Compiler Explorer</option>
+      <option value="wandbox">Wandbox</option>
+    </select>
+    <div class="row"><select id="edSel" aria-label="에디션"><option value="2024" selected>edition 2024</option><option value="2021">edition 2021</option></select><select id="modeSel" aria-label="빌드 모드"><option value="debug" selected>debug</option><option value="release">release</option></select></div>
+    <div class="es" id="engineStatus"></div>
+  </div>
+  <button class="theme-btn" id="themeBtn" type="button">테마 전환 (시스템 / 라이트 / 다크)</button>
+</aside>
+
+<main>
+<header class="cover col">
+  <div class="kicker">Field Manual · Rust · 2026 Edition</div>
+  <h1>Rust 교본 <small>기초부터 고급 엔지니어까지</small></h1>
+  <div class="formula" aria-label="Rust equals Ownership plus Borrowing plus Types plus Traits">
+    <span class="term">Rust</span><span class="op">=</span><span class="term h">소유권</span><span class="op">+</span><span class="term h">빌림</span><span class="op">+</span><span class="term">타입</span><span class="op">+</span><span class="term">트레잇</span>
+  </div>
+  <p class="lede">Rust는 “메모리 안전”과 “C 수준의 성능”을 동시에 약속합니다. 비결은 런타임 검사가 아니라, 소유권·빌림·타입이라는 몇 가지 규칙을 컴파일러가 끝까지 따지는 데 있습니다. 이 책은 그 규칙을 기초부터 하나씩 손으로 확인하고, 라이프타임·동시성·async 내부·unsafe·타입 수준 설계까지 올라가 실무 고급 엔지니어가 쓰는 Rust에 닿도록 만들었습니다. 모든 <code>▶ 실행</code> 버튼은 진짜 rustc를 돌립니다.</p>
+  <div class="stats"><span><b>{{N_CH}}</b>개 장</span><span><b>{{N_RUN}}</b>개 실행 예제</span><span><b>{{N_BENCH}}</b>개 실습 벤치</span><span><b>{{N_QUIZ}}</b>개 확인 문제</span><span><b>1</b>개 완성 프로젝트</span></div>
+</header>
+
+<section class="col" id="howto" style="padding-block:8px 8px">
+  <div class="call key"><span class="lab">이 책 사용법</span>
+    <ul>
+      <li><b>▶ 실행</b>: 예제를 컴파일하고 실행합니다. <b>편집</b>을 누르면 코드를 고칠 수 있고, 편집 중에는 <code>Ctrl/⌘ + Enter</code>로 바로 실행됩니다. <b>원래대로</b>를 누르면 처음 코드로 돌아갑니다.</li>
+      <li><span class="std x-error">컴파일 오류 예제</span> 표시가 붙은 예제는 <b>일부러 컴파일되지 않는</b> 코드입니다. Rust 공부의 절반은 컴파일러 오류 메시지를 읽는 일이니, 실행해서 메시지를 읽고 직접 고쳐 보세요.</li>
+      <li><b>실행 엔진</b>(왼쪽 목차 아래): 기본값 <b>자동</b>은 공식 Rust Playground를 먼저 쓰고, 응답이 없으면 Compiler Explorer, Wandbox 순으로 넘어갑니다. 모두 무료 온라인 서비스라 인터넷 연결이 필요하고, 가끔 몇 초에서 수십 초 걸릴 수 있습니다.</li>
+      <li><b>Miri</b> 버튼이 있는 예제(14장)는 Playground의 Miri 인터프리터로 실행해 정의되지 않은 동작(UB)을 잡아냅니다.</li>
+      <li>책 전체는 <b>Rust 2024 에디션</b>, 표준 라이브러리만으로 씁니다. 모든 실행 예제는 rustc 1.97(edition 2024)로 컴파일·실행해 검증했습니다.</li>
+    </ul>
+  </div>
+</section>
+
+{{CHAPTERS}}
+
+<footer class="foot col">
+  Rust 교본 — 기초부터 고급 엔지니어까지 · 코드와 주석은 영어, 설명은 한국어로 썼습니다. 실행 엔진: <a href="https://play.rust-lang.org" rel="noopener">Rust Playground</a>, <a href="https://godbolt.org" rel="noopener">Compiler Explorer</a>, <a href="https://wandbox.org" rel="noopener">Wandbox</a>.
+</footer>
+</main>
+</div>
+<script src="assets/runner.js"></script>
+<script src="assets/book.js"></script>
+</body>
+</html>

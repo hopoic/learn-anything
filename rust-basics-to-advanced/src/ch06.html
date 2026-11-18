@@ -1,0 +1,178 @@
+<!-- ============ CH6 ============ -->
+<section class="chapter col" id="ch6">
+  <div class="eyebrow">Part II · 타입으로 설계하기 — 6장</div>
+  <h2>오류 처리: Result와 ?</h2>
+  <p class="goal">이 장을 마치면: 복구 가능한 오류(<code>Result</code>)와 복구 불가능한 오류(<code>panic!</code>)를 구분해 쓸 수 있고, <code>?</code> 연산자가 무엇으로 펼쳐지는지 설명할 수 있으며, 라이브러리용 오류 열거형과 <code>From</code> 변환을 직접 설계할 수 있습니다.</p>
+  <p>5장의 <code>Option</code>은 "값이 없을 수 있음"을 표현했습니다. 이 장의 <code>Result</code>는 "실패할 수 있고, 실패하면 그 이유가 이것"을 표현합니다.</p>
+
+  <h3>오류도 그냥 값이다</h3>
+  <p>Rust에는 예외가 없습니다. 실패할 수 있는 함수는 <code>Result&lt;T, E&gt;</code>를 반환합니다. 정의는 <code>enum Result&lt;T, E&gt; { Ok(T), Err(E) }</code> 한 줄입니다. C의 "-1 반환 + <code>errno</code>"와 비슷하지만, 성공 값과 오류 값이 한 타입에 묶여 있어 <strong>오류를 확인하지 않고 성공 값을 꺼낼 방법이 없습니다</strong>. <code>Result</code>를 그냥 버리면 컴파일러가 <code>unused_must_use</code> 경고를 냅니다.</p>
+  <p>반대로 <code>panic!</code>은 "이 프로그램은 버그 상태다, 더 진행하면 안 된다"는 선언입니다. 기본 동작은 스택을 되감으며(unwind) 지역 값들을 drop하고 스레드를 끝내는 것이고, <code>panic = "abort"</code>로 설정하면 즉시 중단합니다. 펌웨어에서는 보통 abort를 씁니다.</p>
+  <div class="ladder">
+    <div><b>버그</b><span><code>panic!</code>, <code>assert!</code>, <code>unreachable!</code> — 계약 위반, 불변식 파괴. 복구가 아니라 수정 대상.</span></div>
+    <div><b>없음</b><span><code>Option&lt;T&gt;</code> — 값이 없는 것이 정상적인 결과. 이유가 필요 없음.</span></div>
+    <div><b>실패</b><span><code>Result&lt;T, E&gt;</code> — 예상 가능한 실패. 호출자가 이유를 보고 결정.</span></div>
+  </div>
+
+  <h3>?는 "실패면 즉시 반환"을 한 글자로 쓴 것</h3>
+  <p>실패할 수 있는 단계가 여러 개면 <code>match</code>가 중첩되어 코드가 오른쪽으로 밀려납니다. <code>?</code> 연산자가 이를 해결합니다. <code>expr?</code>는 대략 다음 코드로 펼쳐집니다.</p>
+<rs file="question_mark_desugared.rs">
+// `let v = expr?;` is roughly:
+let v = match expr {
+    Ok(v) => v,
+    Err(e) => return Err(From::from(e)),   // note the From conversion: see below
+};
+</rs>
+<run file="question_mark.rs">
+use std::num::ParseIntError;
+
+// "id=17;rate=200" -> (17, 200)
+fn parse_pair(s: &str) -> Result<(u32, u32), String> {
+    let (left, right) = s.split_once(';').ok_or("missing ';'")?;     // Option -> Result
+    let id = field(left, "id")?;
+    let rate = field(right, "rate")?;
+    Ok((id, rate))
+}
+
+fn field(part: &str, key: &str) -> Result<u32, String> {
+    let value = part
+        .strip_prefix(key)
+        .and_then(|rest| rest.strip_prefix('='))
+        .ok_or_else(|| format!("expected '{key}=...' in {part:?}"))?;
+    value.parse::<u32>().map_err(|e: ParseIntError| format!("{key}: {e}"))
+}
+
+fn main() {
+    for input in ["id=17;rate=200", "id=17", "id=x;rate=1", "id=3;speed=9"] {
+        match parse_pair(input) {
+            Ok((id, rate)) => println!("{input:<16} ok  id={id} rate={rate}"),
+            Err(e) => println!("{input:<16} err {e}"),
+        }
+    }
+}
+</run>
+  <p><code>Option</code>에도 <code>?</code>를 쓸 수 있습니다(함수가 <code>Option</code>을 반환할 때). <code>Option</code>을 <code>Result</code>로 바꿀 때는 <code>ok_or</code>, 그 반대는 <code>.ok()</code>를 씁니다. 위 예제처럼 오류를 <code>String</code>으로 만드는 것은 빠르지만, 호출자가 오류 종류에 따라 다르게 대응할 수 없습니다. 라이브러리라면 오류를 타입으로 설계해야 합니다.</p>
+
+  <h3>오류를 열거형으로 설계하고 From으로 잇는다</h3>
+  <p>실무 패턴은 이렇습니다. 모듈마다 오류 열거형을 만들고, <code>Display</code>와 <code>std::error::Error</code>를 구현하고, 하위 오류에서 <code>From</code>을 구현합니다. 그러면 <code>?</code>가 하위 오류를 자동으로 상위 오류로 변환해 줍니다(위 펼침 코드의 <code>From::from(e)</code>).</p>
+<run file="error_enum.rs">
+use std::fmt;
+use std::num::ParseFloatError;
+
+#[derive(Debug)]
+enum ConfigError {
+    MissingKey(&'static str),
+    BadNumber { key: &'static str, source: ParseFloatError },
+    OutOfRange { key: &'static str, value: f64, max: f64 },
+}
+
+impl fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ConfigError::MissingKey(k) => write!(f, "missing key `{k}`"),
+            ConfigError::BadNumber { key, source } => write!(f, "`{key}` is not a number ({source})"),
+            ConfigError::OutOfRange { key, value, max } => write!(f, "`{key}` = {value} exceeds {max}"),
+        }
+    }
+}
+
+impl std::error::Error for ConfigError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ConfigError::BadNumber { source, .. } => Some(source),   // keep the cause chain
+            _ => None,
+        }
+    }
+}
+
+struct Limits { max_speed: f64, max_accel: f64 }
+
+fn get(text: &str, key: &'static str) -> Result<f64, ConfigError> {
+    let line = text.lines()
+        .find_map(|l| l.strip_prefix(key)?.strip_prefix('='))
+        .ok_or(ConfigError::MissingKey(key))?;
+    line.trim().parse().map_err(|source| ConfigError::BadNumber { key, source })
+}
+
+fn load(text: &str) -> Result<Limits, ConfigError> {
+    let max_speed = get(text, "max_speed")?;
+    if max_speed > 2.0 {
+        return Err(ConfigError::OutOfRange { key: "max_speed", value: max_speed, max: 2.0 });
+    }
+    Ok(Limits { max_speed, max_accel: get(text, "max_accel")? })
+}
+
+// An application-level error that wraps library errors; `?` converts via From.
+#[derive(Debug)]
+enum AppError { Config(ConfigError), Io(String) }
+impl From<ConfigError> for AppError {
+    fn from(e: ConfigError) -> Self { AppError::Config(e) }
+}
+
+fn start(cfg: &str) -> Result<(), AppError> {
+    let lim = load(cfg)?;                       // ConfigError -> AppError automatically
+    if lim.max_accel <= 0.0 { return Err(AppError::Io("actuator offline".into())); }
+    println!("  started: speed <= {}, accel <= {}", lim.max_speed, lim.max_accel);
+    Ok(())
+}
+
+fn main() {
+    for cfg in ["max_speed=1.2\nmax_accel=0.5", "max_speed=1.2", "max_speed=fast\nmax_accel=1",
+                "max_speed=3\nmax_accel=1", "max_speed=1\nmax_accel=0"] {
+        println!("{:?}", cfg.replace('\n', "; "));
+        match start(cfg) {
+            Ok(()) => {}
+            Err(AppError::Config(e)) => {
+                println!("  config error: {e}");
+                if let Some(cause) = std::error::Error::source(&e) { println!("    caused by: {cause}"); }
+            }
+            Err(AppError::Io(msg)) => println!("  io error: {msg}"),
+        }
+    }
+}
+</run>
+  <p>이 보일러플레이트는 실무에서 크레이트가 대신 써 줍니다. 라이브러리에서는 <code>thiserror</code>로 <code>#[derive(Error)]</code>와 <code>#[error("...")]</code> 속성만 달고, 애플리케이션의 <code>main</code> 근처에서는 <code>anyhow::Result</code>로 아무 오류나 담아 문맥(<code>.context("...")</code>)을 붙여 올립니다. 이 책은 표준 라이브러리만 쓰기 때문에 손으로 썼지만, 구조는 똑같습니다.</p>
+<rs file="with_crates.rs">
+// Library crate: precise, matchable errors.
+#[derive(Debug, thiserror::Error)]
+pub enum ConfigError {
+    #[error("missing key `{0}`")]
+    MissingKey(&'static str),
+    #[error("`{key}` is not a number")]
+    BadNumber { key: &'static str, #[source] source: std::num::ParseFloatError },
+}
+
+// Application: any error, with human-readable context.
+use anyhow::Context;
+
+fn main() -> anyhow::Result<()> {
+    let text = std::fs::read_to_string("robot.toml").context("reading robot.toml")?;
+    let _limits = load(&text).context("validating limits")?;
+    Ok(())
+}
+</rs>
+
+  <h3>무엇을 써야 할까</h3>
+  <div class="bench" id="b-err">
+    <header><b>실습 벤치 6-A · 오류 처리 정책 고르기</b><span>CLASSIFY · 7 CASES</span></header>
+    <div class="body">
+      <div id="errList"></div>
+      <div class="row"><button type="button" class="btn" id="errListReset">다시 풀기</button></div>
+      <div class="status" id="errScore"></div>
+    </div>
+  </div>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p>리눅스 커널 스타일의 "음수 errno 반환 + <code>goto out</code>" 패턴이 하던 일을 <code>Result</code> + <code>?</code> + <code>Drop</code>이 나눠 맡습니다. 오류 전파는 <code>?</code>가, 정리는 Drop이 하므로 함수 본문에는 정상 경로만 남습니다. 커널의 Rust 바인딩도 <code>Result&lt;T, kernel::error::Error&gt;</code>로 errno를 감쌉니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>라이브러리 함수 안에서 <code>unwrap()</code>/<code>panic!</code>으로 입력 오류를 처리하지 마세요. 호출자는 그 실패를 복구할 기회를 잃습니다.</li>
+      <li>오류 타입을 <code>String</code>으로 통일하면 호출자가 <code>match</code>할 수 없습니다. 최소한 열거형으로, 그리고 원인(<code>source</code>)을 잃지 마세요.</li>
+      <li><code>main</code>도 <code>Result&lt;(), E&gt;</code>를 반환할 수 있습니다. <code>Err</code>면 종료 코드 1과 함께 <code>Debug</code> 형식으로 출력됩니다.</li>
+    </ul>
+  </div>
+  <p>다음 장에서는 표준 컬렉션과 문자열을 다룹니다. 특히 <code>String</code>이 왜 바이트 인덱싱을 막는지가 핵심입니다.</p>
+
+  <div class="quiz" data-quiz="ch6"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch6" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

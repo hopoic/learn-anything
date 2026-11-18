@@ -1,0 +1,141 @@
+<!-- ============ CH2 ============ -->
+<section class="chapter col" id="ch2">
+  <div class="eyebrow">Part I · 기초 — 2장</div>
+  <h2>값·타입·제어 흐름</h2>
+  <p class="goal">이 장을 마치면: 불변 기본값과 <code>mut</code>, 섀도잉의 차이를 설명할 수 있고, 정수 오버플로가 debug와 release에서 어떻게 다르게 처리되는지 알고 <code>checked_*</code>/<code>wrapping_*</code>/<code>saturating_*</code> 중 알맞은 것을 고를 수 있으며, <code>if</code>·<code>loop</code>·<code>match</code>를 값을 만드는 식으로 쓸 수 있습니다.</p>
+  <p>1장에서 Rust의 목표를 봤습니다. 이 장은 그 목표를 위한 첫 번째 습관, "명시적으로 쓰지 않으면 바뀌지도 변환되지도 않는다"를 익힙니다.</p>
+
+  <h3>기본은 불변, 바꾸려면 mut</h3>
+  <p><code>let</code>으로 만든 변수는 기본적으로 <strong>불변</strong>입니다. 값을 바꾸려면 <code>let mut</code>으로 선언해야 합니다. C에서 <code>const</code>를 붙이는 것과 정반대 기본값입니다. 코드를 읽는 사람은 <code>mut</code>가 없는 변수를 보면 "이건 안 바뀐다"고 안심할 수 있습니다.</p>
+  <p><strong>섀도잉</strong>은 같은 이름으로 새 변수를 선언하는 것입니다. 변경이 아니라 새 바인딩이라서 타입이 바뀌어도 됩니다. 파싱처럼 "같은 의미의 값이 단계별로 다른 타입을 거치는" 경우에 자연스럽습니다.</p>
+<run file="bindings.rs">
+const MAX_SPEED_MPS: f64 = 1.5;          // compile-time constant, type required
+static ROBOT_NAME: &str = "AMR-07";      // one fixed address for the whole program
+
+fn main() {
+    let speed = 0.8;                     // immutable, type inferred as f64
+    let mut odometer = 0.0;              // mutable
+    for _ in 0..3 {
+        odometer += speed * 0.1;
+    }
+    println!("{ROBOT_NAME}: odometer = {odometer:.2} m (limit {MAX_SPEED_MPS})");
+
+    let input = " 42 ";                  // &str
+    let input = input.trim();            // shadowing: still &str, new binding
+    let input: u32 = input.parse().expect("not a number"); // now a u32
+    println!("parsed = {}", input + 1);
+
+    // speed = 1.0;   // uncomment: error[E0384] cannot assign twice to immutable variable
+}
+</run>
+
+  <h3>타입은 정확히, 변환은 명시적으로</h3>
+  <p>Rust의 기본 타입은 C와 거의 일대일로 대응하지만, 크기가 이름에 박혀 있고 <strong>암묵적 변환이 전혀 없습니다</strong>. <code>u8</code>과 <code>u32</code>를 더하려면 한쪽을 명시적으로 바꿔야 합니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Rust</th><th>C 대응</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td><code>i8 i16 i32 i64 i128</code></td><td><code>int8_t</code> … <code>int64_t</code></td><td>정수 리터럴의 기본 타입은 <code>i32</code></td></tr>
+      <tr><td><code>u8 u16 u32 u64 u128</code></td><td><code>uint8_t</code> … <code>uint64_t</code></td><td><code>u8</code>은 바이트 버퍼의 기본 단위</td></tr>
+      <tr><td><code>isize usize</code></td><td><code>ptrdiff_t</code>, <code>size_t</code></td><td>인덱스와 길이는 항상 <code>usize</code></td></tr>
+      <tr><td><code>f32 f64</code></td><td><code>float</code>, <code>double</code></td><td>실수 리터럴 기본은 <code>f64</code></td></tr>
+      <tr><td><code>bool</code></td><td><code>_Bool</code></td><td>정수와 섞이지 않음. <code>if x</code>에서 <code>x</code>는 반드시 bool</td></tr>
+      <tr><td><code>char</code></td><td>(없음)</td><td>4바이트 유니코드 스칼라 값. 바이트가 아님</td></tr>
+      <tr><td><code>(i32, f64)</code></td><td>익명 struct</td><td>튜플. <code>t.0</code>, <code>t.1</code>로 접근</td></tr>
+      <tr><td><code>[u8; 16]</code></td><td><code>uint8_t[16]</code></td><td>길이가 타입의 일부. 포인터로 붕괴하지 않음</td></tr>
+    </tbody>
+  </table></div>
+  <p>변환은 세 가지 도구로 합니다. <code>as</code>는 C 캐스트처럼 잘라 내거나 부호를 바꾸는 "무조건" 변환이고, <code>From</code>/<code>Into</code>는 손실이 없는 변환, <code>TryFrom</code>/<code>TryInto</code>는 실패할 수 있는 변환입니다. 실무에서는 <code>as</code>를 줄이고 <code>try_from</code>을 쓰는 편이 버그를 줄입니다.</p>
+<run file="convert.rs">
+fn main() {
+    let raw: i32 = 300;
+    let a = raw as u8;                         // truncates silently: 300 mod 256 = 44
+    let b = u8::try_from(raw);                 // Result<u8, TryFromIntError>
+    let c = u8::try_from(200_i32);
+    let wide: u64 = u64::from(7_u32);          // lossless: From is implemented
+    println!("as: {a}, try_from(300): {b:?}, try_from(200): {c:?}, from: {wide}");
+
+    let len: usize = 10;
+    let offset: i32 = -3;
+    // let pos = len + offset;                 // error: mismatched types usize and i32
+    let pos = len.checked_add_signed(offset as isize);
+    println!("pos = {pos:?}");
+}
+</run>
+
+  <h3>정수 오버플로는 debug에서 panic, release에서 감싼다</h3>
+  <p>C에서 부호 있는 정수 오버플로는 UB입니다. Rust에서는 UB가 아닙니다. <strong>debug 빌드에서는 오버플로 검사가 켜져 panic</strong>하고, <strong>release 빌드에서는 기본적으로 2의 보수로 감쌉니다</strong>(검사 비용을 없애기 위해). 즉 "오버플로하면 버그"라는 태도는 같지만, 결과가 항상 정의되어 있습니다. 의도를 분명히 하고 싶으면 메서드를 고르세요.</p>
+<run file="overflow.rs" expect="panic">
+fn main() {
+    let x: u8 = 250;
+    println!("checked    : {:?}", x.checked_add(10));     // None on overflow
+    println!("wrapping   : {}", x.wrapping_add(10));      // 4 (mod 256)
+    println!("saturating : {}", x.saturating_add(10));    // 255 (clamped)
+    println!("overflowing: {:?}", x.overflowing_add(10)); // (4, true)
+
+    let steps: u8 = std::hint::black_box(10);  // hide the value from the optimizer
+    let y = x + steps;                         // debug build: panics here
+    println!("never printed in debug: {y}");
+}
+</run>
+  <p>위 예제를 실행 엔진 상자에서 <b>release</b>로 바꿔 다시 실행해 보세요. 마지막 줄이 <code>4</code>를 출력합니다. 엔코더 카운터처럼 감싸는 것이 정상인 값은 <code>wrapping_*</code>, 안전 한계를 넘으면 안 되는 PWM 듀티 같은 값은 <code>saturating_*</code>, 넘으면 오류로 처리해야 하는 크기 계산은 <code>checked_*</code>가 맞습니다.</p>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><code>as</code>로 큰 값을 작은 타입에 넣으면 <b>조용히 잘립니다</b>. 실수에서 정수로의 <code>as</code>는 범위를 넘으면 포화(saturate)되고 NaN은 0이 됩니다. 센서 값 변환에는 <code>try_from</code>이나 명시적 범위 검사를 쓰세요.</li>
+      <li>"release에서는 감싸니까 괜찮다"는 생각은 금물입니다. 감싼 결과가 틀린 값이면 여전히 버그입니다. <code>Cargo.toml</code>의 <code>[profile.release] overflow-checks = true</code>로 release에서도 검사를 켤 수 있습니다.</li>
+    </ul>
+  </div>
+
+  <h3>거의 모든 것이 식이다</h3>
+  <p>Rust에서 <code>{ }</code> 블록, <code>if</code>, <code>match</code>, <code>loop</code>는 모두 <strong>값을 내는 식</strong>입니다. 블록의 마지막 줄에 세미콜론이 없으면 그 값이 블록의 값이 됩니다. 그래서 C의 삼항 연산자가 따로 없고, 함수의 마지막 식이 곧 반환값입니다. <code>loop</code>는 <code>break 값</code>으로 값을 낼 수 있고, 중첩 루프는 <code>'label</code>로 바깥 루프를 지정해 빠져나옵니다.</p>
+<run file="expressions.rs">
+fn clamp_speed(v: f64) -> f64 {
+    if v > 1.5 { 1.5 } else if v < -1.5 { -1.5 } else { v }   // no `return`, no `;`
+}
+
+fn classify(code: u16) -> &'static str {
+    match code {
+        0 => "ok",
+        1..=99 => "warning",
+        100 | 200 => "known fault",
+        _ => "unknown",                 // match must be exhaustive
+    }
+}
+
+fn main() {
+    let v = clamp_speed(2.7);
+    let label = if v >= 1.0 { "fast" } else { "slow" };
+    println!("v = {v}, {label}, {}", classify(200));
+
+    // loop with a value: retry until the "sensor" returns something useful
+    let mut tries = 0;
+    let reading = loop {
+        tries += 1;
+        let sample = tries * 3 % 10;
+        if sample > 5 { break sample; }
+    };
+    println!("reading {reading} after {tries} tries");
+
+    // labeled break out of a nested loop
+    let grid = [[0, 0, 1], [0, 9, 0], [0, 0, 0]];
+    let found = 'search: {
+        for (r, row) in grid.iter().enumerate() {
+            for (c, &cell) in row.iter().enumerate() {
+                if cell == 9 { break 'search Some((r, c)); }
+            }
+        }
+        None
+    };
+    println!("obstacle at {found:?}");
+
+    for i in (0..10).step_by(3).rev() { print!("{i} "); }
+    println!();
+}
+</run>
+  <div class="call sys"><span class="lab">C 개발자의 눈으로</span>
+    <p><code>for i in 0..n</code>은 C의 <code>for (i = 0; i &lt; n; i++)</code>와 같지만, 실제로는 9장에서 볼 반복자(iterator)를 소비하는 문법입니다. 인덱스를 직접 굴리는 대신 <code>for x in &amp;arr</code>이나 <code>.iter().enumerate()</code>를 쓰면 범위 검사가 필요 없어져 더 빠르고 안전한 코드가 됩니다.</p>
+  </div>
+  <p>다음 장은 Rust의 심장인 소유권입니다. 지금까지 본 정수와 실수는 "복사"되는 값이었지만, 힙 메모리를 가진 <code>String</code>부터는 이야기가 달라집니다.</p>
+
+  <div class="quiz" data-quiz="ch2"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch2" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

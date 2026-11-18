@@ -1,0 +1,229 @@
+<!-- ============ CH16 ============ -->
+<section class="chapter col" id="ch16">
+  <div class="eyebrow">Part IV · 고급 엔지니어의 Rust — 16장</div>
+  <h2>크레이트·테스트·성능</h2>
+  <p class="goal">이 장을 마치면: 모듈 트리와 가시성(<code>pub</code>, <code>pub(crate)</code>)으로 API 경계를 설계할 수 있고, 단위·통합·문서 테스트를 구분해 쓸 수 있으며, 워크스페이스·feature·릴리스 프로필·크로스 컴파일을 설정하고, 측정(벤치마크·프로파일링)에 근거해 성능을 개선하는 흐름을 설명할 수 있습니다.</p>
+  <p>15장까지 언어를 배웠습니다. 고급 엔지니어의 일은 그 언어로 <strong>여러 사람이 오래 유지할 수 있는 코드베이스</strong>를 만드는 것입니다. Rust 생태계는 이 부분의 도구가 유난히 잘 표준화되어 있습니다.</p>
+
+  <h3>모듈과 가시성: 기본은 비공개</h3>
+  <p>크레이트는 컴파일 단위(라이브러리 하나 또는 실행 파일 하나)이고, 그 안을 <strong>모듈 트리</strong>로 나눕니다. 모든 항목은 기본적으로 <strong>자기 모듈 안에서만 보입니다</strong>. 밖으로 노출할 것만 <code>pub</code>을 붙이고, 크레이트 안에서만 공유할 것은 <code>pub(crate)</code>를 씁니다. 구조체 필드도 따로 공개해야 하므로, 15장의 <code>Speed</code>처럼 "검증 없이는 만들 수 없는 타입"을 쉽게 만들 수 있습니다.</p>
+<sh file="project layout">
+robot/                      # a Cargo workspace
+├── Cargo.toml              # [workspace] members = ["crates/*", "apps/*"]
+├── crates/
+│   ├── proto/              # wire format: no_std-compatible, no deps
+│   │   └── src/lib.rs      # mod frame; mod crc; pub use frame::Frame;
+│   └── bus/                # message bus, depends on proto
+└── apps/
+    └── robotd/             # the binary: wires everything together
+        └── src/main.rs
+</sh>
+<run file="modules.rs">
+// In a real crate each `mod` would be its own file (src/sensors.rs, src/sensors/imu.rs...).
+mod sensors {
+    pub mod imu {
+        #[derive(Debug)]
+        pub struct Sample { pub ax: f32, pub ay: f32, pub(crate) raw: u16 }  // `raw` hidden outside the crate
+
+        pub fn read() -> Sample { Sample { ax: 0.1, ay: -0.2, raw: calibrate(512) } }
+        fn calibrate(x: u16) -> u16 { x - super::OFFSET }    // private helper
+    }
+    const OFFSET: u16 = 12;                                 // private to `sensors` and its children
+
+    pub use imu::Sample as ImuSample;                       // re-export: a flatter public API
+}
+
+mod control {
+    use crate::sensors::ImuSample;                          // absolute path from the crate root
+    pub fn tilt(s: &ImuSample) -> f32 { s.ay.atan2(s.ax).to_degrees() }
+}
+
+fn main() {
+    let s = sensors::imu::read();
+    println!("{s:?} tilt = {:.1} deg, raw = {}", control::tilt(&s), s.raw);
+    // sensors::imu::calibrate(1);   // error[E0603]: function `calibrate` is private
+}
+</run>
+
+  <h3>테스트는 언어에 내장되어 있다</h3>
+  <p><code>#[test]</code> 함수를 쓰고 <code>cargo test</code>를 실행하면 끝입니다. 테스트에는 세 종류가 있습니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>종류</th><th>위치</th><th>볼 수 있는 것</th><th>용도</th></tr></thead>
+    <tbody>
+      <tr><td>단위 테스트</td><td>같은 파일의 <code>#[cfg(test)] mod tests</code></td><td>비공개 항목까지</td><td>내부 로직</td></tr>
+      <tr><td>통합 테스트</td><td><code>tests/*.rs</code></td><td>공개 API만</td><td>사용자 관점 시나리오</td></tr>
+      <tr><td>문서 테스트</td><td><code>///</code> 주석 안의 코드 블록</td><td>공개 API만</td><td>예제가 항상 컴파일·통과함을 보장</td></tr>
+    </tbody>
+  </table></div>
+<rs file="src/crc.rs">
+/// CRC-8 (polynomial 0x07), as used by many sensor protocols.
+///
+/// ```
+/// assert_eq!(proto::crc8(b"123456789"), 0xF4);   // doc test: runs with `cargo test`
+/// ```
+pub fn crc8(data: &[u8]) -> u8 {
+    let mut crc = 0u8;
+    for &b in data {
+        crc ^= b;
+        for _ in 0..8 {
+            crc = if crc & 0x80 != 0 { (crc << 1) ^ 0x07 } else { crc << 1 };
+        }
+    }
+    crc
+}
+
+#[cfg(test)]                 // compiled only for `cargo test`
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_is_zero() { assert_eq!(crc8(&[]), 0); }
+
+    #[test]
+    fn detects_single_bit_flips() {
+        let msg = *b"robot";
+        let good = crc8(&msg);
+        for i in 0..msg.len() * 8 {
+            let mut m = msg;
+            m[i / 8] ^= 1 << (i % 8);
+            assert_ne!(crc8(&m), good, "bit {i} not detected");
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds")]
+    fn panics_are_testable_too() { let v: Vec<u8> = vec![]; let _ = v[0]; }
+}
+</rs>
+  <p>이 페이지의 실행 엔진은 <code>main</code>을 실행하므로, 같은 테스트를 <code>main</code>에서 직접 돌려 확인해 보겠습니다. 실무에서는 위처럼 <code>#[test]</code>로 두고 <code>cargo test</code>를 씁니다.</p>
+<run file="crc_check.rs">
+fn crc8(data: &[u8]) -> u8 {
+    let mut crc = 0u8;
+    for &b in data {
+        crc ^= b;
+        for _ in 0..8 {
+            crc = if crc & 0x80 != 0 { (crc << 1) ^ 0x07 } else { crc << 1 };
+        }
+    }
+    crc
+}
+
+fn main() {
+    assert_eq!(crc8(&[]), 0);
+    assert_eq!(crc8(b"123456789"), 0xF4, "standard CRC-8 check value");
+    let msg = *b"robot";
+    let good = crc8(&msg);
+    let mut detected = 0;
+    for i in 0..msg.len() * 8 {
+        let mut m = msg;
+        m[i / 8] ^= 1 << (i % 8);
+        if crc8(&m) != good { detected += 1; }
+    }
+    println!("crc8(\"robot\") = {good:#04x}; single-bit flips detected: {detected}/{}", msg.len() * 8);
+    println!("all checks passed");
+}
+</run>
+  <div class="call key"><span class="lab">고급 테스트 도구</span>
+    <ul>
+      <li><b>속성 기반 테스트</b>(<code>proptest</code>): "임의의 입력에 대해 encode 후 decode하면 원래 값"처럼 성질을 쓰면 수백 개의 입력을 생성해 반례를 찾고, 반례를 최소화해 줍니다.</li>
+      <li><b>퍼징</b>(<code>cargo fuzz</code>): 파서처럼 외부 입력을 받는 코드에 필수. libFuzzer가 커버리지를 따라 입력을 변형합니다.</li>
+      <li><b>스냅샷 테스트</b>(<code>insta</code>), <b>동시성 모델 검사</b>(<code>loom</code>: 원자 연산과 락의 가능한 모든 실행 순서를 탐색), <b>Miri</b>(14장).</li>
+    </ul>
+  </div>
+
+  <h3>Cargo 설정: feature, 프로필, 크로스 컴파일</h3>
+<toml file="Cargo.toml">
+[package]
+name = "robotd"
+version = "0.3.1"            # SemVer: breaking API change = bump the major (or minor while 0.x)
+edition = "2024"
+rust-version = "1.85"        # MSRV: the oldest compiler you promise to support
+
+[dependencies]
+proto = { path = "../../crates/proto" }
+serde = { version = "1", optional = true, features = ["derive"] }
+
+[features]
+default = ["std"]
+std = []
+json = ["dep:serde"]         # `cargo build --features json` pulls serde in
+
+[profile.release]
+opt-level = 3
+lto = "fat"                  # whole-program optimization across crates
+codegen-units = 1            # slower build, faster binary
+panic = "abort"              # no unwinding tables: smaller, typical for embedded/daemons
+debug = "line-tables-only"   # keep symbols for profiling
+overflow-checks = true       # keep integer overflow panics in release (safety-critical code)
+</toml>
+<sh file="terminal">
+# Cross-compile for an aarch64 board (e.g. Jetson Orin, Raspberry Pi 5)
+$ rustup target add aarch64-unknown-linux-gnu
+$ sudo apt install gcc-aarch64-linux-gnu
+$ cat >> .cargo/config.toml <<'EOF'
+[target.aarch64-unknown-linux-gnu]
+linker = "aarch64-linux-gnu-gcc"
+EOF
+$ cargo build --release --target aarch64-unknown-linux-gnu
+# or, with a container that has the whole sysroot:  cargo install cross && cross build --target ...
+
+$ cargo clippy --all-targets -- -D warnings     # CI gate: lints as errors
+$ cargo fmt --check                             # CI gate: formatting
+$ cargo doc --open                              # API docs from /// comments
+$ cargo tree -d                                 # duplicate dependency versions
+$ cargo audit                                   # known vulnerabilities in dependencies (cargo-audit)
+</sh>
+
+  <h3>성능: 추측하지 말고 측정하라</h3>
+  <p>Rust는 기본적으로 빠르지만, 빠른 코드를 쓰는 습관은 다른 언어와 같습니다. 먼저 <b>release로 빌드</b>하고(debug는 최적화가 없어 10배 이상 느릴 수 있습니다), <b>측정</b>하고, <b>할당과 복사</b>를 줄이고, 다시 측정합니다. 아래 예제는 release 모드로 실행되도록 표시되어 있습니다. 같은 합계를 세 가지 방식으로 구해 시간을 비교합니다(온라인 엔진은 다른 작업과 CPU를 나눠 쓰므로 수치는 참고만 하세요).</p>
+<run file="measure.rs" mode="release">
+use std::hint::black_box;
+use std::time::Instant;
+
+fn time<T>(label: &str, f: impl Fn() -> T) -> T {
+    let t = Instant::now();
+    let mut out = f();
+    for _ in 0..9 { out = black_box(f()); }        // repeat; black_box stops the optimizer from deleting work
+    println!("{label:<28} {:>8.2} ms/iter", t.elapsed().as_secs_f64() * 100.0);
+    out
+}
+
+fn main() {
+    let data: Vec<u32> = (0..2_000_000u32).map(|i| i.wrapping_mul(2_654_435_761) >> 20).collect();
+    let data = black_box(data);
+
+    let a = time("index loop", || {
+        let mut s = 0u64;
+        for i in 0..data.len() { s += data[i] as u64; }
+        s
+    });
+    let b = time("iterator sum", || data.iter().map(|&x| x as u64).sum::<u64>());
+    let c = time("allocating Vec<String> (bad)", || {
+        let v: Vec<String> = data.iter().take(200_000).map(|x| x.to_string()).collect();
+        v.len() as u64
+    });
+    println!("same result: {}, (c = {c})", a == b);
+}
+</run>
+  <div class="ladder">
+    <div><b>1</b><span><code>cargo build --release</code>, 그리고 실제 데이터로 재현 가능한 벤치마크(<code>criterion</code>, <code>divan</code>)를 만든다.</span></div>
+    <div><b>2</b><span>프로파일러로 뜨거운 곳을 찾는다: <code>perf record</code> + <code>cargo flamegraph</code>, 할당은 <code>heaptrack</code>/<code>dhat</code>.</span></div>
+    <div><b>3</b><span>알고리즘과 자료구조부터 바꾼다(7장의 컬렉션 선택). 그다음 할당 제거: <code>with_capacity</code>, 버퍼 재사용, <code>&amp;str</code>/<code>Cow</code>.</span></div>
+    <div><b>4</b><span>복사·간접 호출을 줄인다: 제네릭 vs <code>dyn</code>(8장), 데이터 배치(SoA), <code>#[inline]</code>은 측정 후에만.</span></div>
+    <div><b>5</b><span>병렬화(<code>rayon</code>의 <code>par_iter</code>, 12장 scoped thread), SIMD(<code>std::simd</code>는 아직 nightly, 안정판에선 <code>std::arch</code> 내장 함수).</span></div>
+  </div>
+  <div class="call sys"><span class="lab">팀 리드의 눈으로</span>
+    <p>Rust 도입의 성패는 언어보다 <b>CI 게이트</b>에 달려 있는 경우가 많습니다. <code>fmt --check</code>, <code>clippy -D warnings</code>, <code>test</code>, unsafe가 있으면 <code>miri</code>, 의존성 <code>audit</code>/<code>cargo deny</code>를 첫날부터 걸어 두세요. 이 다섯 가지가 리뷰어가 사람에게만 집중하게 해 줍니다.</p>
+  </div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li>debug 빌드로 성능을 재고 "Rust가 느리다"고 결론 내리기. 항상 <code>--release</code>.</li>
+      <li>공개 API 타입에 의존성 크레이트의 타입이 노출되면, 그 크레이트의 메이저 업데이트가 내 크레이트의 브레이킹 체인지가 됩니다. 경계에서는 자기 타입으로 감싸세요.</li>
+      <li>feature는 <b>더하기만</b> 해야 합니다(additive). feature를 켰을 때 기존 API가 사라지면 의존성 그래프 어딘가에서 깨집니다.</li>
+    </ul>
+  </div>
+  <p>이제 모든 도구가 갖춰졌습니다. 마지막 장에서 지금까지 배운 것을 하나의 프로그램으로 묶습니다.</p>
+
+  <div class="quiz" data-quiz="ch16"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch16" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
