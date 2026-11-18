@@ -1,0 +1,240 @@
+
+<!-- ============ CH1 ============ -->
+<section class="chapter col" id="ch1">
+  <div class="eyebrow">Part I · 기초 — 1장</div>
+  <h2>복잡도와 비용 모델</h2>
+  <p class="goal">이 장을 마치면: 코드의 시간·공간 복잡도를 빅오로 말할 수 있고, 입력 크기에 따라 어떤 알고리즘이 현실적인지 어림할 수 있으며, 같은 빅오 안에서 캐시와 메모리 배치가 만드는 수십 배 차이를 설명할 수 있습니다.</p>
+
+  <h3>빅오는 증가율이지 속도가 아니다</h3>
+  <p>알고리즘의 비용을 초 단위로 말하면 CPU, 컴파일러, 입력에 따라 값이 달라집니다. 그래서 <strong>입력 크기 n이 커질 때 연산 횟수가 어떻게 늘어나는지</strong>만 남기고 나머지는 버립니다. 이것이 점근 표기법입니다.</p>
+  <ul>
+    <li><strong>O(f(n))</strong>: 상한. 충분히 큰 n에서 비용이 c·f(n)을 넘지 않습니다. 실무에서 "빅오"라고 하면 보통 최악의 경우 상한을 뜻합니다.</li>
+    <li><strong>Ω(f(n))</strong>: 하한. 어떤 알고리즘도 이보다 빠를 수 없다는 주장에 씁니다(7장의 비교 정렬 n log n 하한).</li>
+    <li><strong>Θ(f(n))</strong>: 상한과 하한이 같을 때. "정확히 이 차수"라는 뜻입니다.</li>
+  </ul>
+  <p>계산 규칙은 두 가지면 충분합니다. 상수 배는 버리고(3n² → n²), 가장 빨리 자라는 항만 남깁니다(n² + 100n → n²). 루프가 중첩되면 곱하고, 차례로 놓이면 더합니다. 반으로 줄여가는 루프는 log n입니다.</p>
+
+  <div class="tbl"><table>
+    <thead><tr><th>차수</th><th>이름</th><th>대표 예</th><th>n = 10⁶일 때 연산 수</th></tr></thead>
+    <tbody>
+      <tr><td><code>O(1)</code></td><td>상수</td><td>배열 인덱싱, 해시 조회(평균)</td><td>1</td></tr>
+      <tr><td><code>O(log n)</code></td><td>로그</td><td>이분 탐색, 균형 트리 조회, 힙 push</td><td>약 20</td></tr>
+      <tr><td><code>O(n)</code></td><td>선형</td><td>배열 한 번 훑기, BFS(V+E)</td><td>10⁶</td></tr>
+      <tr><td><code>O(n log n)</code></td><td>선형 로그</td><td>병합 정렬, 힙 정렬, 다익스트라</td><td>약 2×10⁷</td></tr>
+      <tr><td><code>O(n²)</code></td><td>이차</td><td>삽입 정렬, 모든 쌍 비교</td><td>10¹²</td></tr>
+      <tr><td><code>O(2ⁿ)</code></td><td>지수</td><td>부분집합 전수 탐색</td><td>사실상 무한</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="bench" id="growBench">
+    <header><b>실습 벤치 1-A · 성장률 체감 계산기</b><span>GROWTH</span></header>
+    <div class="body">
+      <div class="grid2">
+        <div class="ctl"><label for="gN">입력 크기 n</label><output id="oN"></output><input type="range" id="gN" min="1" max="9" step="0.25" value="6"></div>
+        <div class="ctl"><label for="gOps">초당 기본 연산 수</label><output id="oOps"></output>
+          <select id="gOps" class="btn"><option value="1e9">10⁹ · 최적화된 C/C++/Rust 단순 루프</option><option value="1e8" selected>10⁸ · 일반적인 컴파일 언어 코드 (어림값)</option><option value="1e7">10⁷ · 순수 Python 루프 (어림값)</option></select></div>
+      </div>
+      <div class="hbars" id="gBars" aria-live="polite"></div>
+      <div class="status" id="gStatus" role="status"></div>
+    </div>
+  </div>
+  <p class="note">막대 길이는 로그 축입니다. 초당 연산 수는 자릿수를 어림하는 용도의 경험칙이며, 실제 값은 연산 종류와 메모리 접근 패턴에 따라 크게 달라집니다. 코딩 테스트에서 흔히 "1초에 약 10⁸번"으로 어림하는 것도 같은 맥락입니다.</p>
+
+  <h3>상수가 승부를 가른다: 메모리 계층</h3>
+  <p>빅오는 모든 기본 연산의 비용을 같다고 가정합니다. 실제 CPU에서는 그렇지 않습니다. 데이터가 어느 캐시 계층에 있느냐에 따라 같은 "읽기 한 번"의 비용이 백 배 가까이 차이 납니다.</p>
+  <div class="ladder">
+    <div><b>레지스터</b><span>1사이클 미만. 컴파일러가 관리.</span></div>
+    <div><b>L1 캐시</b><span>약 1ns (몇 사이클). 코어당 수십 KB.</span></div>
+    <div><b>L2 캐시</b><span>약 3–5ns. 코어당 수백 KB~수 MB.</span></div>
+    <div><b>L3 캐시</b><span>약 10–20ns. 코어 간 공유, 수십 MB.</span></div>
+    <div><b>DRAM</b><span>약 60–100ns. 캐시 미스 한 번에 수백 사이클을 기다린다.</span></div>
+  </div>
+  <p class="note">수치는 최근 서버·데스크톱 CPU의 대략적인 자릿수입니다. 정확한 값은 칩마다 다릅니다.</p>
+  <p>CPU는 메모리를 64바이트 단위의 <strong>캐시 라인</strong>으로 가져오고, 순차 접근을 감지하면 다음 라인을 미리 가져옵니다(prefetch). 그래서 연속 배열을 훑는 O(n)과 포인터를 따라가는 O(n)은 같은 빅오지만 전혀 다른 속도로 달립니다.</p>
+  @@CODE ch1/cache.cpp@@
+  <div class="code out"><div class="bar"><span>출력 (이 책을 만든 클라우드 VM, Xeon 2.1GHz, g++ -O2)</span></div><pre><code data-lang="txt">vector: 0.97 ms  list: 24.80 ms  (x25.5)  sums 12499997500000 12499997500000</code></pre></div>
+  <p>약 25배입니다. <code>std::vector</code>는 캐시 라인 하나에 정수 16개가 들어가고 컴파일러가 SIMD로 벡터화까지 합니다. <code>std::list</code>는 원소마다 별도 힙 노드(값 + 포인터 두 개)를 거쳐야 하고, 다음 주소를 읽기 전에는 그다음 주소를 알 수 없어 프리페치도 어렵습니다. 실제 서비스처럼 할당과 해제가 섞여 노드가 흩어지면 격차는 더 벌어집니다.</p>
+
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>BSP와 드라이버를 해본 사람에게 이건 낯설지 않은 이야기입니다. DMA 버퍼를 캐시 라인에 정렬하고, ISR에서 접근하는 구조체를 한 라인에 몰아넣는 이유와 같습니다. 자료구조 선택은 결국 <em>메모리에 무엇을 어떤 순서로 놓을 것인가</em>의 문제이고, 빅오는 그 결정의 절반만 말해 줍니다.</p>
+  </div>
+
+  <h3>분할 상환, 평균, 그리고 최악의 경우</h3>
+  <p>복잡도를 말할 때는 어떤 경우를 말하는지 밝혀야 합니다.</p>
+  <ul>
+    <li><strong>최악(worst case)</strong>: 어떤 입력에서도 이보다 나쁘지 않다. 실시간 시스템이 신경 쓰는 값.</li>
+    <li><strong>평균(average case)</strong>: 입력 분포를 가정한 기댓값. 해시 테이블의 O(1)은 "해시가 잘 퍼진다"는 가정 위의 평균입니다.</li>
+    <li><strong>분할 상환(amortized)</strong>: 연산을 길게 이어서 했을 때 한 번당 평균 비용. 확률 가정이 없다는 점에서 평균과 다릅니다. 동적 배열의 <code>push_back</code>은 가끔 O(n) 재할당이 일어나지만, n번 연속 수행한 총비용이 O(n)이므로 분할 상환 O(1)입니다(2장).</li>
+  </ul>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p>분할 상환 O(1)은 "매번 O(1)"이 아닙니다. 1kHz 제어 루프 안에서 <code>push_back</code>이 재할당을 일으키면, 그 한 주기만 수 밀리초가 걸려 데드라인을 놓칠 수 있습니다. 실시간 경로에서는 미리 <code>reserve()</code>하거나 고정 크기 구조(링 버퍼, 풀)를 씁니다. 이것이 WCET(최악 실행 시간) 관점입니다.</p>
+  </div>
+
+  <h3>측정은 이렇게 한다</h3>
+  <p>빅오로 후보를 추리고, 최종 결정은 측정으로 합니다. 측정 코드가 틀리면 결론도 틀립니다. 네 언어 모두 원칙은 같습니다. 단조 시계(monotonic clock)를 쓰고, 최적화 빌드로 재고, 결과를 사용해서 컴파일러가 루프를 지우지 못하게 하고, 여러 번 돌려 최솟값이나 중앙값을 봅니다.</p>
+  @@TABS ch1/timing.c ch1/timing.py ch1/timing.rs@@
+  <p>같은 VM에서 500만 개 합계는 C가 약 9ms(<code>-O2</code>), Rust가 약 4ms(<code>-O</code>, 자동 벡터화), Python <code>for</code> 루프가 약 100ms, 내장 <code>sum()</code>이 약 34ms였습니다. Python에서 같은 알고리즘이 10배 이상 느린 것은 정상이며, 그래서 Python에서는 "루프를 C로 구현된 내장 함수에 밀어 넣는 것"이 중요한 최적화 기법이 됩니다.</p>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <p>빅오로 후보를 거르고(10⁶개 입력에 O(n²)은 탈락), 같은 차수끼리는 메모리 배치와 상수로 고르고, 최종 판단은 최적화 빌드에서 측정으로 합니다. 다음 장에서는 가장 캐시 친화적인 자료구조인 배열부터 시작합니다.</p>
+  </div>
+
+  <div class="quiz" data-quiz="ch1"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch1" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH2 ============ -->
+<section class="chapter col" id="ch2">
+  <div class="eyebrow">Part I · 기초 — 2장</div>
+  <h2>배열, 동적 배열, 링 버퍼</h2>
+  <p class="goal">이 장을 마치면: 동적 배열이 왜 분할 상환 O(1)인지 증명할 수 있고, <code>std::vector</code>와 같은 원리의 컨테이너를 직접 구현하며, 인터럽트와 태스크 사이에서 쓰는 락-프리 링 버퍼를 작성할 수 있습니다.</p>
+
+  <h3>연속 메모리는 가장 강력한 자료구조다</h3>
+  <p>배열의 i번째 원소 주소는 <code>base + i × sizeof(T)</code>입니다. 곱셈 한 번과 덧셈 한 번이므로 임의 접근이 O(1)입니다. 1장에서 본 것처럼 순회도 캐시가 가장 좋아하는 패턴입니다. 대가는 중간 삽입·삭제입니다. 뒤쪽 원소를 전부 한 칸씩 밀어야 하므로 O(n)입니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 210" role="img" aria-label="배열은 원소가 연속으로 놓이고, 연결 리스트는 노드가 메모리 곳곳에 흩어져 포인터로 이어진다">
+      <text class="sv-t" x="10" y="22">배열 (연속 메모리, 캐시 라인 하나에 여러 원소)</text>
+      <rect class="sv-r3" x="10" y="34" width="256" height="40" rx="4"/>
+      <text class="sv-m" x="138" y="90" text-anchor="middle">cache line 64 B</text>
+      <g>
+        <rect class="sv-r0" x="10" y="34" width="64" height="40"/><text class="sv-t" x="42" y="59" text-anchor="middle">a[0]</text>
+        <rect class="sv-r0" x="74" y="34" width="64" height="40"/><text class="sv-t" x="106" y="59" text-anchor="middle">a[1]</text>
+        <rect class="sv-r0" x="138" y="34" width="64" height="40"/><text class="sv-t" x="170" y="59" text-anchor="middle">a[2]</text>
+        <rect class="sv-r0" x="202" y="34" width="64" height="40"/><text class="sv-t" x="234" y="59" text-anchor="middle">a[3]</text>
+        <rect class="sv-r0" x="266" y="34" width="64" height="40"/><text class="sv-t" x="298" y="59" text-anchor="middle">a[4]</text>
+        <rect class="sv-r0" x="330" y="34" width="64" height="40"/><text class="sv-t" x="362" y="59" text-anchor="middle">a[5]</text>
+      </g>
+      <text class="sv-m" x="420" y="59">주소 = base + i × size</text>
+      <text class="sv-t" x="10" y="128">연결 리스트 (노드가 힙 곳곳에 흩어짐)</text>
+      <rect class="sv-r0" x="20" y="142" width="96" height="40" rx="4"/><text class="sv-t" x="52" y="167" text-anchor="middle">7</text><text class="sv-m" x="96" y="167" text-anchor="middle">next</text>
+      <rect class="sv-r0" x="250" y="160" width="96" height="40" rx="4"/><text class="sv-t" x="282" y="185" text-anchor="middle">3</text><text class="sv-m" x="326" y="185" text-anchor="middle">next</text>
+      <rect class="sv-r0" x="440" y="142" width="96" height="40" rx="4"/><text class="sv-t" x="472" y="167" text-anchor="middle">9</text><text class="sv-m" x="516" y="167" text-anchor="middle">null</text>
+      <path class="sv-ac" d="M108 162 C 170 162, 200 180, 248 180"/>
+      <path class="sv-ac" d="M338 180 C 380 180, 400 162, 438 162"/>
+      <text class="sv-m" x="180" y="205">포인터를 따라갈 때마다 캐시 미스 가능</text>
+    </svg>
+    <figcaption>그림 2-1. 같은 원소 다섯 개도 배치에 따라 접근 비용이 다르다.</figcaption>
+  </figure>
+
+  <h3>동적 배열: 두 배씩 키우면 평균 O(1)</h3>
+  <p>크기를 미리 모를 때는 공간이 꽉 차면 더 큰 버퍼를 새로 잡고 기존 원소를 옮깁니다. 핵심은 <em>얼마나 키우느냐</em>입니다.</p>
+  <ul>
+    <li><strong>매번 고정 크기(+k)만 늘리면</strong>: n번 push에 이동이 k + 2k + 3k + … ≈ n²/(2k)번. 전체 O(n²), 한 번당 O(n).</li>
+    <li><strong>매번 r배(r &gt; 1)로 늘리면</strong>: 이동 횟수가 n/r + n/r² + … ≤ n/(r−1)인 등비급수. 전체 O(n), 한 번당 <strong>분할 상환 O(1)</strong>.</li>
+  </ul>
+  <p>아래 구현은 <code>std::vector</code>의 핵심만 남긴 것입니다. 원시 메모리를 <code>operator new</code>로 받고, 배치 new(placement new)로 객체를 생성하고, 재할당 때는 <code>std::move_if_noexcept</code>로 옮깁니다. 이동 생성자가 예외를 던질 수 있는 타입이면 복사로 대체해, 도중에 실패해도 원래 버퍼가 그대로 남는 <strong>강한 예외 보장</strong>을 지킵니다. 표준 <code>vector</code>가 이동 생성자에 <code>noexcept</code>를 붙이라고 요구하는 이유가 이것입니다.</p>
+  @@CODE ch2/vec.cpp@@
+  <div class="code out"><div class="bar"><span>출력</span></div><pre><code data-lang="txt">size=   1  capacity ->    4
+size=   5  capacity ->    8
+...
+size= 513  capacity -> 1024
+1000 pushes, 1020 element moves (1.02 per push)</code></pre></div>
+  <p>1000번 넣는 동안 원소 이동은 1020번, 한 번당 약 1회입니다. 이것이 분할 상환 O(1)의 실체입니다.</p>
+
+  <div class="bench" id="vecBench">
+    <header><b>실습 벤치 2-A · 성장 정책과 이동 비용</b><span>GROWTH POLICY</span></header>
+    <div class="body">
+      <div class="row" style="margin-bottom:8px">
+        <label for="vPol" class="note" style="margin:0">성장 정책</label>
+        <select id="vPol" class="btn"><option value="x2">2배 (libstdc++, libc++, Rust Vec)</option><option value="x1.5">1.5배 (MSVC)</option><option value="p4">+4칸씩 (나쁜 예)</option></select>
+      </div>
+      <div class="cells" id="vCells" aria-hidden="true"></div>
+      <div class="kv"><span>size <b id="vSize">0</b></span><span>capacity <b id="vCap">0</b></span><span>누적 이동 <b id="vMoves">0</b></span><span>push당 이동 <b id="vAvg">0</b></span><span>재할당 <b id="vRe">0</b>회</span></div>
+      <p class="explain" id="vMsg" aria-live="polite"></p>
+      <div class="row">
+        <button class="btn pri" id="vPush" type="button">push 1개</button>
+        <button class="btn" id="vPush10" type="button">push 10개</button>
+        <button class="btn" id="vPush1k" type="button">1,000개까지 채우기</button>
+        <button class="btn" id="vReset" type="button">처음으로</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tbl"><table>
+    <thead><tr><th>구현</th><th>성장 비율</th><th>메모</th></tr></thead>
+    <tbody>
+      <tr><td>GCC libstdc++ / LLVM libc++ <code>std::vector</code></td><td>2배</td><td>표준은 "분할 상환 상수 시간"만 요구하고 비율은 구현 자유</td></tr>
+      <tr><td>MSVC <code>std::vector</code></td><td>1.5배</td><td>해제된 이전 블록들을 재사용할 여지가 생긴다</td></tr>
+      <tr><td>Rust <code>Vec</code></td><td>2배</td><td><code>with_capacity</code>, <code>reserve</code>로 미리 확보</td></tr>
+      <tr><td>CPython <code>list</code></td><td>약 1.125배 + 작은 상수</td><td>메모리를 아끼는 쪽으로 기운 선택. 그래도 분할 상환 O(1)</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call warn"><span class="lab">흔한 함정: 반복자 무효화</span>
+    <p>재할당이 일어나면 기존 원소의 주소가 모두 바뀝니다. <code>vector</code> 원소를 가리키는 포인터·참조·반복자를 들고 있다가 <code>push_back</code>하면 댕글링 포인터가 됩니다. C++에서는 정의되지 않은 동작이고, Rust는 같은 코드를 빌림 검사기가 컴파일 단계에서 거부합니다. 오래 붙잡아야 한다면 주소 대신 <strong>인덱스</strong>를 저장하세요.</p>
+  </div>
+
+  <h3>링 버퍼: 고정 메모리로 흐르는 데이터 받기</h3>
+  <p>UART 수신, 센서 샘플, 로그처럼 끝없이 흘러오는 데이터를 고정 크기 메모리로 받으려면 배열의 끝과 처음을 이어 붙인 <strong>원형 버퍼(링 버퍼)</strong>를 씁니다. 세 가지 기법이 실무 구현의 표준입니다.</p>
+  <ol class="steps">
+    <li><strong>용량을 2의 거듭제곱으로</strong>: <code>i % N</code> 대신 <code>i &amp; (N−1)</code>. 나눗셈이 사라집니다.</li>
+    <li><strong>인덱스를 자유롭게 증가시키기</strong>: head와 tail을 감싸지 않고 계속 올리고, 쓸 때만 마스크합니다. 부호 없는 정수 뺄셈 <code>head − tail</code>이 오버플로를 넘어서도 항상 채워진 개수가 되므로, "가득 참"과 "비어 있음"을 칸 하나 버리지 않고 구분할 수 있습니다.</li>
+    <li><strong>단일 생산자·단일 소비자(SPSC)면 락이 필요 없다</strong>: head는 생산자만, tail은 소비자만 씁니다. 데이터를 쓴 뒤 head를 <em>release</em>로 공개하고, 반대편은 <em>acquire</em>로 읽으면 순서가 보장됩니다.</li>
+  </ol>
+  @@TABS ch2/ring.c ch2/ring.cpp ch2/ring.py ch2/ring.rs@@
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>리눅스 커널의 <code>kfifo</code>가 바로 이 구조입니다(2의 거듭제곱 크기, 자유 증가 인덱스). NIC와 DMA 엔진의 디스크립터 링, ISR이 채우고 태스크가 비우는 UART 버퍼도 같은 패턴입니다. 단일 코어 MCU라도 컴파일러 재배치는 일어나므로, 공유 인덱스에는 <code>volatile</code>이 아니라 원자 연산과 메모리 순서를 씁니다.</p>
+  </div>
+
+  <div class="quiz" data-quiz="ch2"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch2" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH3 ============ -->
+<section class="chapter col" id="ch3">
+  <div class="eyebrow">Part I · 기초 — 3장</div>
+  <h2>연결 리스트, 스택, 큐</h2>
+  <p class="goal">이 장을 마치면: 연결 리스트가 실제로 유리한 경우를 가려낼 수 있고, 커널 스타일 침투형(intrusive) 리스트를 구현하며, 네 언어에서 스택과 큐를 올바른 컨테이너로 표현할 수 있습니다.</p>
+
+  <h3>연결 리스트가 이기는 경우는 생각보다 적다</h3>
+  <p>교과서는 연결 리스트의 장점으로 "O(1) 삽입·삭제"를 꼽습니다. 단서가 붙습니다. <em>위치를 이미 알고 있을 때</em>입니다. 위치를 찾는 데 O(n)이 걸리고, 그 탐색은 1장에서 본 것처럼 배열 탐색보다 몇 배에서 수십 배 느립니다. 그래서 "중간 삽입이 잦으니 리스트"라는 판단은 실측에서 자주 뒤집힙니다.</p>
+  <p>연결 리스트가 정말 이기는 경우는 다음과 같습니다.</p>
+  <ul>
+    <li>객체를 이미 손에 쥐고 있고, 그 객체를 O(1)에 빼거나 옮겨야 할 때 (LRU 캐시, 스케줄러 run queue, 타이머 취소)</li>
+    <li>원소 주소가 절대 바뀌면 안 될 때 (다른 곳에서 포인터로 참조)</li>
+    <li>리스트 두 개를 O(1)에 이어 붙이거나 잘라 옮길 때 (<code>splice</code>)</li>
+    <li>메모리 할당을 할 수 없는 문맥에서 이미 존재하는 객체들을 엮을 때 (침투형 리스트)</li>
+  </ul>
+  <p>아래는 <code>unique_ptr</code>로 소유권을 표현한 단일 연결 리스트입니다. 눈여겨볼 곳은 소멸자입니다.</p>
+  @@CODE ch3/list.cpp@@
+  <div class="call warn"><span class="lab">흔한 함정: 재귀 소멸</span>
+    <p><code>unique_ptr</code> 체인의 기본 소멸자는 노드마다 다음 노드의 소멸자를 부르는 재귀입니다. 노드 100만 개짜리 리스트를 지우면 스택 프레임 100만 개가 쌓여 스택 오버플로가 납니다. 소멸자에서 반복문으로 하나씩 끊어 내야 합니다. Rust의 <code>Box</code> 체인도 똑같은 문제가 있어 <code>Drop</code>을 직접 구현합니다.</p>
+  </div>
+
+  <h3>커널은 리스트를 객체 안에 넣는다</h3>
+  <p>일반적인 리스트는 노드가 값을 담습니다. 리눅스 커널의 <code>list_head</code>는 반대로 <strong>객체가 링크를 담습니다</strong>. 구조체 안에 <code>prev/next</code> 필드를 넣고, 링크 주소에서 <code>container_of</code>로 바깥 구조체 주소를 역산합니다.</p>
+  <ul>
+    <li>할당이 객체 하나로 끝납니다. 노드를 따로 만들지 않습니다.</li>
+    <li>객체 하나가 링크 필드를 여러 개 가지면 여러 리스트에 동시에 들어갈 수 있습니다.</li>
+    <li>헤드를 원형 이중 연결로 만들어 빈 리스트, 첫 노드, 마지막 노드의 특수 처리가 사라집니다.</li>
+  </ul>
+
+  <h3>스택과 큐는 자료구조라기보다 인터페이스다</h3>
+  <p>스택(LIFO)은 함수 호출, 실행 취소, 괄호 짝 맞추기, 반복형 DFS(8장)에 쓰입니다. 큐(FIFO)는 작업 대기열, 메시지 버퍼, BFS(8장)에 쓰입니다. 둘 다 "어떤 순서로 꺼내는가"라는 약속이고, 구현은 배열이나 링 버퍼가 거의 항상 최선입니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>용도</th><th>C++</th><th>C</th><th>Python</th><th>Rust</th></tr></thead>
+    <tbody>
+      <tr><td>스택</td><td><code>std::vector</code> (또는 <code>std::stack</code>)</td><td>배열 + top 인덱스</td><td><code>list</code>의 <code>append/pop</code></td><td><code>Vec</code>의 <code>push/pop</code></td></tr>
+      <tr><td>큐 / 덱</td><td><code>std::deque</code> (또는 <code>std::queue</code>)</td><td>링 버퍼 (2장)</td><td><code>collections.deque</code></td><td><code>VecDeque</code></td></tr>
+      <tr><td>O(1) 중간 제거</td><td><code>std::list</code> + 반복자 보관</td><td>침투형 리스트</td><td><code>OrderedDict</code></td><td>인덱스 기반 아레나</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p>Python에서 <code>list.pop(0)</code>이나 <code>list.insert(0, x)</code>로 큐를 만들면 매번 전체 원소를 미는 O(n)입니다. 큐에는 반드시 <code>deque</code>를 쓰세요.</p>
+  </div>
+
+  <h3>Rust에서 연결 리스트가 어려운 이유</h3>
+  <p>Rust의 규칙은 "값의 소유자는 하나, 가변 참조는 동시에 하나"입니다. 단일 연결 리스트는 각 노드를 앞 노드가 소유하므로 <code>Option&lt;Box&lt;Node&gt;&gt;</code>로 자연스럽게 표현됩니다. 이중 연결 리스트는 노드 하나를 앞뒤 두 노드가 가리켜야 하므로 소유 규칙과 정면으로 부딪힙니다. 해법은 세 가지입니다.</p>
+  <ul>
+    <li><code>Rc&lt;RefCell&lt;Node&gt;&gt;</code> + <code>Weak</code>: 안전하지만 런타임 비용과 장황함이 큽니다.</li>
+    <li><code>unsafe</code> 원시 포인터: 표준 <code>LinkedList</code>가 내부적으로 쓰는 방법. 불변식을 직접 증명해야 합니다.</li>
+    <li><strong>아레나 + 인덱스</strong>: 노드를 <code>Vec</code>에 넣고 포인터 대신 <code>usize</code> 인덱스로 연결. 안전하고, 캐시 친화적이고, 직렬화도 쉽습니다. 9장의 유니온-파인드와 11장의 트라이가 이 방식입니다.</li>
+  </ul>
+  <p>Rust 커뮤니티의 고전 <em>Learning Rust With Entirely Too Many Linked Lists</em>는 이 주제만으로 책 한 권을 씁니다. 연결 리스트로 소유권을 익히고, 실무에서는 <code>Vec</code>과 <code>VecDeque</code>를 쓰라는 것이 결론입니다.</p>
+  @@TABS ch3/intrusive.c ch3/list.py ch3/list.rs@@
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <p>기본값은 배열입니다. 연결 리스트는 "이미 가진 객체를 O(1)에 빼거나 옮긴다", "주소가 바뀌면 안 된다"는 요구가 있을 때 고릅니다. 다음 장의 해시 테이블은 배열 위에 "키로 찾기"를 얹은 구조이고, 11장에서는 해시 테이블과 연결 리스트를 합쳐 LRU 캐시를 만듭니다.</p>
+  </div>
+
+  <div class="quiz" data-quiz="ch3"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch3" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>

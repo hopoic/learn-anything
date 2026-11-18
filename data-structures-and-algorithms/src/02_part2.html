@@ -1,0 +1,223 @@
+
+<!-- ============ CH4 ============ -->
+<section class="chapter col" id="ch4">
+  <div class="eyebrow">Part II · 핵심 자료구조 — 4장</div>
+  <h2>해시 테이블</h2>
+  <p class="goal">이 장을 마치면: 체이닝과 개방 주소법의 차이와 부하율의 의미를 설명할 수 있고, 툼스톤을 쓰는 선형 탐사 해시 맵을 구현하며, 해시 함수 품질과 HashDoS가 왜 실무 문제인지 이해하게 됩니다.</p>
+
+  <h3>키를 배열 인덱스로 바꾸는 함수</h3>
+  <p>배열은 정수 인덱스로 O(1)에 접근합니다. 키가 문자열이나 좌표여도 같은 속도를 얻으려면, 키를 0부터 m−1 사이의 정수로 바꾸는 <strong>해시 함수</strong> h(k)를 쓰고, 그 위치(버킷)에 저장합니다. 서로 다른 키가 같은 버킷에 떨어지는 <strong>충돌</strong>은 피할 수 없습니다. 생일 문제가 보여 주듯, 365개 버킷에 키 23개만 넣어도 충돌 확률이 50%를 넘습니다. 그래서 해시 테이블 설계는 곧 충돌 처리 설계입니다.</p>
+  <p>성능을 좌우하는 수치는 <strong>부하율(load factor) α = 원소 수 / 버킷 수</strong>입니다. α가 작으면 충돌이 드물고 메모리를 낭비하며, α가 크면 반대입니다. 모든 구현은 α가 임계값을 넘으면 버킷 수를 늘리고 전부 다시 넣는(rehash) 방식으로 평균 O(1)을 유지합니다.</p>
+
+  <h3>충돌 해결: 체이닝과 개방 주소법</h3>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>분리 체이닝 (separate chaining)</th><th>개방 주소법 (open addressing)</th></tr></thead>
+    <tbody>
+      <tr><td>방식</td><td>버킷마다 연결 리스트. 충돌하면 리스트에 추가</td><td>모든 원소가 배열 안에. 충돌하면 정해진 규칙으로 다음 칸 탐사</td></tr>
+      <tr><td>메모리</td><td>원소마다 노드 할당 + 포인터</td><td>배열 하나. 캐시 친화적</td></tr>
+      <tr><td>부하율</td><td>1을 넘어도 동작 (보통 1 근처에서 확장)</td><td>1 미만 필수. 보통 0.5–0.9에서 확장</td></tr>
+      <tr><td>삭제</td><td>리스트에서 빼면 끝</td><td>툼스톤(삭제 표시) 필요. 그냥 비우면 탐사 사슬이 끊긴다</td></tr>
+      <tr><td>주소 안정성</td><td>재해시해도 원소 주소 유지</td><td>재해시하면 원소가 이동</td></tr>
+      <tr><td>대표 구현</td><td>C++ <code>std::unordered_map</code>, 커널의 <code>hlist</code></td><td>Python <code>dict</code>, Rust <code>HashMap</code>(SwissTable), Abseil <code>flat_hash_map</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>C++ 표준의 <code>unordered_map</code>은 버킷 인터페이스와 "재해시해도 참조가 유효하다"는 요구 때문에 사실상 노드 기반 체이닝으로 구현됩니다. 성능이 중요한 C++ 코드베이스가 Abseil이나 Boost의 flat 해시 맵으로 갈아타는 이유입니다.</p>
+
+  <div class="bench" id="hashBench">
+    <header><b>실습 벤치 4-A · 해시 테이블 해부</b><span>HASH TABLE</span></header>
+    <div class="body">
+      <div class="grid2">
+        <div class="ctl"><label for="hMode">충돌 해결</label><output></output>
+          <select id="hMode" class="btn"><option value="lp">개방 주소법 · 선형 탐사</option><option value="ch">분리 체이닝</option></select></div>
+        <div class="ctl"><label for="hFn">해시 함수 (버킷 16개)</label><output></output>
+          <select id="hFn" class="btn"><option value="mod">h(k) = k mod 16</option><option value="mix">h(k) = 비트 섞기 후 mod 16</option></select></div>
+      </div>
+      <div class="row" style="margin-bottom:6px">
+        <label for="hKey" class="note" style="margin:0">키</label>
+        <input id="hKey" type="number" inputmode="numeric" class="btn" style="width:110px" value="42">
+        <button class="btn pri" id="hIns" type="button">삽입</button>
+        <button class="btn" id="hFind" type="button">찾기</button>
+        <button class="btn" id="hDel" type="button">삭제</button>
+      </div>
+      <div class="row">
+        <button class="btn" id="hRand" type="button">랜덤 키 4개</button>
+        <button class="btn" id="hBad" type="button">16의 배수 키 4개</button>
+        <button class="btn" id="hReset" type="button">비우기</button>
+      </div>
+      <div id="hView" aria-hidden="true"></div>
+      <div class="kv"><span>원소 <b id="hN">0</b></span><span>부하율 α <b id="hA">0</b></span><span>성공 탐색 평균 탐사 <b id="hP">0</b></span><span>최장 클러스터/체인 <b id="hL">0</b></span></div>
+      <div class="status g" id="hMsg" role="status"></div>
+    </div>
+  </div>
+  <p class="note">벤치는 원리를 보이기 위해 재해시를 하지 않습니다. 개방 주소법에서 16칸이 다 차면 삽입을 거부합니다. "16의 배수 키"를 <code>k mod 16</code>으로 넣어 보고, 같은 키를 "비트 섞기"로 넣어 비교해 보세요.</p>
+
+  <h3>직접 만들기: 선형 탐사 + 툼스톤</h3>
+  <p>선형 탐사는 충돌하면 바로 옆 칸을 봅니다. 단순하고 캐시에 잘 맞지만, 차 있는 칸이 뭉치는 <strong>1차 클러스터링</strong>이 생겨 α가 0.7을 넘으면 탐사 길이가 급격히 늘어납니다. 아래 구현의 세 가지 결정을 눈여겨보세요.</p>
+  <ol class="steps">
+    <li><strong>비트 섞기</strong>: 주요 구현에서 <code>std::hash&lt;int&gt;</code>는 항등 함수입니다. 2의 거듭제곱 마스크는 하위 비트만 보므로, 1024의 배수 같은 키가 전부 같은 칸에 몰립니다. MurmurHash3의 마무리 단계(finalizer)로 상위 비트를 섞어 해결합니다.</li>
+    <li><strong>툼스톤</strong>: 삭제한 칸을 Empty로 되돌리면 그 칸을 지나가던 다른 키의 탐사가 거기서 멈춰 "없음"으로 잘못 판단합니다. Deleted로 표시하고 탐색은 계속 지나가게 합니다.</li>
+    <li><strong>툼스톤도 부하로 센다</strong>: 삽입·삭제를 반복하면 툼스톤이 쌓여 빈 칸이 사라집니다. 툼스톤을 포함한 사용량으로 재해시를 결정하고, 살아 있는 원소가 적으면 같은 크기로 다시 만들어 청소합니다.</li>
+  </ol>
+  @@CODE ch4/flatmap.cpp@@
+  <div class="code out"><div class="bar"><span>출력</span></div><pre><code data-lang="txt">nav    -> 3
+power  -> 2
+dds    -> 0
+size=3 capacity=8
+stress: 100000/100000 correct, size=50000</code></pre></div>
+
+  <h3>해시 테이블이 못 하는 것, 그리고 HashDoS</h3>
+  <ul>
+    <li><strong>순서가 없다</strong>: "키가 300 이상인 첫 원소", "200~500 사이 전부" 같은 질의는 전체를 훑어야 합니다. 이런 질의가 필요하면 5장의 정렬된 트리를 씁니다.</li>
+    <li><strong>최악은 O(n)</strong>: 모든 키가 한 버킷에 몰리면 연결 리스트가 됩니다. 공격자가 해시 함수를 알면 일부러 충돌하는 키만 보내 서버를 멈출 수 있습니다(HashDoS). 그래서 Rust는 기본 해셔로 프로세스마다 무작위 시드를 쓰는 SipHash-1-3을 쓰고, Python은 문자열 해시에 실행마다 바뀌는 시드를 넣습니다(<code>PYTHONHASHSEED</code>). 신뢰하는 입력만 다루는 성능 경로에서는 더 빠른 해셔로 바꾸기도 합니다.</li>
+    <li><strong>반복 순서가 불안정하다</strong>: 같은 프로그램도 실행마다 순서가 바뀔 수 있습니다. 로그, 테스트 기대값, 결정적 재현(replay)이 필요한 곳에서는 정렬하거나 순서 있는 맵을 쓰세요. Python <code>dict</code>는 3.7부터 삽입 순서를 언어 차원에서 보장합니다.</li>
+  </ul>
+  @@TABS ch4/hash.c ch4/hash.py ch4/hash.rs@@
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <p>해시 테이블은 "정확히 이 키"를 찾는 데 최강입니다. 평균 O(1)은 좋은 해시 함수와 낮은 부하율이라는 두 가정 위에 서 있습니다. 둘 중 하나가 무너지면 O(n)입니다. 순서나 범위가 필요하면 다음 장으로 넘어가세요.</p>
+  </div>
+
+  <div class="quiz" data-quiz="ch4"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch4" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH5 ============ -->
+<section class="chapter col" id="ch5">
+  <div class="eyebrow">Part II · 핵심 자료구조 — 5장</div>
+  <h2>트리: BST에서 균형 트리, B-트리까지</h2>
+  <p class="goal">이 장을 마치면: 이진 탐색 트리의 연산과 <code>lower_bound</code>를 구현할 수 있고, 입력 순서가 트리 높이를 어떻게 망가뜨리는지 측정으로 보이며, AVL·레드-블랙·B-트리 중 상황에 맞는 것을 고를 수 있습니다.</p>
+
+  <h3>정렬 상태를 유지하는 대가는 O(log n)</h3>
+  <p><strong>이진 탐색 트리(BST)</strong>는 모든 노드에서 "왼쪽 서브트리의 키 &lt; 내 키 &lt; 오른쪽 서브트리의 키"를 지킵니다. 찾기, 넣기, 빼기 모두 루트에서 한 경로를 따라 내려가므로 비용은 <strong>트리 높이 h</strong>에 비례합니다. 중위 순회(왼쪽 → 나 → 오른쪽)는 키를 정렬된 순서로 내놓습니다.</p>
+  <p>해시 테이블 대비 진짜 가치는 <strong>순서 질의</strong>입니다. "x 이상인 가장 작은 키(lower_bound)", "범위 [a, b)의 모든 키", "최솟값·최댓값", "k번째 원소"를 모두 O(h)에 답합니다. 타임라인, 이벤트 스케줄, 구간 겹침 검사가 이 질의들로 이루어집니다.</p>
+  @@CODE ch5/bst.cpp@@
+  <div class="code out"><div class="bar"><span>출력</span></div><pre><code data-lang="txt">height after sorted inserts: 1023
+height after random inserts: 25
+perfectly balanced height:   10
+lower_bound(501) = 502
+next event after t=300: dock at 900</code></pre></div>
+  <p>같은 키 1023개인데 넣는 순서에 따라 높이가 1023과 25로 갈립니다. 정렬된 순서로 넣으면 모든 노드가 오른쪽 자식만 가져 <strong>연결 리스트로 퇴화</strong>합니다. 센서 타임스탬프나 증가하는 ID처럼 실무 데이터는 정렬되어 들어오는 경우가 흔하므로, 균형을 잡지 않는 BST는 실전에서 쓰지 않습니다.</p>
+  <figure class="fig">
+    <svg viewBox="0 0 640 230" role="img" aria-label="왼쪽은 키 1부터 5를 순서대로 넣어 오른쪽으로만 뻗은 높이 5의 퇴화 트리, 오른쪽은 같은 키로 만든 높이 3의 균형 트리">
+      <text class="sv-t" x="20" y="20">정렬된 순서로 삽입 (h = n)</text>
+      <g>
+        <line class="sv-ln" x1="50" y1="50" x2="95" y2="85"/><line class="sv-ln" x1="95" y1="85" x2="140" y2="120"/><line class="sv-ln" x1="140" y1="120" x2="185" y2="155"/><line class="sv-ln" x1="185" y1="155" x2="230" y2="190"/>
+        <circle class="sv-r2" cx="50" cy="50" r="16"/><text class="sv-t" x="50" y="55" text-anchor="middle">1</text>
+        <circle class="sv-r2" cx="95" cy="85" r="16"/><text class="sv-t" x="95" y="90" text-anchor="middle">2</text>
+        <circle class="sv-r2" cx="140" cy="120" r="16"/><text class="sv-t" x="140" y="125" text-anchor="middle">3</text>
+        <circle class="sv-r2" cx="185" cy="155" r="16"/><text class="sv-t" x="185" y="160" text-anchor="middle">4</text>
+        <circle class="sv-r2" cx="230" cy="190" r="16"/><text class="sv-t" x="230" y="195" text-anchor="middle">5</text>
+      </g>
+      <text class="sv-t" x="380" y="20">균형 트리 (h ≈ log₂ n)</text>
+      <g>
+        <line class="sv-ln" x1="490" y1="60" x2="430" y2="120"/><line class="sv-ln" x1="490" y1="60" x2="550" y2="120"/>
+        <line class="sv-ln" x1="430" y1="120" x2="395" y2="180"/><line class="sv-ln" x1="550" y1="120" x2="585" y2="180"/>
+        <circle class="sv-r3" cx="490" cy="60" r="16"/><text class="sv-t" x="490" y="65" text-anchor="middle">3</text>
+        <circle class="sv-r2" cx="430" cy="120" r="16"/><text class="sv-t" x="430" y="125" text-anchor="middle">2</text>
+        <circle class="sv-r2" cx="550" cy="120" r="16"/><text class="sv-t" x="550" y="125" text-anchor="middle">4</text>
+        <circle class="sv-r2" cx="395" cy="180" r="16"/><text class="sv-t" x="395" y="185" text-anchor="middle">1</text>
+        <circle class="sv-r2" cx="585" cy="180" r="16"/><text class="sv-t" x="585" y="185" text-anchor="middle">5</text>
+      </g>
+      <text class="sv-m" x="20" y="222">탐색 비용 = 높이. 1023개에서 1023 대 10.</text>
+    </svg>
+    <figcaption>그림 5-1. 같은 키, 다른 삽입 순서. 균형 트리는 회전으로 높이를 log n 근처에 묶어 둔다.</figcaption>
+  </figure>
+
+  <h3>균형 트리: 높이를 강제로 log n에 묶는다</h3>
+  <p>균형 트리는 삽입·삭제 후 <strong>회전(rotation)</strong>으로 모양을 고쳐 높이 상한을 보장합니다. 회전은 포인터 세 개를 바꾸는 O(1) 연산이고 중위 순서를 보존합니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>AVL 트리</th><th>레드-블랙 트리</th><th>B-트리 / B+트리</th></tr></thead>
+    <tbody>
+      <tr><td>균형 조건</td><td>모든 노드에서 좌우 높이 차 ≤ 1</td><td>색 규칙: 루트→리프 경로의 검은 노드 수가 같고, 빨강이 연속하지 않음</td><td>노드마다 키 수십~수백 개, 모든 리프가 같은 깊이</td></tr>
+      <tr><td>높이 상한</td><td>약 1.44 log₂ n</td><td>2 log₂(n+1)</td><td>log_B n (B = 노드 분기 수)</td></tr>
+      <tr><td>강점</td><td>더 낮은 트리 → 조회가 많을 때 유리</td><td>삽입·삭제당 회전이 적음(상수 번) → 변경이 많을 때 유리</td><td>노드 하나가 캐시 라인·디스크 블록 단위 → I/O 최소화</td></tr>
+      <tr><td>쓰이는 곳</td><td>조회 위주 인메모리 인덱스</td><td>C++ <code>std::map</code>/<code>set</code>(주요 구현), 리눅스 커널 <code>rbtree</code></td><td>DB 인덱스, 파일 시스템, Rust <code>BTreeMap</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="call sys"><span class="lab">임베디드 엔지니어의 눈으로</span>
+    <p>리눅스 커널은 레드-블랙 트리를 여러 핵심 경로에 씁니다. 고해상도 타이머(hrtimer)의 만료 시각 정렬, epoll의 감시 대상 파일 관리가 대표적이고, CPU 스케줄러는 CFS 시절부터 실행 가능한 태스크를 rbtree로 정렬해 왔습니다(6.6에서 도입된 EEVDF도 증강된 rbtree를 씁니다). 커널의 rbtree도 3장의 <code>list_head</code>처럼 노드를 구조체 안에 넣는 침투형입니다.</p>
+  </div>
+
+  <h3>B-트리: 넓고 낮게</h3>
+  <p>이진 트리는 노드 하나에 키 하나라서 높이만큼 포인터를 따라가며 캐시 미스를 냅니다. B-트리는 노드 하나에 키를 수십 개 넣어 분기 수를 늘립니다. 100만 개 키도 높이 3~4면 충분하고, 노드 안의 키 배열은 연속 메모리라 이분 탐색이 캐시 안에서 끝납니다. 원래 디스크 블록을 위해 고안됐지만 1장의 메모리 계층 논리 그대로 인메모리에서도 유리해서, Rust 표준 라이브러리는 정렬된 맵을 레드-블랙 트리가 아니라 B-트리로 제공합니다.</p>
+  @@TABS ch5/ordered.c ch5/ordered.py ch5/ordered.rs@@
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <p>C의 비교 함수에서 <code>return x - y;</code>는 int 오버플로로 부호가 뒤집힐 수 있습니다(예: <code>INT_MIN - 1</code>). <code>(x &gt; y) - (x &lt; y)</code>를 쓰세요. 그리고 비교 함수는 반드시 <strong>엄격 약순서(strict weak ordering)</strong>를 지켜야 합니다. 어기면 C++ <code>std::sort</code>나 <code>std::map</code>은 정의되지 않은 동작을 일으키고, Rust의 정렬은 이를 감지하면 패닉을 낼 수 있습니다.</p>
+  </div>
+
+  <div class="quiz" data-quiz="ch5"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch5" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
+
+<!-- ============ CH6 ============ -->
+<section class="chapter col" id="ch6">
+  <div class="eyebrow">Part II · 핵심 자료구조 — 6장</div>
+  <h2>힙과 우선순위 큐</h2>
+  <p class="goal">이 장을 마치면: 배열 위의 이진 힙을 구현하고 sift-up/sift-down을 손으로 추적할 수 있으며, 네 언어의 우선순위 큐 기본 방향(최소/최대)을 틀리지 않고, 타이머·top-k·스케줄링 문제에 힙을 적용할 수 있습니다.</p>
+
+  <h3>완전 이진 트리를 배열에 담는 법</h3>
+  <p>우선순위 큐는 "가장 급한 것 꺼내기"와 "넣기"만 빠르면 됩니다. 전체를 정렬해 둘 필요는 없습니다. <strong>이진 힙</strong>은 이 약한 요구만 만족시켜서 두 연산을 O(log n)에, 최솟값 확인을 O(1)에 해냅니다.</p>
+  <ul>
+    <li><strong>모양 규칙</strong>: 완전 이진 트리(마지막 층만 왼쪽부터 채움). 그래서 포인터 없이 배열에 층 순서로 담을 수 있습니다. 인덱스 i의 부모는 <code>(i−1)/2</code>, 자식은 <code>2i+1</code>, <code>2i+2</code>.</li>
+    <li><strong>힙 규칙</strong>: 부모 ≤ 자식(최소 힙). 형제끼리의 순서는 상관없습니다. 그래서 힙 배열은 정렬되어 있지 않습니다.</li>
+    <li><strong>push</strong>: 맨 끝에 넣고 부모보다 작으면 교환하며 올라감(sift-up).</li>
+    <li><strong>pop</strong>: 루트를 꺼내고, 마지막 원소를 루트로 옮긴 뒤 더 작은 자식과 교환하며 내려감(sift-down).</li>
+  </ul>
+
+  <div class="bench" id="heapBench">
+    <header><b>실습 벤치 6-A · 힙 연산 한 단계씩</b><span>BINARY HEAP</span></header>
+    <div class="body">
+      <div class="fig narrow" style="margin:0"><svg id="hpSvg" viewBox="0 0 560 220" role="img" aria-label="현재 힙의 트리 모양"></svg></div>
+      <div class="cells" id="hpCells" aria-hidden="true"></div>
+      <p class="explain" id="hpMsg" aria-live="polite"></p>
+      <div class="row" style="justify-content:space-between">
+        <div class="row">
+          <button class="btn" id="hpPush" type="button">push(랜덤)</button>
+          <button class="btn" id="hpPop" type="button">pop()</button>
+          <button class="btn" id="hpReset" type="button">새 힙</button>
+        </div>
+        <div class="row">
+          <button class="btn" id="hpPrev" type="button">이전</button>
+          <button class="btn pri" id="hpNext" type="button">다음 단계</button>
+        </div>
+      </div>
+      <p class="tokc" id="hpStep" style="margin:8px 0 0"></p>
+    </div>
+  </div>
+
+  @@CODE ch6/heap.cpp@@
+  <p>생성자의 <strong>Floyd 힙 만들기</strong>는 원소를 하나씩 push하는 O(n log n) 대신 O(n)입니다. 리프 절반은 이미 힙이므로 건너뛰고, 마지막 부모부터 sift-down합니다. 높이 h인 노드는 n/2^(h+1)개뿐이고 각각 최대 h번 내려가므로 합이 O(n)으로 수렴합니다.</p>
+
+  <h3>언어마다 기본 방향이 다르다</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>언어</th><th>도구</th><th>기본</th><th>반대 방향 만들기</th></tr></thead>
+    <tbody>
+      <tr><td>C++</td><td><code>std::priority_queue</code></td><td><strong>최대</strong> 힙</td><td><code>std::greater&lt;&gt;</code>를 비교자로</td></tr>
+      <tr><td>Python</td><td><code>heapq</code> (리스트 위 함수들)</td><td><strong>최소</strong> 힙</td><td>키에 음수를 붙여 넣기</td></tr>
+      <tr><td>Rust</td><td><code>BinaryHeap</code></td><td><strong>최대</strong> 힙</td><td><code>std::cmp::Reverse</code>로 감싸기</td></tr>
+      <tr><td>C</td><td>없음</td><td>직접 구현</td><td>비교 함수 방향만 바꾸면 됨</td></tr>
+    </tbody>
+  </table></div>
+  <p>세 표준 구현 모두 <strong>decrease-key(이미 들어 있는 원소의 우선순위 낮추기)가 없습니다</strong>. 그래서 다익스트라(9장)와 A*(12장)는 새 우선순위로 한 번 더 넣고, 꺼낼 때 이미 처리한 낡은 항목을 버리는 <strong>지연 삭제</strong>를 씁니다. 힙 크기가 간선 수만큼 커질 수 있지만, 구현이 단순하고 실측으로도 대개 더 빠릅니다.</p>
+
+  <h3>타이머, 스케줄러, top-k</h3>
+  <ul>
+    <li><strong>타이머 큐</strong>: 만료 시각을 키로 한 최소 힙. 루트만 보면 다음 만료까지 얼마나 잘 수 있는지 압니다. 취소가 잦으면 힙 대신 타이머 휠이나 정렬 트리를 씁니다.</li>
+    <li><strong>top-k</strong>: n개 중 가장 큰 k개는 크기 k짜리 <em>최소</em> 힙을 유지하면 O(n log k). 새 값이 루트보다 크면 루트를 교체합니다. 스트림 데이터에 특히 좋습니다.</li>
+    <li><strong>실시간 중앙값</strong>: 아래 절반은 최대 힙, 위 절반은 최소 힙에 넣고 크기를 맞추면 중앙값을 O(1)에 읽습니다.</li>
+    <li><strong>k개 정렬 스트림 병합</strong>: 각 스트림의 맨 앞을 힙에 넣고 하나 꺼낼 때마다 그 스트림의 다음 원소를 넣습니다. 외부 정렬과 로그 병합의 기본기입니다.</li>
+  </ul>
+  @@TABS ch6/heap.c ch6/heap.py ch6/heap.rs@@
+  <div class="call warn"><span class="lab">흔한 함정</span>
+    <ul>
+      <li><strong>틱 카운터 랩어라운드</strong>: 32비트 틱은 언젠가 0으로 돌아갑니다. <code>a &lt; b</code>로 비교하면 랩 직후 타이머 순서가 뒤집힙니다. C 탭처럼 <code>(int32_t)(a − b) &lt; 0</code>으로 비교하세요. 대기 중인 마감 시각들이 2³¹틱 이내에 있다는 전제가 붙습니다.</li>
+      <li><strong>Rust와 f64</strong>: NaN 때문에 <code>f64</code>는 <code>Ord</code>가 아니라서 그대로는 <code>BinaryHeap</code>에 넣을 수 없습니다. 정수 시간(마이크로초)을 쓰거나 <code>total_cmp</code>로 <code>Ord</code>를 구현합니다(12장).</li>
+      <li><strong>Python 튜플 비교</strong>: <code>(priority, obj)</code>에서 우선순위가 같으면 <code>obj</code>끼리 비교하다가 <code>TypeError</code>가 납니다. 가운데에 증가하는 일련번호를 넣으세요.</li>
+    </ul>
+  </div>
+  <div class="call key"><span class="lab">핵심 정리</span>
+    <p>"다음으로 처리할 하나"만 필요하면 정렬하지 말고 힙을 쓰세요. Part III의 그래프 알고리즘은 이 힙을 엔진으로 씁니다. 그 전에 7장에서 정렬과 이분 탐색을 다집니다.</p>
+  </div>
+
+  <div class="quiz" data-quiz="ch6"><h4>확인 문제</h4></div>
+  <div class="done-row"><button class="btn done-btn" data-done="ch6" aria-pressed="false" type="button">이 장을 마쳤어요</button></div>
+</section>
